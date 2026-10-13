@@ -1,0 +1,26 @@
+{
+  "name": "واحة بدوي - نظام نقاط البيع",
+  "short_name": "واحة بدوي",
+  "description": "نظام نقاط البيع لمطعم واحة بدوي - Wahet Badawy POS System",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#1e3a8a",
+  "theme_color": "#1e40af",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
