@@ -13,6 +13,41 @@ enum Role {
   CASHIER
 }
 
+enum EquipmentType {
+  KITCHEN
+  BARISTA
+}
+
+enum EquipmentStatus {
+  OPERATIONAL
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum TableType {
+  FAMILY_BOOTH   // باكيات عائلات
+  VIP            // طاولات VIP
+  REGULAR        // طاولات عادية
+  OWNER          // طاولة المالك
+  MANAGER        // طاولة المدير
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  CLEANING
+}
+
+enum UnitType {
+  KG
+  GRAM
+  LITER
+  ML
+  PIECE
+  PORTION
+}
+
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
@@ -24,4 +59,91 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("users")
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  nameAr      String     @map("name_ar")
+  description String?
+  order       Int        @default(0)
+  items       MenuItem[]
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@map("categories")
+}
+
+model MenuItem {
+  id          String       @id @default(cuid())
+  name        String
+  nameAr      String       @map("name_ar")
+  description String?
+  price       Float
+  categoryId  String       @map("category_id")
+  category    Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  active      Boolean      @default(true)
+  imageUrl    String?      @map("image_url")
+  recipeItems RecipeItem[]
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@map("menu_items")
+}
+
+model RawMaterial {
+  id            String       @id @default(cuid())
+  name          String
+  unit          UnitType     @default(KG)
+  costPerUnit   Float        @default(0) @map("cost_per_unit")
+  currentStock  Float        @default(0) @map("current_stock")
+  minStockLevel Float        @default(10) @map("min_stock_level")
+  recipeItems   RecipeItem[]
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  @@map("raw_materials")
+}
+
+model RecipeItem {
+  id            String      @id @default(cuid())
+  menuItemId    String      @map("menu_item_id")
+  menuItem      MenuItem    @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  rawMaterialId String      @map("raw_material_id")
+  rawMaterial   RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Cascade)
+  quantity      Float
+  unit          UnitType    @default(GRAM)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@unique([menuItemId, rawMaterialId])
+  @@map("recipe_items")
+}
+
+model Equipment {
+  id                  String          @id @default(cuid())
+  name                String
+  type                EquipmentType   @default(KITCHEN)
+  status              EquipmentStatus @default(OPERATIONAL)
+  location            String?
+  serialNumber        String?         @map("serial_number")
+  lastMaintenanceDate DateTime?       @map("last_maintenance_date")
+  notes               String?
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  @@map("equipment")
+}
+
+model DiningTable {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  number    Int?
+  type      TableType   @default(REGULAR)
+  status    TableStatus @default(AVAILABLE)
+  capacity  Int         @default(4)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  @@map("dining_tables")
 }
