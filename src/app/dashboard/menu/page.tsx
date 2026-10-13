@@ -2,6 +2,8 @@ import { getCategories, getMenuItems } from "@/actions/menu";
 import { getRawMaterials } from "@/actions/procurement";
 import MenuManager from "./menu-manager";
 
+export const dynamic = "force-dynamic";
+
 export default async function MenuPage() {
   const [categories, menuItems, rawMaterials] = await Promise.all([
     getCategories(),

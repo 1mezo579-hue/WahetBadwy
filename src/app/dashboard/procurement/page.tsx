@@ -1,6 +1,8 @@
 import { getRawMaterials } from "@/actions/procurement";
 import ProcurementManager from "./procurement-manager";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProcurementPage() {
   const materials = await getRawMaterials();
 
