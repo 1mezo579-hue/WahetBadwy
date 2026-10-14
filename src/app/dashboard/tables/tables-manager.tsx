@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { TableType, TableStatus } from "@prisma/client";
-import { createTable, updateTableStatus, deleteTable } from "@/actions/tables";
+import { createTable, updateTableStatus, deleteTable, updateTable } from "@/actions/tables";
 
 interface TableItem {
   id: string;
@@ -18,6 +18,11 @@ export default function TablesManager({ initialTables }: { initialTables: TableI
   const [isPending, startTransition] = useTransition();
   const [showAddModal, setShowAddModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Edit Table Modal State
+  const [editingTable, setEditingTable] = useState<TableItem | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editCapacity, setEditCapacity] = useState(4);
 
   const tableTypeLabels: Record<TableType, { label: string; badgeColor: string }> = {
     FAMILY_BOOTH: { label: "باكية عائلية", badgeColor: "bg-indigo-100 text-indigo-800 border-indigo-200" },
@@ -166,15 +171,30 @@ export default function TablesManager({ initialTables }: { initialTables: TableI
                   <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border ${typeInfo.badgeColor}`}>
                     {typeInfo.label}
                   </span>
-                  <button
-                    onClick={() => handleDelete(table.id, table.name)}
-                    className="text-slate-300 hover:text-rose-500 transition p-1"
-                    title="حذف الطاولة"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        setEditingTable(table);
+                        setEditName(table.name);
+                        setEditCapacity(table.capacity);
+                      }}
+                      className="text-slate-400 hover:text-amber-600 transition p-1"
+                      title="تعديل الطاولة والسعة"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(table.id, table.name)}
+                      className="text-slate-300 hover:text-rose-500 transition p-1"
+                      title="حذف الطاولة"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mb-4">
@@ -293,6 +313,82 @@ export default function TablesManager({ initialTables }: { initialTables: TableI
                   className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-primary-700 hover:bg-primary-800 disabled:opacity-50"
                 >
                   {isPending ? "جاري الحفظ..." : "إضافة الطاولة"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Table Modal */}
+      {editingTable && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+              <h3 className="text-lg font-black text-slate-800">تعديل بيانات وسعة الطاولة</h3>
+              <button
+                onClick={() => setEditingTable(null)}
+                className="text-slate-400 hover:text-slate-600 text-xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                startTransition(async () => {
+                  await updateTable(editingTable.id, {
+                    name: editName,
+                    capacity: Number(editCapacity) || 4,
+                  });
+                  setEditingTable(null);
+                });
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">اسم الطاولة</label>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  السعة الإجمالية (عدد الكراسي / الأفراد)
+                </label>
+                <input
+                  type="number"
+                  value={editCapacity}
+                  onChange={(e) => setEditCapacity(parseInt(e.target.value) || 1)}
+                  min={1}
+                  max={50}
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono font-bold focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  العدد الافتراضي لكراسي الصالة هو 4 كراسي، والباكيات العائلية 8 كراسي.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingTable(null)}
+                  className="px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {isPending ? "جاري الحفظ..." : "حفظ التعديلات"}
                 </button>
               </div>
             </form>

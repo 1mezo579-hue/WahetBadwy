@@ -244,16 +244,25 @@ export async function GET() {
       });
     }
 
+    // Update existing tables with capacity 6 to 4 (keeping family booths intact)
+    await prisma.diningTable.updateMany({
+      where: {
+        capacity: 6,
+        type: { not: TableType.FAMILY_BOOTH },
+      },
+      data: { capacity: 4 },
+    });
+
     for (let i = 1; i <= 8; i++) {
       await prisma.diningTable.upsert({
         where: { name: `طاولة VIP ${i}` },
-        update: {},
+        update: { capacity: 4 },
         create: {
           name: `طاولة VIP ${i}`,
           number: 200 + i,
           type: TableType.VIP,
           status: TableStatus.AVAILABLE,
-          capacity: 6,
+          capacity: 4,
         },
       });
     }
@@ -261,7 +270,7 @@ export async function GET() {
     for (let i = 1; i <= 12; i++) {
       await prisma.diningTable.upsert({
         where: { name: `طاولة عادية ${i}` },
-        update: {},
+        update: { capacity: 4 },
         create: {
           name: `طاولة عادية ${i}`,
           number: 300 + i,
@@ -286,13 +295,13 @@ export async function GET() {
 
     await prisma.diningTable.upsert({
       where: { name: "طاولة المدير (Manager Table)" },
-      update: {},
+      update: { capacity: 4 },
       create: {
         name: "طاولة المدير (Manager Table)",
         number: 2,
         type: TableType.MANAGER,
         status: TableStatus.AVAILABLE,
-        capacity: 6,
+        capacity: 4,
       },
     });
 
