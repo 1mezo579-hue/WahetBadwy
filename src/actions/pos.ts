@@ -49,6 +49,40 @@ export async function getPosData() {
   }
 }
 
+// Helper to deduct raw materials based on recipes when an order is placed
+async function deductInventoryForItems(items: CartItemInput[]) {
+  try {
+    const itemIds = items.map((i) => i.menuItemId);
+    const menuItemsWithRecipes = await prisma.menuItem.findMany({
+      where: { id: { in: itemIds } },
+      include: {
+        recipeItems: true,
+      },
+    });
+
+    for (const orderItem of items) {
+      const foundItem = menuItemsWithRecipes.find(
+        (m) => m.id === orderItem.menuItemId
+      );
+      if (foundItem && foundItem.recipeItems.length > 0) {
+        for (const recipe of foundItem.recipeItems) {
+          const deduction = recipe.quantity * orderItem.quantity;
+          await prisma.rawMaterial.update({
+            where: { id: recipe.rawMaterialId },
+            data: {
+              currentStock: {
+                decrement: deduction,
+              },
+            },
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Inventory deduction error:", err);
+  }
+}
+
 // 2. Action A: Send to Prep (حفظ وطباعة الأوردر -> Saves order as OPEN)
 export async function sendOrderToPrep({
   orderId,
@@ -71,6 +105,12 @@ export async function sendOrderToPrep({
     });
 
     if (!table) return { error: "الطاولة غير موجودة" };
+
+    // Find active shift to link to order
+    const activeShift = await prisma.shift.findFirst({
+      where: { status: "OPEN" },
+      orderBy: { startTime: "desc" },
+    });
 
     // SPECIAL LOGIC: Orders on Owner or Manager table are flagged as 'Complimentary' (ضيافة)
     const isComplimentary =
@@ -99,6 +139,7 @@ export async function sendOrderToPrep({
           totalAmount,
           isComplimentary,
           notes,
+          shiftId: activeShift?.id || null,
           status: OrderStatus.OPEN,
           items: {
             create: items.map((i) => ({
@@ -124,6 +165,7 @@ export async function sendOrderToPrep({
           discount,
           totalAmount,
           isComplimentary,
+          shiftId: activeShift?.id || null,
           status: OrderStatus.OPEN,
           notes,
           items: {
@@ -141,6 +183,9 @@ export async function sendOrderToPrep({
           table: true,
         },
       });
+
+      // SPRINT 5 REQUIREMENT 4: Deduct RawMaterial stock based on recipes
+      await deductInventoryForItems(items);
     }
 
     // Update table status to OCCUPIED
@@ -151,6 +196,8 @@ export async function sendOrderToPrep({
 
     revalidatePath("/pos");
     revalidatePath("/dashboard/tables");
+    revalidatePath("/dashboard/procurement");
+    revalidatePath("/dashboard/reports");
     revalidatePath("/dashboard");
 
     return {
@@ -190,6 +237,12 @@ export async function collectOrderPayment({
     const isComplimentary =
       table.type === TableType.OWNER || table.type === TableType.MANAGER;
 
+    // Find active shift to link order to shift
+    const activeShift = await prisma.shift.findFirst({
+      where: { status: "OPEN" },
+      orderBy: { startTime: "desc" },
+    });
+
     let targetOrderId = orderId;
 
     // If order was not sent to prep yet, save it directly as PAID
@@ -208,6 +261,7 @@ export async function collectOrderPayment({
           discount,
           totalAmount,
           isComplimentary,
+          shiftId: activeShift?.id || null,
           status: OrderStatus.PAID,
           notes,
           items: {
@@ -222,12 +276,16 @@ export async function collectOrderPayment({
         },
       });
       targetOrderId = created.id;
+
+      // SPRINT 5 REQUIREMENT 4: Deduct RawMaterial stock based on recipes
+      await deductInventoryForItems(items);
     } else if (targetOrderId) {
-      // Mark existing order as PAID
+      // Mark existing order as PAID and ensure shiftId is linked
       await prisma.order.update({
         where: { id: targetOrderId },
         data: {
           status: OrderStatus.PAID,
+          ...(activeShift?.id ? { shiftId: activeShift.id } : {}),
         },
       });
     } else {

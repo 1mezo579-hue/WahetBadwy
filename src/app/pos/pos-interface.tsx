@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { TableType, TableStatus, OrderStatus } from "@prisma/client";
 import { sendOrderToPrep, collectOrderPayment } from "@/actions/pos";
+import { startShift, endShift, getActiveShift } from "@/actions/shifts";
 import Link from "next/link";
 import { serialPrinter, SerialPrinterStatus } from "@/utils/printer/web-serial";
 import {
@@ -65,11 +66,15 @@ export default function PosInterface({
   categories,
   menuItems,
   userName,
+  userId,
+  initialShift,
 }: {
   initialTables: PosTable[];
   categories: PosCategory[];
   menuItems: PosMenuItem[];
   userName: string;
+  userId: string;
+  initialShift?: any;
 }) {
   const [tables, setTables] = useState<PosTable[]>(initialTables);
   const [selectedTable, setSelectedTable] = useState<PosTable | null>(null);
@@ -99,6 +104,18 @@ export default function PosInterface({
     activeTicketIndex: number;
   } | null>(null);
 
+  // SPRINT 5: Shift Management & Handover State
+  const [activeShift, setActiveShift] = useState<any>(initialShift || null);
+  const [shiftTimer, setShiftTimer] = useState<string>("00:00:00");
+  const [hasExceeded12Hours, setHasExceeded12Hours] = useState<boolean>(false);
+  const [showStartShiftModal, setShowStartShiftModal] = useState<boolean>(false);
+  const [showEndShiftModal, setShowEndShiftModal] = useState<boolean>(false);
+  const [openingFloat, setOpeningFloat] = useState<number>(0);
+  const [countedCash, setCountedCash] = useState<string>("");
+  const [shiftNotes, setShiftNotes] = useState<string>("");
+  const [shiftFeedback, setShiftFeedback] = useState<string | null>(null);
+  const [zReportData, setZReportData] = useState<any | null>(null);
+
   // Subscribe to Web Serial status updates
   useEffect(() => {
     const unsubscribe = serialPrinter.onStatusChange((status) => {
@@ -106,6 +123,38 @@ export default function PosInterface({
     });
     return () => unsubscribe();
   }, []);
+
+  // SPRINT 5: Shift Duration Live Timer & 12-Hour Enforcer
+  useEffect(() => {
+    if (!activeShift?.startTime) {
+      setShiftTimer("00:00:00");
+      setHasExceeded12Hours(false);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const start = new Date(activeShift.startTime).getTime();
+      const now = new Date().getTime();
+      const diffMs = Math.max(0, now - start);
+
+      const totalSeconds = Math.floor(diffMs / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      const pad = (n: number) => n.toString().padStart(2, "0");
+      setShiftTimer(`${pad(hours)}:${pad(minutes)}:${pad(seconds)}`);
+
+      // 12-Hour Shift Maximum Enforcer
+      if (hours >= 12) {
+        setHasExceeded12Hours(true);
+      } else {
+        setHasExceeded12Hours(false);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeShift]);
 
   // Connect to Web Serial printer
   const handleConnectPrinter = async () => {
@@ -126,7 +175,7 @@ export default function PosInterface({
     setTimeout(() => setHardwareFeedback(null), 3000);
   };
 
-  // Test Cash Drawer Kick (Independent hardware test)
+  // Test Cash Drawer Kick
   const handleTestCashDrawer = async () => {
     setHardwareFeedback("جاري إرسال نبضة فتح درج النقدية (ESC p)...");
     const res = await serialPrinter.kickDrawer();
@@ -136,6 +185,63 @@ export default function PosInterface({
     } else {
       setHardwareFeedback(`❌ ${res.error}`);
     }
+  };
+
+  // SPRINT 5: Action - Start New Shift
+  const handleStartShiftSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    startTransition(async () => {
+      const res = await startShift({
+        userId,
+        initialCash: Number(openingFloat) || 0,
+        notes: shiftNotes,
+      });
+
+      if (res?.error) {
+        setShiftFeedback(`❌ ${res.error}`);
+      } else if (res.shift) {
+        setActiveShift(res.shift);
+        setShowStartShiftModal(false);
+        setShiftNotes("");
+        setOpeningFloat(0);
+        setShiftFeedback(null);
+        alert(res.message);
+      }
+    });
+  };
+
+  // SPRINT 5: Action - End Shift (تقفيل وتسليم الوردية)
+  const handleEndShiftSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeShift) return;
+
+    const actual = parseFloat(countedCash);
+    if (isNaN(actual) || actual < 0) {
+      alert("يرجى إدخال المبلغ الفعلي بعد الجرد بشكل صحيح.");
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await endShift({
+        shiftId: activeShift.id,
+        actualCash: actual,
+        notes: shiftNotes,
+      });
+
+      if (res?.error) {
+        setShiftFeedback(`❌ ${res.error}`);
+      } else if (res.shift) {
+        setZReportData({
+          shift: res.shift,
+          stats: res.stats,
+        });
+        setActiveShift(null);
+        setShowEndShiftModal(false);
+        setCountedCash("");
+        setShiftNotes("");
+        setShiftFeedback(null);
+      }
+    });
   };
 
   // Table Selection logic
@@ -224,16 +330,7 @@ export default function PosInterface({
   const discount = isComplimentary ? subtotal : 0;
   const totalAmount = isComplimentary ? 0 : subtotal;
 
-  /**
-   * SPRINT 4 REQUIREMENT 1: Action A - Send to Prep (حفظ وطباعة الأوردر)
-   * - Saves order as OPEN.
-   * - Routes dedicated Kitchen Ticket for kitchen items.
-   * - Routes dedicated Barista Ticket for barista items.
-   * - Routes dedicated Shisha Ticket for shisha items.
-   * - Generates Customer Check.
-   * - CRITICAL: Every prep ticket displays DiningTable.name!
-   * - CRITICAL: NONE of these print jobs open the cash drawer.
-   */
+  // SPRINT 4: Action A - Send to Prep (حفظ وطباعة الأوردر)
   const handleSendToPrep = () => {
     if (!selectedTable) return;
     if (cart.length === 0) {
@@ -290,16 +387,16 @@ export default function PosInterface({
         )
       );
       if (res.order) setActiveOrderId(res.order.id);
+
+      // Refresh shift metrics
+      if (userId) {
+        const updated = await getActiveShift(userId);
+        if (updated.activeShift) setActiveShift(updated.activeShift);
+      }
     });
   };
 
-  /**
-   * SPRINT 4 REQUIREMENT 2: Action B - Collect Payment (تحصيل)
-   * - Saves order as PAID and frees table.
-   * - CRITICAL CASH DRAWER LOGIC: Kicks open the cash drawer via ESC/POS command (0x1B 0x70...).
-   * - DRAWER MUST ONLY OPEN ON THIS ACTION.
-   * - Prints final tax receipt.
-   */
+  // SPRINT 4: Action B - Collect Payment (تحصيل وفتح درج النقدية)
   const handleCollectPayment = () => {
     if (!selectedTable) return;
     if (cart.length === 0 && !activeOrderId) {
@@ -365,6 +462,12 @@ export default function PosInterface({
       setActiveOrderId(undefined);
       setSelectedTable(null);
       setActiveTab("MAP");
+
+      // Refresh shift metrics
+      if (userId) {
+        const updated = await getActiveShift(userId);
+        if (updated.activeShift) setActiveShift(updated.activeShift);
+      }
     });
   };
 
@@ -378,11 +481,19 @@ export default function PosInterface({
     return matchCat && matchSearch;
   });
 
+  // Calculate live expected cash for current active shift
+  const liveExpected = activeShift
+    ? (activeShift.initialCash || 0) + (activeShift.paidOrdersTotal || 0)
+    : 0;
+
+  const actualCountedNum = parseFloat(countedCash) || 0;
+  const liveShortageOverage = countedCash !== "" ? actualCountedNum - liveExpected : 0;
+
   return (
     <div className="flex flex-col h-full w-full">
       {/* Top POS Kiosk Navigation Bar */}
       <header className="bg-primary-950 text-white px-4 py-2.5 flex items-center justify-between border-b border-primary-800 shadow-md shrink-0">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-amber-500 text-primary-950 font-black flex items-center justify-center text-sm shadow">
               وب
@@ -427,43 +538,101 @@ export default function PosInterface({
           </div>
         </div>
 
-        {/* Right side: Hardware Web Serial Status & Admin link */}
-        <div className="flex items-center gap-3 text-xs">
+        {/* Right side: Shift Pill + Hardware Web Serial + Admin link */}
+        <div className="flex items-center gap-2.5 text-xs">
+          {/* SPRINT 5: Shift Status Pill & Handover Enforcer */}
+          {activeShift ? (
+            <button
+              onClick={() => setShowEndShiftModal(true)}
+              className={`px-3 py-1.5 rounded-xl font-bold border transition flex items-center gap-2 shadow-sm ${
+                hasExceeded12Hours
+                  ? "bg-rose-950/90 border-rose-500 text-rose-300 animate-pulse"
+                  : "bg-primary-900/80 border-primary-700 text-amber-300 hover:bg-primary-800"
+              }`}
+              title="اضغط لتقفيل الوردية والجرد النقدي (End Shift)"
+            >
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  hasExceeded12Hours ? "bg-rose-500" : "bg-emerald-400"
+                }`}
+              ></span>
+              <div className="text-right">
+                <p className="leading-tight">
+                  وردية #{activeShift.shiftNumber} • {shiftTimer}
+                </p>
+                {hasExceeded12Hours && (
+                  <p className="text-[10px] text-rose-400 font-black">
+                    🚨 تجاوزت 12 ساعة (يجب التسليم)
+                  </p>
+                )}
+              </div>
+              <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 text-[10px] mr-1">
+                تسليم الوردية 📋
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowStartShiftModal(true)}
+              className="px-3.5 py-1.5 rounded-xl font-bold bg-amber-500 hover:bg-amber-400 text-primary-950 transition flex items-center gap-1.5 shadow"
+            >
+              <span>⏱️</span>
+              <span>فتح وردية جديدة</span>
+            </button>
+          )}
+
           {/* SPRINT 4: Thermal Printer Web Serial Status Pill */}
           <button
             onClick={() => setShowPrinterSettings(true)}
-            className={`px-3 py-1.5 rounded-lg font-bold border transition flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-xl font-bold border transition flex items-center gap-2 ${
               printerStatus.isConnected
                 ? "bg-emerald-950/80 border-emerald-500 text-emerald-300 hover:bg-emerald-900"
                 : "bg-slate-800/80 border-slate-600 text-slate-300 hover:bg-slate-700"
             }`}
           >
             <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                printerStatus.isConnected
-                  ? "bg-emerald-400 animate-pulse"
-                  : "bg-slate-400"
+              className={`w-2 h-2 rounded-full ${
+                printerStatus.isConnected ? "bg-emerald-400 animate-pulse" : "bg-slate-400"
               }`}
             ></span>
             <span>
-              {printerStatus.isConnected
-                ? "🖨️ طابعة الكاشير متصلة"
-                : "🖨️ ربط الطابعة (Serial)"}
+              {printerStatus.isConnected ? "🖨️ الطابعة متصلة" : "🖨️ ربط الطابعة"}
             </span>
           </button>
 
-          <div className="hidden sm:flex items-center gap-2 text-primary-200 bg-primary-900/60 px-3 py-1.5 rounded-lg border border-primary-800">
-            <span>👤 الكاشير:</span>
-            <strong className="text-white font-bold">{userName}</strong>
-          </div>
+          <Link
+            href="/dashboard/reports"
+            className="px-3 py-1.5 rounded-xl bg-primary-800 hover:bg-primary-700 text-emerald-300 font-bold transition flex items-center gap-1"
+          >
+            <span>📊</span>
+            <span>التقارير</span>
+          </Link>
+
           <Link
             href="/dashboard"
-            className="px-3 py-1.5 rounded-lg bg-primary-800 hover:bg-primary-700 text-amber-300 font-bold transition"
+            className="px-3 py-1.5 rounded-xl bg-primary-800 hover:bg-primary-700 text-amber-300 font-bold transition"
           >
-            لوحة الإدارة ⚙️
+            ⚙️
           </Link>
         </div>
       </header>
+
+      {/* SPRINT 5: 12-Hour Shift Warning Banner */}
+      {hasExceeded12Hours && (
+        <div className="bg-rose-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shrink-0 shadow-inner">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🚨</span>
+            <span>
+              تنبيه إداري: الوردية رقم #{activeShift?.shiftNumber} تجاوزت الحد الأقصى المسموح به (12 ساعة عمل متواصلة). يرجى تقفيل الوردية وتسليم العهدة الآن!
+            </span>
+          </div>
+          <button
+            onClick={() => setShowEndShiftModal(true)}
+            className="px-3 py-1 bg-white text-rose-700 rounded-lg font-black hover:bg-rose-50 transition"
+          >
+            تقفيل الوردية فوراً 📋
+          </button>
+        </div>
+      )}
 
       {/* Main Body */}
       <div className="flex-1 overflow-hidden flex flex-col">
@@ -693,7 +862,7 @@ export default function PosInterface({
                         طلب ضيافة (Complimentary Order)
                       </p>
                       <p className="text-[10px] font-medium text-amber-800">
-                        طاولة خاصة بالمالك/المدير - يتم إعفاء الحساب بنسبة 100%.
+                        طاولة خاصة بالمالك/المدير - يتم إعفاء الحساب بنسبة 100% ولا يدخل في نقدية الوردية.
                       </p>
                     </div>
                   </div>
@@ -797,9 +966,9 @@ export default function PosInterface({
                   </div>
                 </div>
 
-                {/* SPRINT 4 WORKFLOW: Action A vs Action B */}
+                {/* SPRINT 4 & 5 WORKFLOW: Action A vs Action B */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  {/* Action A: Send to Prep (حفظ وتوجيه بونات التحضير) */}
+                  {/* Action A: Send to Prep (حفظ وتوجيه بونات التحضير وخصم المخزون) */}
                   <button
                     disabled={isPending || cart.length === 0}
                     onClick={handleSendToPrep}
@@ -807,7 +976,7 @@ export default function PosInterface({
                   >
                     <span>🖨️ إرسال للتحضير (طباعة)</span>
                     <span className="text-[10px] text-indigo-200 font-normal">
-                      مطبخ / باريستا / شيشة (بدون فتح الدرج)
+                      مطبخ / باريستا / شيشة (خصم المخزون)
                     </span>
                   </button>
 
@@ -828,6 +997,317 @@ export default function PosInterface({
           </div>
         )}
       </div>
+
+      {/* SPRINT 5: Start New Shift Modal */}
+      {showStartShiftModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl text-right space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl">
+                  ⏱️
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-800 text-base">
+                    فتح وردية كاشير جديدة
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    بدء فترة العمل وتسجيل العهدة النقدية الافتتاحية
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowStartShiftModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            {shiftFeedback && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800">
+                {shiftFeedback}
+              </div>
+            )}
+
+            <form onSubmit={handleStartShiftSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  العهدة الافتتاحية في درج النقدية (ج.م):
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  required
+                  value={openingFloat}
+                  onChange={(e) => setOpeningFloat(parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-base font-mono font-bold outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  المبلغ الموجود بالدرج في بداية الوردية (الفكة الافتتاحية).
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  ملاحظات افتتاح الوردية (اختياري):
+                </label>
+                <input
+                  type="text"
+                  value={shiftNotes}
+                  onChange={(e) => setShiftNotes(e.target.value)}
+                  placeholder="مثال: تسلمت فكة 200 ج.م من الوردية السابقة..."
+                  className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="w-full py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-primary-950 font-black text-sm shadow-md transition disabled:opacity-50"
+                >
+                  {isPending ? "جاري فتح الوردية..." : "تأكيد فتح الوردية وتصفير العداد 🚀"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SPRINT 5: End Shift & Handover Modal (CRITICAL REQUIREMENT #3) */}
+      {showEndShiftModal && activeShift && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl text-right space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-primary-100 text-primary-900 flex items-center justify-center text-xl">
+                  📋
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-800 text-base">
+                    تقفيل وتسليم الوردية (Shift Handover)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    وردية #{activeShift.shiftNumber} • الكاشير: {userName}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEndShiftModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            {shiftFeedback && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800">
+                {shiftFeedback}
+              </div>
+            )}
+
+            {/* Shift Financial Summary Breakdown */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
+              <div className="flex justify-between text-slate-600">
+                <span>وقت بدء الوردية:</span>
+                <span className="font-mono font-bold">
+                  {new Date(activeShift.startTime).toLocaleTimeString("ar-EG")}
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>مدة العمل المنقضية:</span>
+                <span className="font-mono font-bold text-primary-800">
+                  {shiftTimer} {hasExceeded12Hours && "(تجاوزت 12 ساعة ⚠️)"}
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>العهدة الافتتاحية للدرج:</span>
+                <span className="font-mono font-bold">
+                  {(activeShift.initialCash || 0).toFixed(2)} ج.م
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>المبيعات النقدية المحصلة:</span>
+                <span className="font-mono font-bold text-emerald-700">
+                  +{(activeShift.paidOrdersTotal || 0).toFixed(2)} ج.م
+                </span>
+              </div>
+
+              {/* CRITICAL REQUIREMENT 3: Notice of Complimentary Exclusion */}
+              {(activeShift.complimentaryOrdersCount || 0) > 0 && (
+                <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl text-[11px] text-purple-900 font-bold flex items-center gap-2">
+                  <span>👑</span>
+                  <div>
+                    <span>تم استبعاد طلبات الضيافة بنجاح: </span>
+                    <strong className="text-purple-950">
+                      {activeShift.complimentaryOrdersCount} طلب بقيمة{" "}
+                      {(activeShift.complimentaryWaivedTotal || 0).toFixed(2)} ج.م
+                    </strong>
+                    <p className="text-[10px] text-purple-700 font-normal">
+                      (طاولة المالك وطاولة المدير - معفاة 100% ولا تدخل في عهدة الدرج)
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Expected Cash in Drawer */}
+              <div className="pt-2 border-t border-slate-200 flex justify-between text-sm font-black text-slate-900">
+                <span>النقدية المتوقعة بالدرج (Expected Cash):</span>
+                <span className="font-mono text-base text-primary-900">
+                  {liveExpected.toFixed(2)} ج.م
+                </span>
+              </div>
+            </div>
+
+            {/* Cashier Counted Cash Form */}
+            <form onSubmit={handleEndShiftSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-black text-slate-800 block mb-1">
+                  أدخل النقدية الفعلية بعد الجرد (Actual Cash Counted):
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  required
+                  value={countedCash}
+                  onChange={(e) => setCountedCash(e.target.value)}
+                  placeholder="قم بعد النقود بالدرج وأدخل المبلغ هنا..."
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-primary-500 text-lg font-mono font-black outline-none focus:ring-4 focus:ring-primary-200"
+                />
+              </div>
+
+              {/* Live Shortage / Overage Indicator */}
+              {countedCash !== "" && (
+                <div
+                  className={`p-3.5 rounded-2xl border text-xs font-black flex items-center justify-between ${
+                    liveShortageOverage === 0
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-900"
+                      : liveShortageOverage < 0
+                      ? "bg-rose-50 border-rose-300 text-rose-900"
+                      : "bg-blue-50 border-blue-300 text-blue-900"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">
+                      {liveShortageOverage === 0
+                        ? "✅"
+                        : liveShortageOverage < 0
+                        ? "⚠️"
+                        : "ℹ️"}
+                    </span>
+                    <span>
+                      {liveShortageOverage === 0
+                        ? "الدرج متطابق تماماً بدون أي عجز أو زيادة!"
+                        : liveShortageOverage < 0
+                        ? `يوجد عجز نقدي بقيمة: ${Math.abs(liveShortageOverage).toFixed(2)} ج.م`
+                        : `يوجد زيادة نقدية بقيمة: ${liveShortageOverage.toFixed(2)} ج.م`}
+                    </span>
+                  </div>
+                  <span className="font-mono text-sm font-black">
+                    {liveShortageOverage > 0 ? "+" : ""}
+                    {liveShortageOverage.toFixed(2)} ج.م
+                  </span>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  ملاحظات تسليم الوردية:
+                </label>
+                <textarea
+                  rows={2}
+                  value={shiftNotes}
+                  onChange={(e) => setShiftNotes(e.target.value)}
+                  placeholder="أي ملاحظات حول الجرد أو التسليم..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-primary-500"
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isPending || countedCash === ""}
+                className="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-black text-sm shadow-md transition disabled:opacity-50"
+              >
+                {isPending ? "جاري التقفيل..." : "تأكيد تقفيل الوردية وطباعة Z-Report 🖨️"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SPRINT 5: Z-Report Shift Closing Modal */}
+      {zReportData && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4">
+            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-700 text-2xl font-bold">
+              ✓
+            </div>
+            <div>
+              <h3 className="font-black text-slate-900 text-base">
+                تقرير إغلاق الوردية (Z-REPORT)
+              </h3>
+              <p className="text-xs text-slate-500">تم حفظ الوردية في السجل المالي</p>
+            </div>
+
+            {/* Thermal Ticket Paper Look */}
+            <div className="bg-slate-50 border-2 border-dashed border-slate-300 p-4 rounded-2xl text-right font-mono text-xs space-y-2">
+              <div className="text-center border-b pb-1 font-black text-slate-800">
+                واحة بدوي - تقرير Z-REPORT
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>رقم الوردية:</span>
+                <span>#{zReportData.shift.shiftNumber}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>الكاشير:</span>
+                <span className="font-sans font-bold">{userName}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>العهدة الافتتاحية:</span>
+                <span>{zReportData.stats.initialCash.toFixed(2)} ج.م</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>المبيعات النقدية:</span>
+                <span className="text-emerald-700 font-bold">
+                  +{zReportData.stats.salesTotal.toFixed(2)} ج.م
+                </span>
+              </div>
+              <div className="flex justify-between font-bold text-slate-800 border-t pt-1">
+                <span>النقدية المتوقعة:</span>
+                <span>{zReportData.stats.expectedCash.toFixed(2)} ج.م</span>
+              </div>
+              <div className="flex justify-between font-bold text-slate-800">
+                <span>المبلغ بعد الجرد (الفعلي):</span>
+                <span>{zReportData.stats.actualCash.toFixed(2)} ج.م</span>
+              </div>
+              <div className="flex justify-between font-black text-sm border-t pt-1">
+                <span>الفارق (العجز/الزيادة):</span>
+                <span
+                  className={
+                    zReportData.stats.shortageOverage < 0
+                      ? "text-rose-600"
+                      : "text-emerald-600"
+                  }
+                >
+                  {zReportData.stats.shortageOverage > 0 ? "+" : ""}
+                  {zReportData.stats.shortageOverage.toFixed(2)} ج.م
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setZReportData(null)}
+              className="w-full py-3 bg-primary-800 hover:bg-primary-900 text-white font-bold rounded-xl text-xs transition shadow"
+            >
+              تم وإغلاق
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* SPRINT 4: Web Serial Printer Hardware Settings Modal */}
       {showPrinterSettings && (

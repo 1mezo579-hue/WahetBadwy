@@ -53,6 +53,11 @@ enum OrderStatus {
   PAID
 }
 
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
@@ -61,6 +66,7 @@ model User {
   role      Role     @default(CASHIER)
   active    Boolean  @default(true)
   orders    Order[]
+  shifts    Shift[]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -163,6 +169,8 @@ model Order {
   table           DiningTable @relation(fields: [tableId], references: [id])
   userId          String?     @map("user_id")
   user            User?       @relation(fields: [userId], references: [id])
+  shiftId         String?     @map("shift_id")
+  shift           Shift?      @relation(fields: [shiftId], references: [id])
   status          OrderStatus @default(OPEN)
   isComplimentary Boolean     @default(false) @map("is_complimentary")
   subtotal        Float       @default(0)
@@ -174,6 +182,26 @@ model Order {
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
   @@map("orders")
+}
+
+model Shift {
+  id              String      @id @default(cuid())
+  shiftNumber     Int         @default(autoincrement()) @map("shift_number")
+  userId          String      @map("user_id")
+  user            User        @relation(fields: [userId], references: [id])
+  startTime       DateTime    @default(now()) @map("start_time")
+  endTime         DateTime?   @map("end_time")
+  initialCash     Float       @default(0) @map("initial_cash")
+  expectedCash    Float       @default(0) @map("expected_cash")
+  actualCash      Float?      @map("actual_cash")
+  shortageOverage Float?      @map("shortage_overage")
+  status          ShiftStatus @default(OPEN)
+  notes           String?
+  orders          Order[]
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  @@map("shifts")
 }
 
 model OrderItem {

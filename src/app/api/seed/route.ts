@@ -12,6 +12,37 @@ import {
 
 export async function GET() {
   try {
+    // 0. Sprint 5 Database Migration: Ensure Shift table and columns exist in PostgreSQL
+    try {
+      await prisma.$executeRawUnsafe(`
+        DO $$ BEGIN
+          CREATE TYPE "ShiftStatus" AS ENUM ('OPEN', 'CLOSED');
+        EXCEPTION WHEN duplicate_object THEN null; END $$;
+      `);
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "shifts" (
+          "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
+          "shift_number" SERIAL NOT NULL,
+          "user_id" TEXT NOT NULL REFERENCES "users"("id") ON UPDATE CASCADE,
+          "start_time" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "end_time" TIMESTAMP(3),
+          "initial_cash" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "expected_cash" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "actual_cash" DOUBLE PRECISION,
+          "shortage_overage" DOUBLE PRECISION,
+          "status" "ShiftStatus" NOT NULL DEFAULT 'OPEN',
+          "notes" TEXT,
+          "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "shift_id" TEXT REFERENCES "shifts"("id") ON UPDATE CASCADE;
+      `);
+    } catch (sqlErr) {
+      console.warn("Shift table creation note:", sqlErr);
+    }
+
     // 1. Seed Admin
     const hashedPassword = await bcrypt.hash("WahetBadawy@2026", 12);
     const admin = await prisma.user.upsert({
