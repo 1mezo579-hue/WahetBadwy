@@ -76,6 +76,26 @@ export default function AdminSidebar({ user }: SidebarProps) {
       ),
     },
     {
+      title: "إدارة العملاء والدليفري",
+      href: "/dashboard/customers",
+      badge: "دليفري وسفري",
+      icon: (
+        <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+    },
+    {
+      title: "المستخدمين والصلاحيات",
+      href: "/dashboard/users",
+      badge: "الحسابات",
+      icon: (
+        <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      ),
+    },
+    {
       title: "التقارير المالية والورديات",
       href: "/dashboard/reports",
       badge: "تقارير شاملة",
@@ -133,13 +153,14 @@ export default function AdminSidebar({ user }: SidebarProps) {
         }`}
       >
         {/* Brand Header */}
-        <div className="p-6 border-b border-primary-800/60 flex items-center gap-3">
-          <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center font-black text-2xl text-primary-950 shadow-lg ring-2 ring-amber-300/30">
+        <div className="p-5 border-b border-primary-800/60 flex items-center gap-3 bg-stone-950/60">
+          <div className="w-12 h-12 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 rounded-xl flex items-center justify-center font-black text-xl text-stone-950 shadow-lg ring-2 ring-amber-400/40">
             وب
           </div>
           <div>
-            <h1 className="font-extrabold text-xl tracking-tight text-white">واحة بدوي</h1>
-            <p className="text-xs text-primary-300 font-medium">نظام نقاط البيع والإدارة</p>
+            <h1 className="font-extrabold text-lg tracking-tight text-amber-400">واحة بدوي</h1>
+            <p className="text-[11px] text-amber-200/80 font-medium">طعم زمان على أصوله</p>
+            <p className="text-[10px] text-stone-400 font-mono mt-0.5">📞 01558962994</p>
           </div>
         </div>
 

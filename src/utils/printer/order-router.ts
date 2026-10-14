@@ -87,6 +87,11 @@ export function getItemDepartment(item: {
 export interface RoutePrepOrderInput {
   tableName: string;
   orderNumber?: number;
+  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  deliveryFee?: number;
   items: Array<TicketItem & { categoryName?: string }>;
   subtotal: number;
   discount: number;
@@ -206,6 +211,11 @@ export async function routeAndPrintPrepOrder(
   const customerCheckBytes = buildCustomerCheck({
     tableName: input.tableName,
     orderNumber: input.orderNumber,
+    orderType: input.orderType,
+    customerName: input.customerName,
+    customerPhone: input.customerPhone,
+    deliveryAddress: input.deliveryAddress,
+    deliveryFee: input.deliveryFee,
     items: input.items,
     subtotal: input.subtotal,
     discount: input.discount,
@@ -269,6 +279,11 @@ export async function executePaymentAndOpenDrawer(
     {
       tableName: input.tableName,
       orderNumber: input.orderNumber,
+      orderType: input.orderType,
+      customerName: input.customerName,
+      customerPhone: input.customerPhone,
+      deliveryAddress: input.deliveryAddress,
+      deliveryFee: input.deliveryFee,
       items: input.items,
       subtotal: input.subtotal,
       discount: input.discount,

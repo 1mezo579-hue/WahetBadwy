@@ -19,7 +19,7 @@ export default async function PosPage() {
     redirect("/login");
   }
 
-  const [{ tables, categories, menuItems }, { activeShift }] = await Promise.all([
+  const [{ tables, categories, menuItems, customers }, { activeShift }] = await Promise.all([
     getPosData(),
     getActiveShift(session.user?.id),
   ]);
@@ -30,6 +30,7 @@ export default async function PosPage() {
         initialTables={tables as any}
         categories={categories}
         menuItems={menuItems}
+        initialCustomers={customers as any || []}
         userName={session.user?.name || "الكاشير"}
         userId={session.user?.id || ""}
         initialShift={activeShift as any}

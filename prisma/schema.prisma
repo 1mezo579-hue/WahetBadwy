@@ -148,6 +148,25 @@ model Equipment {
   @@map("equipment")
 }
 
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+  DELIVERY
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  address   String?
+  notes     String?
+  orders    Order[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("customers")
+}
+
 model DiningTable {
   id        String      @id @default(cuid())
   name      String      @unique
@@ -165,8 +184,15 @@ model DiningTable {
 model Order {
   id              String      @id @default(cuid())
   orderNumber     Int         @default(autoincrement()) @map("order_number")
-  tableId         String      @map("table_id")
-  table           DiningTable @relation(fields: [tableId], references: [id])
+  orderType       OrderType   @default(DINE_IN) @map("order_type")
+  tableId         String?     @map("table_id")
+  table           DiningTable? @relation(fields: [tableId], references: [id])
+  customerId      String?     @map("customer_id")
+  customer        Customer?   @relation(fields: [customerId], references: [id])
+  customerName    String?     @map("customer_name")
+  customerPhone   String?     @map("customer_phone")
+  deliveryAddress String?     @map("delivery_address")
+  deliveryFee     Float       @default(0) @map("delivery_fee")
   userId          String?     @map("user_id")
   user            User?       @relation(fields: [userId], references: [id])
   shiftId         String?     @map("shift_id")

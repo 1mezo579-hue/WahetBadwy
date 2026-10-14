@@ -12,10 +12,23 @@ export interface CartItemInput {
   notes?: string;
 }
 
-// 1. Get POS Initial Data (Tables with their active open order, Categories, MenuItems)
+export interface OrderPayload {
+  orderId?: string;
+  tableId?: string;
+  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+  customerId?: string;
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  deliveryFee?: number;
+  items: CartItemInput[];
+  notes?: string;
+}
+
+// 1. Get POS Initial Data (Tables with their active open order, Categories, MenuItems, and Customers)
 export async function getPosData() {
   try {
-    const [tables, categories, menuItems] = await Promise.all([
+    const [tables, categories, menuItems, customers] = await Promise.all([
       prisma.diningTable.findMany({
         orderBy: [{ type: "asc" }, { number: "asc" }, { name: "asc" }],
         include: {
@@ -40,12 +53,16 @@ export async function getPosData() {
         where: { active: true },
         orderBy: { nameAr: "asc" },
       }),
+      prisma.customer.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      }),
     ]);
 
-    return { tables, categories, menuItems };
+    return { tables, categories, menuItems, customers };
   } catch (error) {
     console.error("Error fetching POS data:", error);
-    return { tables: [], categories: [], menuItems: [] };
+    return { tables: [], categories: [], menuItems: [], customers: [] };
   }
 }
 
@@ -83,28 +100,51 @@ async function deductInventoryForItems(items: CartItemInput[]) {
   }
 }
 
+// Helper to resolve virtual table for Delivery / Takeaway if none provided
+async function resolveTableId(tableId?: string, orderType?: string) {
+  if (tableId) return tableId;
+  if (orderType === "DELIVERY") {
+    const deliveryTable = await prisma.diningTable.findFirst({
+      where: { name: { contains: "دليفري" } },
+    });
+    return deliveryTable?.id || null;
+  }
+  if (orderType === "TAKEAWAY") {
+    const takeawayTable = await prisma.diningTable.findFirst({
+      where: { name: { contains: "تيك أواي" } },
+    });
+    return takeawayTable?.id || null;
+  }
+  return null;
+}
+
 // 2. Action A: Send to Prep (حفظ وطباعة الأوردر -> Saves order as OPEN)
-export async function sendOrderToPrep({
-  orderId,
-  tableId,
-  items,
-  notes,
-}: {
-  orderId?: string;
-  tableId: string;
-  items: CartItemInput[];
-  notes?: string;
-}) {
+export async function sendOrderToPrep(payload: OrderPayload) {
   try {
-    if (!tableId || items.length === 0) {
-      return { error: "يرجى اختيار طاولة وإضافة أصناف للطلب" };
+    const {
+      orderId,
+      items,
+      notes,
+      orderType = "DINE_IN",
+      customerId,
+      customerName,
+      customerPhone,
+      deliveryAddress,
+      deliveryFee = 0,
+    } = payload;
+
+    if (!items || items.length === 0) {
+      return { error: "يرجى إضافة أصناف للطلب" };
     }
 
-    const table = await prisma.diningTable.findUnique({
-      where: { id: tableId },
-    });
+    const resolvedTableId = await resolveTableId(payload.tableId, orderType);
 
-    if (!table) return { error: "الطاولة غير موجودة" };
+    let table = null;
+    if (resolvedTableId) {
+      table = await prisma.diningTable.findUnique({
+        where: { id: resolvedTableId },
+      });
+    }
 
     // Find active shift to link to order
     const activeShift = await prisma.shift.findFirst({
@@ -114,14 +154,15 @@ export async function sendOrderToPrep({
 
     // SPECIAL LOGIC: Orders on Owner or Manager table are flagged as 'Complimentary' (ضيافة)
     const isComplimentary =
-      table.type === TableType.OWNER || table.type === TableType.MANAGER;
+      table?.type === TableType.OWNER || table?.type === TableType.MANAGER;
 
     const subtotal = items.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
     );
-    const discount = isComplimentary ? subtotal : 0;
-    const totalAmount = isComplimentary ? 0 : subtotal;
+    const finalDeliveryFee = orderType === "DELIVERY" ? (Number(deliveryFee) || 0) : 0;
+    const discount = isComplimentary ? (subtotal + finalDeliveryFee) : 0;
+    const totalAmount = isComplimentary ? 0 : (subtotal + finalDeliveryFee);
 
     let order;
 
@@ -138,6 +179,12 @@ export async function sendOrderToPrep({
           discount,
           totalAmount,
           isComplimentary,
+          orderType: orderType as any,
+          customerId: customerId || null,
+          customerName: customerName || null,
+          customerPhone: customerPhone || null,
+          deliveryAddress: deliveryAddress || null,
+          deliveryFee: finalDeliveryFee,
           notes,
           shiftId: activeShift?.id || null,
           status: OrderStatus.OPEN,
@@ -154,17 +201,24 @@ export async function sendOrderToPrep({
         include: {
           items: { include: { menuItem: true } },
           table: true,
+          customer: true,
         },
       });
     } else {
       // Create new OPEN order
       order = await prisma.order.create({
         data: {
-          tableId,
+          tableId: resolvedTableId,
           subtotal,
           discount,
           totalAmount,
           isComplimentary,
+          orderType: orderType as any,
+          customerId: customerId || null,
+          customerName: customerName || null,
+          customerPhone: customerPhone || null,
+          deliveryAddress: deliveryAddress || null,
+          deliveryFee: finalDeliveryFee,
           shiftId: activeShift?.id || null,
           status: OrderStatus.OPEN,
           notes,
@@ -181,6 +235,7 @@ export async function sendOrderToPrep({
         include: {
           items: { include: { menuItem: true } },
           table: true,
+          customer: true,
         },
       });
 
@@ -188,16 +243,19 @@ export async function sendOrderToPrep({
       await deductInventoryForItems(items);
     }
 
-    // Update table status to OCCUPIED
-    await prisma.diningTable.update({
-      where: { id: tableId },
-      data: { status: TableStatus.OCCUPIED },
-    });
+    // Update table status to OCCUPIED if it's a real dining table (not delivery/takeaway)
+    if (resolvedTableId && table && table.number && table.number < 900) {
+      await prisma.diningTable.update({
+        where: { id: resolvedTableId },
+        data: { status: TableStatus.OCCUPIED },
+      });
+    }
 
     revalidatePath("/pos");
     revalidatePath("/dashboard/tables");
     revalidatePath("/dashboard/procurement");
     revalidatePath("/dashboard/reports");
+    revalidatePath("/dashboard/customers");
     revalidatePath("/dashboard");
 
     return {
@@ -205,6 +263,8 @@ export async function sendOrderToPrep({
       order,
       message: isComplimentary
         ? "تم حفظ الطلب وإرساله للتحضير (ضيافة - Complimentary)"
+        : orderType === "DELIVERY"
+        ? `تم حفظ وتوجيه طلب الدليفري للتحضير (رسوم التوصيل: ${finalDeliveryFee} ج.م)`
         : "تم حفظ الطلب وإرساله للتحضير والطباعة بنجاح",
     };
   } catch (error: any) {
@@ -214,28 +274,31 @@ export async function sendOrderToPrep({
 }
 
 // 3. Action B: Collect Payment (تحصيل -> Changes status to PAID)
-export async function collectOrderPayment({
-  orderId,
-  tableId,
-  items,
-  notes,
-}: {
-  orderId?: string;
-  tableId: string;
-  items?: CartItemInput[];
-  notes?: string;
-}) {
+export async function collectOrderPayment(payload: OrderPayload) {
   try {
-    if (!tableId) return { error: "يرجى تحديد الطاولة" };
+    const {
+      orderId,
+      items,
+      notes,
+      orderType = "DINE_IN",
+      customerId,
+      customerName,
+      customerPhone,
+      deliveryAddress,
+      deliveryFee = 0,
+    } = payload;
 
-    const table = await prisma.diningTable.findUnique({
-      where: { id: tableId },
-    });
+    const resolvedTableId = await resolveTableId(payload.tableId, orderType);
 
-    if (!table) return { error: "الطاولة غير موجودة" };
+    let table = null;
+    if (resolvedTableId) {
+      table = await prisma.diningTable.findUnique({
+        where: { id: resolvedTableId },
+      });
+    }
 
     const isComplimentary =
-      table.type === TableType.OWNER || table.type === TableType.MANAGER;
+      table?.type === TableType.OWNER || table?.type === TableType.MANAGER;
 
     // Find active shift to link order to shift
     const activeShift = await prisma.shift.findFirst({
@@ -244,6 +307,7 @@ export async function collectOrderPayment({
     });
 
     let targetOrderId = orderId;
+    const finalDeliveryFee = orderType === "DELIVERY" ? (Number(deliveryFee) || 0) : 0;
 
     // If order was not sent to prep yet, save it directly as PAID
     if (!targetOrderId && items && items.length > 0) {
@@ -251,16 +315,22 @@ export async function collectOrderPayment({
         (sum, item) => sum + item.price * item.quantity,
         0
       );
-      const discount = isComplimentary ? subtotal : 0;
-      const totalAmount = isComplimentary ? 0 : subtotal;
+      const discount = isComplimentary ? (subtotal + finalDeliveryFee) : 0;
+      const totalAmount = isComplimentary ? 0 : (subtotal + finalDeliveryFee);
 
       const created = await prisma.order.create({
         data: {
-          tableId,
+          tableId: resolvedTableId,
           subtotal,
           discount,
           totalAmount,
           isComplimentary,
+          orderType: orderType as any,
+          customerId: customerId || null,
+          customerName: customerName || null,
+          customerPhone: customerPhone || null,
+          deliveryAddress: deliveryAddress || null,
+          deliveryFee: finalDeliveryFee,
           shiftId: activeShift?.id || null,
           status: OrderStatus.PAID,
           notes,
@@ -280,11 +350,12 @@ export async function collectOrderPayment({
       // SPRINT 5 REQUIREMENT 4: Deduct RawMaterial stock based on recipes
       await deductInventoryForItems(items);
     } else if (targetOrderId) {
-      // Mark existing order as PAID and ensure shiftId is linked
+      // Mark existing order as PAID and update delivery fee if provided
       await prisma.order.update({
         where: { id: targetOrderId },
         data: {
           status: OrderStatus.PAID,
+          ...(finalDeliveryFee > 0 ? { deliveryFee: finalDeliveryFee } : {}),
           ...(activeShift?.id ? { shiftId: activeShift.id } : {}),
         },
       });
@@ -292,20 +363,26 @@ export async function collectOrderPayment({
       return { error: "لا يوجد طلب مفتوح للتحصيل" };
     }
 
-    // Release table back to AVAILABLE
-    await prisma.diningTable.update({
-      where: { id: tableId },
-      data: { status: TableStatus.AVAILABLE },
-    });
+    // Release table back to AVAILABLE if it's a dining table
+    if (resolvedTableId && table && table.number && table.number < 900) {
+      await prisma.diningTable.update({
+        where: { id: resolvedTableId },
+        data: { status: TableStatus.AVAILABLE },
+      });
+    }
 
     revalidatePath("/pos");
     revalidatePath("/dashboard/tables");
+    revalidatePath("/dashboard/reports");
+    revalidatePath("/dashboard/customers");
     revalidatePath("/dashboard");
 
     return {
       success: true,
       message: isComplimentary
         ? "تم إغلاق طلب الضيافة بنجاح (المبلغ: 0 ج.م - ضيافة)"
+        : orderType === "DELIVERY"
+        ? `تم تحصيل طلب الدليفري بنجاح مع رسوم التوصيل (${finalDeliveryFee} ج.م)`
         : "تم تسجيل الدفع وتحصيل الحساب بنجاح وإخلاء الطاولة",
     };
   } catch (error: any) {

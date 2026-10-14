@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from "react";
 import { TableType, TableStatus, OrderStatus } from "@prisma/client";
 import { sendOrderToPrep, collectOrderPayment } from "@/actions/pos";
 import { startShift, endShift, getActiveShift } from "@/actions/shifts";
+import { createCustomer } from "@/actions/customers";
 import Link from "next/link";
 import { serialPrinter, SerialPrinterStatus } from "@/utils/printer/web-serial";
 import {
@@ -68,6 +69,7 @@ export default function PosInterface({
   userName,
   userId,
   initialShift,
+  initialCustomers,
 }: {
   initialTables: PosTable[];
   categories: PosCategory[];
@@ -75,6 +77,13 @@ export default function PosInterface({
   userName: string;
   userId: string;
   initialShift?: any;
+  initialCustomers?: Array<{
+    id: string;
+    name: string;
+    phone: string;
+    address: string | null;
+    notes: string | null;
+  }>;
 }) {
   const [tables, setTables] = useState<PosTable[]>(initialTables);
   const [selectedTable, setSelectedTable] = useState<PosTable | null>(null);
@@ -85,6 +94,20 @@ export default function PosInterface({
   const [activeOrderId, setActiveOrderId] = useState<string | undefined>(undefined);
   const [orderNotes, setOrderNotes] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  // Delivery & Takeaway & Customer State
+  const [customersList, setCustomersList] = useState<any[]>(initialCustomers || []);
+  const [orderType, setOrderType] = useState<"DINE_IN" | "TAKEAWAY" | "DELIVERY">("DINE_IN");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [customerName, setCustomerName] = useState<string>("");
+  const [customerPhone, setCustomerPhone] = useState<string>("");
+  const [deliveryAddress, setDeliveryAddress] = useState<string>("");
+  const [deliveryFee, setDeliveryFee] = useState<string>(""); // Open Delivery Fee input
+  const [showQuickCustomerModal, setShowQuickCustomerModal] = useState<boolean>(false);
+  const [quickName, setQuickName] = useState<string>("");
+  const [quickPhone, setQuickPhone] = useState<string>("");
+  const [quickAddress, setQuickAddress] = useState<string>("");
+  const [quickNotes, setQuickNotes] = useState<string>("");
 
   // Hardware Printer & Cash Drawer State (Sprint 4)
   const [printerStatus, setPrinterStatus] = useState<SerialPrinterStatus>(
@@ -244,9 +267,56 @@ export default function PosInterface({
     });
   };
 
+  // Quick customer selection helper
+  const handleSelectCustomer = (c: any) => {
+    setSelectedCustomerId(c.id);
+    setCustomerName(c.name);
+    setCustomerPhone(c.phone);
+    setDeliveryAddress(c.address || "");
+  };
+
+  const handleCreateQuickCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickName || !quickPhone) return;
+
+    startTransition(async () => {
+      const res = await createCustomer({
+        name: quickName,
+        phone: quickPhone,
+        address: quickAddress,
+        notes: quickNotes,
+      });
+
+      if (res.success && res.customer) {
+        setCustomersList((prev) => [res.customer, ...prev]);
+        setSelectedCustomerId(res.customer.id);
+        setCustomerName(res.customer.name);
+        setCustomerPhone(res.customer.phone);
+        setDeliveryAddress(res.customer.address || "");
+        setShowQuickCustomerModal(false);
+        setQuickName("");
+        setQuickPhone("");
+        setQuickAddress("");
+        setQuickNotes("");
+      } else {
+        alert(res.error || "فشل تسجيل العميل");
+      }
+    });
+  };
+
   // Table Selection logic
-  const handleSelectTable = (table: PosTable) => {
+  const handleSelectTable = (table: PosTable, forcedType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY") => {
     setSelectedTable(table);
+    if (forcedType) {
+      setOrderType(forcedType);
+    } else if (table.name.includes("دليفري")) {
+      setOrderType("DELIVERY");
+    } else if (table.name.includes("تيك أواي")) {
+      setOrderType("TAKEAWAY");
+    } else {
+      setOrderType("DINE_IN");
+    }
+
     const existingOpenOrder =
       table.orders && table.orders.length > 0 ? table.orders[0] : null;
 
@@ -276,9 +346,15 @@ export default function PosInterface({
   // Add Item to Cart
   const handleAddToCart = (item: PosMenuItem) => {
     if (!selectedTable) {
-      alert("يرجى اختيار طاولة أولاً قبل إضافة الأصناف!");
-      setActiveTab("MAP");
-      return;
+      // Auto-fallback: if no table is selected and user clicks item, pick the first available or delivery table
+      const fallback = tables[0];
+      if (fallback) {
+        handleSelectTable(fallback);
+      } else {
+        alert("يرجى اختيار طاولة أو نوع الطلب أولاً قبل إضافة الأصناف!");
+        setActiveTab("MAP");
+        return;
+      }
     }
 
     const cat = categories.find((c) => c.id === item.categoryId);
@@ -326,9 +402,11 @@ export default function PosInterface({
     selectedTable?.type === TableType.OWNER ||
     selectedTable?.type === TableType.MANAGER;
 
+  // Delivery Fee Calculation (Open field as requested by user)
+  const deliveryFeeNumber = orderType === "DELIVERY" ? (parseFloat(deliveryFee) || 0) : 0;
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const discount = isComplimentary ? subtotal : 0;
-  const totalAmount = isComplimentary ? 0 : subtotal;
+  const discount = isComplimentary ? (subtotal + deliveryFeeNumber) : 0;
+  const totalAmount = isComplimentary ? 0 : (subtotal + deliveryFeeNumber);
 
   // SPRINT 4: Action A - Send to Prep (حفظ وطباعة الأوردر)
   const handleSendToPrep = () => {
@@ -342,6 +420,12 @@ export default function PosInterface({
       const res = await sendOrderToPrep({
         orderId: activeOrderId,
         tableId: selectedTable.id,
+        orderType,
+        customerId: selectedCustomerId || undefined,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
+        deliveryAddress: deliveryAddress || undefined,
+        deliveryFee: deliveryFeeNumber,
         items: cart,
         notes: orderNotes,
       });
@@ -355,6 +439,11 @@ export default function PosInterface({
       const routeRes = await routeAndPrintPrepOrder({
         tableName: selectedTable.name,
         orderNumber: res.order?.orderNumber,
+        orderType,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
+        deliveryAddress: deliveryAddress || undefined,
+        deliveryFee: deliveryFeeNumber,
         items: cart,
         subtotal,
         discount,
@@ -367,14 +456,14 @@ export default function PosInterface({
       // Display multi-ticket preparation modal (drawerKicked: false)
       setRoutedModal({
         title: "تم حفظ وتوجيه بونات التحضير بنجاح",
-        subtitle: `طاولة: ${selectedTable.name} • (تم توجيه ${routeRes.tickets.length} بونات طباعة - درج النقدية مغلق)`,
+        subtitle: `${selectedTable.name} • (تم توجيه ${routeRes.tickets.length} بونات طباعة - درج النقدية مغلق)`,
         isPayment: false,
         drawerKicked: false,
         tickets: routeRes.tickets,
         activeTicketIndex: 0,
       });
 
-      // Update local table status to OCCUPIED
+      // Update local table status to OCCUPIED if regular table
       setTables((prev) =>
         prev.map((t) =>
           t.id === selectedTable.id
@@ -406,6 +495,8 @@ export default function PosInterface({
 
     const confirmMsg = isComplimentary
       ? `تأكيد إغلاق طلب الضيافة لطاولة ${selectedTable.name} (المبلغ: 0 ج.م)؟`
+      : orderType === "DELIVERY"
+      ? `تأكيد تحصيل طلب الدليفري بمبلغ ${totalAmount.toFixed(2)} ج.م (شامل رسوم التوصيل ${deliveryFeeNumber} ج.م) وفتح درج النقدية؟`
       : `تأكيد تحصيل مبلغ ${totalAmount.toFixed(
           2
         )} ج.م لطاولة ${selectedTable.name} وفتح درج النقدية وإخلاء الطاولة؟`;
@@ -416,6 +507,12 @@ export default function PosInterface({
       const res = await collectOrderPayment({
         orderId: activeOrderId,
         tableId: selectedTable.id,
+        orderType,
+        customerId: selectedCustomerId || undefined,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
+        deliveryAddress: deliveryAddress || undefined,
+        deliveryFee: deliveryFeeNumber,
         items: cart,
         notes: orderNotes,
       });
@@ -429,6 +526,11 @@ export default function PosInterface({
       const paymentRes = await executePaymentAndOpenDrawer({
         tableName: selectedTable.name,
         orderNumber: activeOrderId ? parseInt(activeOrderId.slice(-4)) : undefined,
+        orderType,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
+        deliveryAddress: deliveryAddress || undefined,
+        deliveryFee: deliveryFeeNumber,
         items: cart,
         subtotal,
         discount,
@@ -441,7 +543,7 @@ export default function PosInterface({
       // Display final paid receipt modal with CASH DRAWER OPENED confirmation
       setRoutedModal({
         title: "تم التحصيل وسداد الحساب بنجاح ✓",
-        subtitle: `طاولة: ${selectedTable.name} • 🚪 تم فتح درج النقدية بنجاح عبر إشارة ESC/POS`,
+        subtitle: `${selectedTable.name} • 🚪 تم فتح درج النقدية بنجاح عبر إشارة ESC/POS`,
         isPayment: true,
         drawerKicked: true,
         tickets: [paymentRes.receiptTicket],
@@ -639,6 +741,73 @@ export default function PosInterface({
         {/* VIEW 1: Visual Table Map */}
         {activeTab === "MAP" && (
           <div className="flex-1 p-6 overflow-y-auto bg-slate-100 space-y-6">
+            {/* Top Quick Actions for Delivery & Takeaway */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                onClick={() => {
+                  const delTable =
+                    tables.find((t) => t.name.includes("دليفري")) || tables[0];
+                  if (delTable) handleSelectTable(delTable, "DELIVERY");
+                }}
+                className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white p-4 rounded-2xl shadow-md flex items-center justify-between text-right active:scale-[0.99] transition group"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🛵</span>
+                    <h3 className="font-black text-base">طلب دليفري جديد (توصيل)</h3>
+                  </div>
+                  <p className="text-xs text-amber-100 mt-1">
+                    تسجيل عميل جديد وتحديد رسوم توصيل مفتوحة
+                  </p>
+                </div>
+                <span className="w-8 h-8 rounded-xl bg-white/20 text-white font-black flex items-center justify-center text-sm group-hover:bg-white group-hover:text-amber-800 transition">
+                  ←
+                </span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const takeTable =
+                    tables.find((t) => t.name.includes("تيك أواي")) || tables[0];
+                  if (takeTable) handleSelectTable(takeTable, "TAKEAWAY");
+                }}
+                className="bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black text-white p-4 rounded-2xl shadow-md flex items-center justify-between text-right active:scale-[0.99] transition group"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🥡</span>
+                    <h3 className="font-black text-base">طلب تيك أواي جديد (سفري)</h3>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1">
+                    طلب سريع بدون حجز طاولة صالة
+                  </p>
+                </div>
+                <span className="w-8 h-8 rounded-xl bg-white/20 text-white font-black flex items-center justify-center text-sm group-hover:bg-white group-hover:text-slate-900 transition">
+                  ←
+                </span>
+              </button>
+
+              <Link
+                href="/dashboard/customers"
+                className="bg-white border border-slate-200 hover:border-amber-400 p-4 rounded-2xl shadow-sm flex items-center justify-between text-right transition group"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">👥</span>
+                    <h3 className="font-black text-base text-slate-800 group-hover:text-amber-700">
+                      دليل العملاء والهواتف
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 font-mono">
+                    📞 خدمة التوصيل: 01558962994
+                  </p>
+                </div>
+                <span className="text-xs bg-amber-50 text-amber-800 font-bold px-2.5 py-1 rounded-lg">
+                  {customersList.length} عميل
+                </span>
+              </Link>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
               <div>
                 <h2 className="text-lg font-black text-slate-800">
@@ -828,16 +997,64 @@ export default function PosInterface({
 
             {/* LEFT: Shopping Cart & Cashier Actions */}
             <div className="w-full lg:w-96 bg-white border-r border-slate-200 flex flex-col h-full shadow-xl">
-              {/* Cart Header (Table Info + Complimentary Banner) */}
-              <div className="p-4 border-b border-slate-200 bg-slate-50">
-                <div className="flex items-center justify-between mb-2">
+              {/* Cart Header (Order Type Switcher + Table/Customer Info) */}
+              <div className="p-3.5 border-b border-slate-200 bg-slate-50 space-y-3">
+                {/* 1. Order Type Switcher */}
+                <div className="grid grid-cols-3 gap-1 bg-slate-200/80 p-1 rounded-xl text-xs font-black">
+                  <button
+                    onClick={() => setOrderType("DINE_IN")}
+                    className={`py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                      orderType === "DINE_IN"
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <span>🍽️</span>
+                    <span>صالة</span>
+                  </button>
+                  <button
+                    onClick={() => setOrderType("TAKEAWAY")}
+                    className={`py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                      orderType === "TAKEAWAY"
+                        ? "bg-slate-900 text-white shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <span>🥡</span>
+                    <span>تيك أواي</span>
+                  </button>
+                  <button
+                    onClick={() => setOrderType("DELIVERY")}
+                    className={`py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                      orderType === "DELIVERY"
+                        ? "bg-amber-600 text-white shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <span>🛵</span>
+                    <span>دليفري</span>
+                  </button>
+                </div>
+
+                {/* 2. Order Context Header */}
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">🪑</span>
+                    <span className="text-xl">
+                      {orderType === "DELIVERY"
+                        ? "🛵"
+                        : orderType === "TAKEAWAY"
+                        ? "🥡"
+                        : "🪑"}
+                    </span>
                     <div>
-                      <h3 className="font-black text-slate-800 text-base">
-                        {selectedTable.name}
+                      <h3 className="font-black text-slate-800 text-sm">
+                        {orderType === "DELIVERY"
+                          ? "طلب توصيل (دليفري)"
+                          : orderType === "TAKEAWAY"
+                          ? "طلب سفري (تيك أواي)"
+                          : selectedTable.name}
                       </h3>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[10px] text-slate-500">
                         {activeOrderId
                           ? `طلب مفتوح رقم: #${activeOrderId.slice(-4)}`
                           : "طلب جديد (قيد التجهيز)"}
@@ -853,8 +1070,136 @@ export default function PosInterface({
                   </button>
                 </div>
 
+                {/* 3. Delivery Customer Selection & Open Delivery Fee */}
+                {orderType === "DELIVERY" && (
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-amber-900 flex items-center gap-1">
+                        <span>👤 بيانات عميل التوصيل:</span>
+                      </span>
+                      <button
+                        onClick={() => setShowQuickCustomerModal(true)}
+                        className="text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white px-2 py-0.5 rounded-lg transition shadow-xs"
+                      >
+                        + عميل جديد
+                      </button>
+                    </div>
+
+                    {/* Customer Select Dropdown */}
+                    <select
+                      value={selectedCustomerId || ""}
+                      onChange={(e) => {
+                        const cid = e.target.value;
+                        if (!cid) {
+                          setSelectedCustomerId(null);
+                          setCustomerName("");
+                          setCustomerPhone("");
+                          setDeliveryAddress("");
+                        } else {
+                          const c = customersList.find((x) => x.id === cid);
+                          if (c) handleSelectCustomer(c);
+                        }
+                      }}
+                      className="w-full bg-white border border-amber-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 outline-none font-semibold"
+                    >
+                      <option value="">-- اختر من قائمة العملاء المسجلين --</option>
+                      {customersList.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} - 📞 {c.phone}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Manual inputs if customer not selected or to override */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="اسم العميل *"
+                        className="bg-white border border-amber-200 rounded-lg px-2.5 py-1 text-slate-800 outline-none text-xs"
+                      />
+                      <input
+                        type="tel"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="رقم الهاتف *"
+                        className="bg-white border border-amber-200 rounded-lg px-2.5 py-1 text-slate-800 outline-none text-xs font-mono"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder="عنوان التوصيل بالتفصيل (عبد القادر / المستعمرة)..."
+                      className="w-full bg-white border border-amber-200 rounded-lg px-2.5 py-1 text-slate-800 outline-none text-xs"
+                    />
+
+                    {/* Open Delivery Fee Input (CRITICAL USER REQUIREMENT) */}
+                    <div className="pt-1 border-t border-amber-300/60">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-black text-amber-950 flex items-center gap-1">
+                          <span>🛵 رسوم التوصيل:</span>
+                          <span className="text-[10px] font-normal text-amber-800">
+                            (خانة مفتوحة للمناطق البعيدة)
+                          </span>
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={deliveryFee}
+                            onChange={(e) => setDeliveryFee(e.target.value)}
+                            placeholder="0.00"
+                            className="w-full bg-white border-2 border-amber-500 rounded-xl px-3 py-1.5 text-sm font-black font-mono text-amber-900 outline-none focus:ring-2 focus:ring-amber-500/40"
+                          />
+                          <span className="absolute left-2.5 top-2 text-xs text-amber-700 font-bold">
+                            ج.م
+                          </span>
+                        </div>
+                        {/* Quick Preset Chips */}
+                        <div className="flex items-center gap-1">
+                          {[15, 25, 35, 50].map((fee) => (
+                            <button
+                              key={fee}
+                              type="button"
+                              onClick={() => setDeliveryFee(fee.toString())}
+                              className={`px-2 py-1 rounded-lg text-xs font-mono font-bold border transition ${
+                                deliveryFee === fee.toString()
+                                  ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                                  : "bg-white text-amber-900 border-amber-300 hover:bg-amber-100"
+                              }`}
+                            >
+                              +{fee}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Takeaway Customer Name */}
+                {orderType === "TAKEAWAY" && (
+                  <div className="bg-slate-100 border border-slate-200 rounded-xl p-2.5 space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      اسم عميل السفري / رقم الطلب (اختياري):
+                    </label>
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="مثال: أحمد عبد الله (سفري)"
+                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 outline-none"
+                    />
+                  </div>
+                )}
+
                 {/* SPECIAL LOGIC: Complimentary Banner for Owner / Manager table */}
-                {isComplimentary && (
+                {isComplimentary && orderType === "DINE_IN" && (
                   <div className="bg-amber-100 border border-amber-300 rounded-xl p-2.5 text-xs text-amber-900 font-bold flex items-center gap-2 animate-pulse">
                     <span className="text-base">👑</span>
                     <div>
@@ -945,11 +1290,21 @@ export default function PosInterface({
                 {/* Subtotals & Totals */}
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between text-slate-500">
-                    <span>المجموع الفرعي:</span>
+                    <span>مجموع الأصناف:</span>
                     <span className="font-mono font-bold">
                       {subtotal.toFixed(2)} ج.م
                     </span>
                   </div>
+
+                  {orderType === "DELIVERY" && deliveryFeeNumber > 0 && (
+                    <div className="flex justify-between text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded">
+                      <span>رسوم التوصيل (مفتوحة):</span>
+                      <span className="font-mono">
+                        +{deliveryFeeNumber.toFixed(2)} ج.م
+                      </span>
+                    </div>
+                  )}
+
                   {isComplimentary && (
                     <div className="flex justify-between text-amber-700 font-bold">
                       <span>خصم الضيافة (100%):</span>
@@ -1588,6 +1943,108 @@ export default function PosInterface({
                 إغلاق والمتابعة
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* QUICK CUSTOMER REGISTRATION MODAL FOR DELIVERY */}
+      {showQuickCustomerModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl text-right space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl">
+                  🛵
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-800 text-base">
+                    تسجيل عميل دليفري جديد
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    إضافة العميل لقاعدة البيانات لطلبات التوصيل السريع
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowQuickCustomerModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateQuickCustomer} className="space-y-3.5">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  اسم العميل <span className="text-rose-500">*</span>:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={quickName}
+                  onChange={(e) => setQuickName(e.target.value)}
+                  placeholder="مثال: أحمد عبد الله"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  رقم الهاتف (المحمول) <span className="text-rose-500">*</span>:
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={quickPhone}
+                  onChange={(e) => setQuickPhone(e.target.value)}
+                  placeholder="مثال: 01558962994"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  عنوان التوصيل بالتفصيل:
+                </label>
+                <textarea
+                  rows={2}
+                  value={quickAddress}
+                  onChange={(e) => setQuickAddress(e.target.value)}
+                  placeholder="منطقة عبد القادر - بجوار جامع السلام - عمارة 5..."
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  ملاحظات إضافية (اختياري):
+                </label>
+                <input
+                  type="text"
+                  value={quickNotes}
+                  onChange={(e) => setQuickNotes(e.target.value)}
+                  placeholder="مثال: يفضل عيش بلدي ساخن، طحينة زيادة..."
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickCustomerModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs transition shadow disabled:opacity-50"
+                >
+                  {isPending ? "جاري الحفظ..." : "حفظ واختيار العميل ✓"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

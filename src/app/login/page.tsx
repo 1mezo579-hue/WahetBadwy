@@ -37,49 +37,46 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-900 via-primary-800 to-primary-950 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 sm:p-10 w-full max-w-md">
-        {/* Logo / Brand */}
-        <div className="text-center mb-8">
-          <div className="mx-auto w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mb-4">
-            <svg
-              className="w-10 h-10 text-primary-700"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
+    <div className="min-h-screen flex items-center justify-center bg-radial from-stone-900 via-stone-950 to-black p-4 relative overflow-hidden">
+      {/* Decorative Warm Flame Background Glow */}
+      <div className="absolute top-1/4 -right-20 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute bottom-1/4 -left-20 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div className="bg-stone-900/90 border border-amber-500/30 rounded-3xl shadow-2xl p-8 sm:p-10 w-full max-w-md relative backdrop-blur-md">
+        {/* Brand Header */}
+        <div className="text-center mb-6">
+          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-amber-500/20 ring-2 ring-amber-400/40">
+            <span className="text-stone-950 font-black text-2xl tracking-tighter">
+              واحة
+            </span>
           </div>
-          <h1 className="text-3xl font-bold text-primary-800 mb-1">
+          <h1 className="text-3xl font-black text-amber-400 mb-1">
             واحة بدوي
           </h1>
-          <p className="text-gray-500 text-sm">نظام نقاط البيع</p>
+          <p className="text-amber-200/90 text-sm font-semibold">
+            طعم زمان على أصوله
+          </p>
+          <p className="text-stone-400 text-xs mt-1">
+            أكلنا يلم يجمع الصحاب • نظام الكاشير ونقاط البيع
+          </p>
+        </div>
+
+        {/* Location & Hotline Badge */}
+        <div className="bg-stone-950/80 border border-stone-800 rounded-xl p-2.5 mb-6 text-center text-xs space-y-1">
+          <p className="text-amber-300 font-mono font-bold">
+            📞 خدمة التوصيل: 01558962994
+          </p>
+          <p className="text-stone-400 text-[11px]">
+            📍 عبد القادر - جامع السلام - المستعمرة
+          </p>
         </div>
 
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Error Alert */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
-              <svg
-                className="w-5 h-5 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+            <div className="bg-rose-950/70 border border-rose-500/50 text-rose-200 px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2">
+              <span>⚠️</span>
               <span>{error}</span>
             </div>
           )}
@@ -88,7 +85,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="username"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="block text-xs font-bold text-stone-300 mb-1.5"
             >
               اسم المستخدم
             </label>
@@ -97,8 +94,8 @@ export default function LoginPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all text-gray-900 placeholder-gray-400"
-              placeholder="أدخل اسم المستخدم"
+              className="w-full px-4 py-2.5 bg-stone-950 border border-stone-700 focus:border-amber-500 rounded-xl outline-none text-stone-100 placeholder-stone-500 text-sm"
+              placeholder="مثال: admin أو cashier1"
               required
               autoComplete="username"
               autoFocus
@@ -109,7 +106,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="block text-xs font-bold text-stone-300 mb-1.5"
             >
               كلمة المرور
             </label>
@@ -118,8 +115,8 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all text-gray-900 placeholder-gray-400"
-              placeholder="أدخل كلمة المرور"
+              className="w-full px-4 py-2.5 bg-stone-950 border border-stone-700 focus:border-amber-500 rounded-xl outline-none text-stone-100 placeholder-stone-500 text-sm font-mono"
+              placeholder="••••••••"
               required
               autoComplete="current-password"
             />
@@ -129,40 +126,46 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-stone-950 font-black py-3 px-4 rounded-xl transition duration-200 shadow-lg shadow-amber-500/20 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
           >
             {loading ? (
-              <>
-                <svg
-                  className="animate-spin h-5 w-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
-                <span>جاري تسجيل الدخول...</span>
-              </>
+              <span>جاري التحقق...</span>
             ) : (
-              "تسجيل الدخول"
+              <span>تسجيل الدخول للمنظومة ⚡</span>
             )}
           </button>
         </form>
 
+        {/* Quick Demo Credentials */}
+        <div className="mt-6 pt-4 border-t border-stone-800 text-center">
+          <p className="text-[11px] text-stone-400 mb-2">حسابات الدخول السريع:</p>
+          <div className="flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setUsername("admin");
+                setPassword("WahetBadawy@2026");
+              }}
+              className="text-[10px] bg-stone-800 hover:bg-stone-700 text-amber-300 px-2.5 py-1 rounded-lg border border-stone-700"
+            >
+              المدير (admin)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setUsername("cashier1");
+                setPassword("123456");
+              }}
+              className="text-[10px] bg-stone-800 hover:bg-stone-700 text-emerald-300 px-2.5 py-1 rounded-lg border border-stone-700"
+            >
+              كاشير 1 (123456)
+            </button>
+          </div>
+        </div>
+
         {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-8">
-          واحة بدوي - نظام نقاط البيع © {new Date().getFullYear()}
+        <p className="text-center text-[10px] text-stone-500 mt-6">
+          واحة بدوي - جميع الحقوق محفوظة © {new Date().getFullYear()}
         </p>
       </div>
     </div>

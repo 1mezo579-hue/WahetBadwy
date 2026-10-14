@@ -84,6 +84,11 @@ export interface PrepTicketOptions {
 export interface CustomerCheckOptions {
   tableName: string;
   orderNumber?: number;
+  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  deliveryFee?: number;
   items: TicketItem[];
   subtotal: number;
   discount: number;
@@ -297,12 +302,19 @@ export function buildCustomerCheck(options: CustomerCheckOptions): Uint8Array {
     ESC_COMMANDS.SIZE_DOUBLE_WIDTH,
     encodeText("واحة بدوي - WAHET BADAWY"),
     ESC_COMMANDS.SIZE_NORMAL,
-    encodeText("مطعم وكافيه للمأكولات البدوية والباريستا"),
+    encodeText("طعم زمان على أصوله - مشويات وصواني وباريستا"),
     encodeText("شيك الحساب المبدئي (CUSTOMER CHECK)"),
     encodeText("================================"),
 
     ESC_COMMANDS.ALIGN_RIGHT,
-    encodeText(`الطاولة: ${options.tableName}`),
+    options.orderType === "DELIVERY"
+      ? encodeText(">> نوع الطلب: دليفري (توصيل سريع) <<")
+      : options.orderType === "TAKEAWAY"
+      ? encodeText(">> نوع الطلب: سفري وتيك أواي <<")
+      : encodeText(`الطاولة: ${options.tableName}`),
+    options.customerName ? encodeText(`العميل: ${options.customerName}`) : new Uint8Array(),
+    options.customerPhone ? encodeText(`الهاتف: ${options.customerPhone}`) : new Uint8Array(),
+    options.deliveryAddress ? encodeText(`العنوان: ${options.deliveryAddress}`) : new Uint8Array(),
     options.orderNumber ? encodeText(`رقم الطلب: #${options.orderNumber}`) : new Uint8Array(),
     encodeText(`التاريخ: ${dateStr} - ${timeStr}`),
     options.cashierName ? encodeText(`الكاشير: ${options.cashierName}`) : new Uint8Array(),
@@ -328,8 +340,12 @@ export function buildCustomerCheck(options: CustomerCheckOptions): Uint8Array {
     ESC_COMMANDS.BOLD_ON,
     encodeText(formatTwoColumns("المجموع الفرعي:", `${options.subtotal.toFixed(2)} ج.م`)),
 
+    options.deliveryFee && options.deliveryFee > 0
+      ? encodeText(formatTwoColumns("رسوم التوصيل (خدمة):", `+${options.deliveryFee.toFixed(2)} ج.م`))
+      : new Uint8Array(),
+
     options.isComplimentary
-      ? encodeText(formatTwoColumns("خصم ضيافة (100%):", `-${options.subtotal.toFixed(2)} ج.م`))
+      ? encodeText(formatTwoColumns("خصم ضيافة (100%):", `-${(options.subtotal + (options.deliveryFee || 0)).toFixed(2)} ج.م`))
       : options.discount > 0
       ? encodeText(formatTwoColumns("الخصم:", `-${options.discount.toFixed(2)} ج.م`))
       : new Uint8Array(),
@@ -346,8 +362,9 @@ export function buildCustomerCheck(options: CustomerCheckOptions): Uint8Array {
 
     encodeText("================================"),
     ESC_COMMANDS.ALIGN_CENTER,
+    encodeText("خدمة التوصيل والطلبات: 01558962994"),
+    encodeText("عبد القادر - جامع السلام - المستعمرة"),
     encodeText("شكراً لزيارتكم واحة بدوي"),
-    encodeText("خدمتكم شرف وسعادتكم غايتنا"),
     ESC_COMMANDS.FEED_5_LINES,
     ESC_COMMANDS.FULL_CUT,
   ];
@@ -384,11 +401,18 @@ export function buildPaymentReceipt(
     ESC_COMMANDS.SIZE_DOUBLE_WIDTH,
     encodeText("واحة بدوي - WAHET BADAWY"),
     ESC_COMMANDS.SIZE_NORMAL,
-    encodeText("إيصال سداد نقدي - فاتورة ضريبية مبسطة"),
+    encodeText("طعم زمان على أصوله - فاتورة سداد نقدي"),
     encodeText("================================"),
 
     ESC_COMMANDS.ALIGN_RIGHT,
-    encodeText(`الطاولة: ${options.tableName}`),
+    options.orderType === "DELIVERY"
+      ? encodeText(">> طلب دليفري (توصيل منازل) <<")
+      : options.orderType === "TAKEAWAY"
+      ? encodeText(">> طلب سفري (تيك أواي) <<")
+      : encodeText(`الطاولة: ${options.tableName}`),
+    options.customerName ? encodeText(`العميل: ${options.customerName}`) : new Uint8Array(),
+    options.customerPhone ? encodeText(`الهاتف: ${options.customerPhone}`) : new Uint8Array(),
+    options.deliveryAddress ? encodeText(`العنوان: ${options.deliveryAddress}`) : new Uint8Array(),
     options.orderNumber ? encodeText(`رقم الفاتورة: #${options.orderNumber}`) : new Uint8Array(),
     encodeText(`التاريخ: ${dateStr} - ${timeStr}`),
     options.cashierName ? encodeText(`الكاشير: ${options.cashierName}`) : new Uint8Array(),
@@ -412,10 +436,14 @@ export function buildPaymentReceipt(
 
     encodeText("--------------------------------"),
     ESC_COMMANDS.BOLD_ON,
-    encodeText(formatTwoColumns("الإجمالي:", `${options.subtotal.toFixed(2)} ج.م`)),
+    encodeText(formatTwoColumns("المجموع الفرعي:", `${options.subtotal.toFixed(2)} ج.م`)),
+
+    options.deliveryFee && options.deliveryFee > 0
+      ? encodeText(formatTwoColumns("رسوم التوصيل:", `+${options.deliveryFee.toFixed(2)} ج.م`))
+      : new Uint8Array(),
 
     options.isComplimentary
-      ? encodeText(formatTwoColumns("إعفاء ضيافة:", `-${options.subtotal.toFixed(2)} ج.م`))
+      ? encodeText(formatTwoColumns("إعفاء ضيافة:", `-${(options.subtotal + (options.deliveryFee || 0)).toFixed(2)} ج.م`))
       : options.discount > 0
       ? encodeText(formatTwoColumns("الخصم:", `-${options.discount.toFixed(2)} ج.م`))
       : new Uint8Array(),
@@ -433,6 +461,8 @@ export function buildPaymentReceipt(
     encodeText("================================"),
     ESC_COMMANDS.ALIGN_CENTER,
     encodeText("تم تحصيل المبلغ وفتح درج النقدية"),
+    encodeText("خدمة التوصيل: 01558962994"),
+    encodeText("عبد القادر - جامع السلام - المستعمرة"),
     encodeText("نتشرف بزيارتكم دائماً!"),
     ESC_COMMANDS.FEED_5_LINES,
     ESC_COMMANDS.FULL_CUT
