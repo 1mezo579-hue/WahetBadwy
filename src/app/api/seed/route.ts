@@ -24,15 +24,27 @@ export async function GET() {
         DO $$ BEGIN
           CREATE TYPE "ShiftStatus" AS ENUM ('OPEN', 'CLOSED');
         EXCEPTION WHEN duplicate_object THEN null; END $$;
+      `);
+    } catch (e) {
+      console.warn("ShiftStatus enum note:", e);
+    }
 
+    try {
+      await prisma.$executeRawUnsafe(`
         DO $$ BEGIN
           CREATE TYPE "OrderType" AS ENUM ('DINE_IN', 'TAKEAWAY', 'DELIVERY');
         EXCEPTION WHEN duplicate_object THEN null; END $$;
+      `);
+    } catch (e) {
+      console.warn("OrderType enum note:", e);
+    }
 
+    try {
+      await prisma.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "shifts" (
-          "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
+          "id" TEXT NOT NULL PRIMARY KEY,
           "shift_number" SERIAL NOT NULL,
-          "user_id" TEXT NOT NULL REFERENCES "users"("id") ON UPDATE CASCADE,
+          "user_id" TEXT NOT NULL,
           "start_time" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           "end_time" TIMESTAMP(3),
           "initial_cash" DOUBLE PRECISION NOT NULL DEFAULT 0,
@@ -44,9 +56,15 @@ export async function GET() {
           "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+      `);
+    } catch (e) {
+      console.warn("shifts table creation note:", e);
+    }
 
+    try {
+      await prisma.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "customers" (
-          "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
+          "id" TEXT NOT NULL PRIMARY KEY,
           "name" TEXT NOT NULL,
           "phone" TEXT NOT NULL UNIQUE,
           "address" TEXT,
@@ -54,18 +72,28 @@ export async function GET() {
           "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
-
-        ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "shift_id" TEXT REFERENCES "shifts"("id") ON UPDATE CASCADE;
-        ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "order_type" "OrderType" NOT NULL DEFAULT 'DINE_IN';
-        ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "customer_id" TEXT REFERENCES "customers"("id") ON UPDATE CASCADE;
-        ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "customer_name" TEXT;
-        ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "customer_phone" TEXT;
-        ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_address" TEXT;
-        ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_fee" DOUBLE PRECISION NOT NULL DEFAULT 0;
-        ALTER TABLE "orders" ALTER COLUMN "table_id" DROP NOT NULL;
       `);
-    } catch (sqlErr) {
-      console.warn("SQL Migration note:", sqlErr);
+    } catch (e) {
+      console.warn("customers table creation note:", e);
+    }
+
+    const alterStatements = [
+      `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "shift_id" TEXT REFERENCES "shifts"("id") ON UPDATE CASCADE;`,
+      `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "order_type" "OrderType" NOT NULL DEFAULT 'DINE_IN';`,
+      `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "customer_id" TEXT REFERENCES "customers"("id") ON UPDATE CASCADE;`,
+      `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "customer_name" TEXT;`,
+      `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "customer_phone" TEXT;`,
+      `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_address" TEXT;`,
+      `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_fee" DOUBLE PRECISION NOT NULL DEFAULT 0;`,
+      `ALTER TABLE "orders" ALTER COLUMN "table_id" DROP NOT NULL;`,
+    ];
+
+    for (const stmt of alterStatements) {
+      try {
+        await prisma.$executeRawUnsafe(stmt);
+      } catch (alterErr) {
+        console.warn("Alter statement note:", alterErr);
+      }
     }
 
     // 1. Seed Users (Admin, Manager, Cashier 1, Cashier 2)
