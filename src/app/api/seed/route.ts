@@ -10,6 +10,12 @@ import {
   UnitType,
 } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
+export async function POST() {
+  return GET();
+}
+
 export async function GET() {
   try {
     // 0. Database Migrations (Sprint 5 & Delivery/Takeaway/Customers)

@@ -53,15 +53,15 @@ export async function getActiveShift(userId?: string) {
     const regularPaidOrders = shiftOrders.filter(
       (o) =>
         !o.isComplimentary &&
-        o.table.type !== TableType.OWNER &&
-        o.table.type !== TableType.MANAGER
+        o.table?.type !== TableType.OWNER &&
+        o.table?.type !== TableType.MANAGER
     );
 
     const complimentaryOrders = shiftOrders.filter(
       (o) =>
         o.isComplimentary ||
-        o.table.type === TableType.OWNER ||
-        o.table.type === TableType.MANAGER
+        o.table?.type === TableType.OWNER ||
+        o.table?.type === TableType.MANAGER
     );
 
     const paidOrdersTotal = regularPaidOrders.reduce(
@@ -197,15 +197,15 @@ export async function endShift({
     const regularPaidOrders = paidOrders.filter(
       (o) =>
         !o.isComplimentary &&
-        o.table.type !== TableType.OWNER &&
-        o.table.type !== TableType.MANAGER
+        o.table?.type !== TableType.OWNER &&
+        o.table?.type !== TableType.MANAGER
     );
 
     const complimentaryOrders = paidOrders.filter(
       (o) =>
         o.isComplimentary ||
-        o.table.type === TableType.OWNER ||
-        o.table.type === TableType.MANAGER
+        o.table?.type === TableType.OWNER ||
+        o.table?.type === TableType.MANAGER
     );
 
     const salesTotal = regularPaidOrders.reduce(
