@@ -142,6 +142,9 @@ model Equipment {
   type                String          @default("KITCHEN")
   status              EquipmentStatus @default(OPERATIONAL)
   quantity            Int             @default(1)
+  unit                String?         @default("قطعة")
+  unitPrice           Float?          @default(0) @map("unit_price")
+  purchaseDate        DateTime?       @map("purchase_date")
   location            String?
   serialNumber        String?         @map("serial_number")
   lastMaintenanceDate DateTime?       @map("last_maintenance_date")
