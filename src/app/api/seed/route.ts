@@ -5,10 +5,10 @@ import {
   Role,
   TableType,
   TableStatus,
-  EquipmentType,
   EquipmentStatus,
   UnitType,
 } from "@prisma/client";
+import { EquipmentType } from "@/types/equipment";
 
 export const dynamic = "force-dynamic";
 
@@ -135,6 +135,9 @@ export async function GET() {
     }
 
     const alterStatements = [
+      `ALTER TABLE "equipment" ALTER COLUMN "type" DROP DEFAULT;`,
+      `ALTER TABLE "equipment" ALTER COLUMN "type" TYPE TEXT USING "type"::TEXT;`,
+      `ALTER TABLE "equipment" ALTER COLUMN "type" SET DEFAULT 'KITCHEN';`,
       `ALTER TYPE "EquipmentType" ADD VALUE IF NOT EXISTS 'SHISHA';`,
       `ALTER TYPE "EquipmentType" ADD VALUE IF NOT EXISTS 'HALL';`,
       `ALTER TYPE "EquipmentType" ADD VALUE IF NOT EXISTS 'BATHROOM';`,

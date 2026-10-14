@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { EquipmentType, EquipmentStatus } from "@prisma/client";
+import { EquipmentStatus } from "@prisma/client";
+import { EquipmentType } from "@/types/equipment";
 import {
   createEquipment,
   updateEquipmentStatus,

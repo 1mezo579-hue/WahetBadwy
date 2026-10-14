@@ -1,15 +1,30 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { EquipmentType, EquipmentStatus } from "@prisma/client";
+import { EquipmentStatus } from "@prisma/client";
+import { EquipmentType } from "@/types/equipment";
 import { revalidatePath } from "next/cache";
 
-export async function getEquipment(typeFilter?: EquipmentType) {
+async function ensureEquipmentTypeColumnIsText() {
   try {
-    return await prisma.equipment.findMany({
+    await prisma.$executeRawUnsafe(`ALTER TABLE "equipment" ALTER COLUMN "type" DROP DEFAULT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "equipment" ALTER COLUMN "type" TYPE TEXT USING "type"::TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "equipment" ALTER COLUMN "type" SET DEFAULT 'KITCHEN';`);
+  } catch {
+    // Already TEXT or default set
+  }
+}
+
+export async function getEquipment(typeFilter?: EquipmentType | string) {
+  try {
+    await ensureEquipmentTypeColumnIsText();
+
+    const items = await prisma.equipment.findMany({
       where: typeFilter ? { type: typeFilter } : undefined,
       orderBy: { createdAt: "desc" },
     });
+
+    return items as any[];
   } catch (error) {
     console.error("Error fetching equipment:", error);
     return [];
@@ -18,11 +33,13 @@ export async function getEquipment(typeFilter?: EquipmentType) {
 
 export async function createEquipment(formData: FormData) {
   try {
+    await ensureEquipmentTypeColumnIsText();
+
     const name = formData.get("name") as string;
-    const type = formData.get("type") as EquipmentType;
+    const type = (formData.get("type") as string) || "KITCHEN";
     const location = formData.get("location") as string;
     const serialNumber = formData.get("serialNumber") as string;
-    const status = formData.get("status") as EquipmentStatus;
+    const status = (formData.get("status") as EquipmentStatus) || EquipmentStatus.OPERATIONAL;
     const notes = formData.get("notes") as string;
 
     if (!name) return { error: "يرجى إدخال اسم الجهاز أو المعدة" };
@@ -30,8 +47,8 @@ export async function createEquipment(formData: FormData) {
     await prisma.equipment.create({
       data: {
         name,
-        type: type || EquipmentType.KITCHEN,
-        status: status || EquipmentStatus.OPERATIONAL,
+        type,
+        status,
         location: location || null,
         serialNumber: serialNumber || null,
         notes: notes || null,
@@ -50,7 +67,7 @@ export async function updateEquipment(
   id: string,
   data: {
     name?: string;
-    type?: EquipmentType;
+    type?: EquipmentType | string;
     status?: EquipmentStatus;
     location?: string | null;
     serialNumber?: string | null;
@@ -58,6 +75,8 @@ export async function updateEquipment(
   }
 ) {
   try {
+    await ensureEquipmentTypeColumnIsText();
+
     await prisma.equipment.update({
       where: { id },
       data,

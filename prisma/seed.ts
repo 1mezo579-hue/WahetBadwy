@@ -3,11 +3,18 @@ import {
   Role,
   TableType,
   TableStatus,
-  EquipmentType,
   EquipmentStatus,
   UnitType,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
+
+const EquipmentType = {
+  KITCHEN: "KITCHEN",
+  BARISTA: "BARISTA",
+  SHISHA: "SHISHA",
+  HALL: "HALL",
+  BATHROOM: "BATHROOM",
+} as const;
 
 const prisma = new PrismaClient();
 

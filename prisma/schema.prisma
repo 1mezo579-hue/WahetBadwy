@@ -139,7 +139,7 @@ model RecipeItem {
 model Equipment {
   id                  String          @id @default(cuid())
   name                String
-  type                EquipmentType   @default(KITCHEN)
+  type                String          @default("KITCHEN")
   status              EquipmentStatus @default(OPERATIONAL)
   location            String?
   serialNumber        String?         @map("serial_number")
