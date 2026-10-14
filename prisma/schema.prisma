@@ -141,6 +141,7 @@ model Equipment {
   name                String
   type                String          @default("KITCHEN")
   status              EquipmentStatus @default(OPERATIONAL)
+  quantity            Int             @default(1)
   location            String?
   serialNumber        String?         @map("serial_number")
   lastMaintenanceDate DateTime?       @map("last_maintenance_date")

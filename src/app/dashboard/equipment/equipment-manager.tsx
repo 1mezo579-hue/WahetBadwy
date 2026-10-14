@@ -16,6 +16,7 @@ interface EquipmentItem {
   name: string;
   type: EquipmentType;
   status: EquipmentStatus;
+  quantity?: number;
   location: string | null;
   serialNumber: string | null;
   notes: string | null;
@@ -27,7 +28,7 @@ export default function EquipmentManager({
 }: {
   initialEquipment: EquipmentItem[];
 }) {
-  const [activeTab, setActiveTab] = useState<EquipmentType>(EquipmentType.KITCHEN);
+  const [activeTab, setActiveTab] = useState<EquipmentType>(EquipmentType.BALADI_COFFEE);
   const [isPending, startTransition] = useTransition();
   const [showAddModal, setShowAddModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -35,7 +36,8 @@ export default function EquipmentManager({
   // Edit Equipment State
   const [editingItem, setEditingItem] = useState<EquipmentItem | null>(null);
   const [editName, setEditName] = useState("");
-  const [editType, setEditType] = useState<EquipmentType>(EquipmentType.KITCHEN);
+  const [editType, setEditType] = useState<EquipmentType>(EquipmentType.BALADI_COFFEE);
+  const [editQuantity, setEditQuantity] = useState(1);
   const [editStatus, setEditStatus] = useState<EquipmentStatus>(EquipmentStatus.OPERATIONAL);
   const [editLocation, setEditLocation] = useState("");
   const [editSerialNumber, setEditSerialNumber] = useState("");
@@ -67,6 +69,14 @@ export default function EquipmentManager({
       placeholder: string;
     }
   > = {
+    BALADI_COFFEE: {
+      title: "عدة القهوة البلدي والشاي",
+      icon: "☕",
+      color: "bg-amber-50 text-amber-900 hover:bg-amber-100",
+      activeColor: "bg-amber-700 text-white shadow-md shadow-amber-900/20",
+      desc: "الرمالة الحرارية، عمالات الشاي والبن، الكنك مقاسات، البرادات، السكريات، والشيالات.",
+      placeholder: "مثال: رمالة قهوة تركي، عمالة نحاس فحم، طقم كنك، براد شاي زرد، سكرية...",
+    },
     KITCHEN: {
       title: "معدات المطبخ الرئيسي",
       icon: "🍳",
@@ -77,9 +87,9 @@ export default function EquipmentManager({
     },
     BARISTA: {
       title: "ركن الباريستا والمشروبات",
-      icon: "☕",
-      color: "bg-amber-50 text-amber-800 hover:bg-amber-100",
-      activeColor: "bg-amber-600 text-white shadow-md shadow-amber-700/20",
+      icon: "🥤",
+      color: "bg-orange-50 text-orange-800 hover:bg-orange-100",
+      activeColor: "bg-orange-600 text-white shadow-md shadow-orange-700/20",
       desc: "ماكينات الإسبريسو، المطاحن، خلاطات العصائر، وصانعات الثلج.",
       placeholder: "مثال: ماكينة إسبريسو 2 جروب، مطحنة بن، خلاط فيتاميكس...",
     },
@@ -114,6 +124,11 @@ export default function EquipmentManager({
   const getSectionCount = (type: EquipmentType) =>
     initialEquipment.filter((item) => item.type === type).length;
 
+  const getSectionTotalPieces = (type: EquipmentType) =>
+    initialEquipment
+      .filter((item) => item.type === type)
+      .reduce((sum, item) => sum + (item.quantity || 1), 0);
+
   const handleStatusChange = (id: string, newStatus: EquipmentStatus) => {
     startTransition(async () => {
       await updateEquipmentStatus(id, newStatus);
@@ -137,7 +152,7 @@ export default function EquipmentManager({
     }
     if (
       confirm(
-        `تحذير: هل أنت متأكد من حذف كافة معدات (${secName}) بالكامل؟\nسيتم حذف عدد (${count}) معدة نهائياً من السيستيم.`
+        `تحذير: هل أنت متأكد من حذف كافة معدات (${secName}) بالكامل؟\nسيتم حذف عدد (${count}) عنصر نهائياً من السيستيم.`
       )
     ) {
       startTransition(async () => {
@@ -153,6 +168,7 @@ export default function EquipmentManager({
     setEditingItem(item);
     setEditName(item.name);
     setEditType(item.type);
+    setEditQuantity(item.quantity || 1);
     setEditStatus(item.status);
     setEditLocation(item.location || "");
     setEditSerialNumber(item.serialNumber || "");
@@ -166,6 +182,7 @@ export default function EquipmentManager({
       await updateEquipment(editingItem.id, {
         name: editName,
         type: editType,
+        quantity: editQuantity,
         status: editStatus,
         location: editLocation || null,
         serialNumber: editSerialNumber || null,
@@ -196,12 +213,13 @@ export default function EquipmentManager({
     <div className="space-y-6">
       {/* Top Navigation Tabs & Add Button */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
-        {/* Navigation Tabs (5 sections) */}
+        {/* Navigation Tabs (6 sections) */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
           {(Object.keys(sectionsConfig) as EquipmentType[]).map((type) => {
             const sec = sectionsConfig[type];
             const isActive = activeTab === type;
             const count = getSectionCount(type);
+            const pieces = getSectionTotalPieces(type);
 
             return (
               <button
@@ -214,13 +232,14 @@ export default function EquipmentManager({
                 <span>{sec.icon}</span>
                 <span>{sec.title}</span>
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                  className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
                     isActive
                       ? "bg-white/20 text-white"
-                      : "bg-white text-slate-700 border border-slate-200 shadow-sm"
+                      : "bg-white text-slate-700 border border-slate-200 shadow-xs"
                   }`}
+                  title={`${count} نوع • ${pieces} قطعة إجمالية`}
                 >
-                  {count}
+                  {count} ({pieces} ق)
                 </span>
               </button>
             );
@@ -235,7 +254,7 @@ export default function EquipmentManager({
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span>إضافة معدة جديدة</span>
+          <span>إضافة معدة / أداة جديدة</span>
         </button>
       </div>
 
@@ -248,8 +267,11 @@ export default function EquipmentManager({
               <h2 className="font-black text-slate-800 text-sm sm:text-base">
                 {sectionsConfig[activeTab].title}
               </h2>
-              <span className="text-[11px] bg-slate-200 text-slate-800 font-bold px-2 py-0.5 rounded-full">
-                {filteredEquipment.length} معدة
+              <span className="text-[11px] bg-slate-200 text-slate-800 font-bold px-2.5 py-0.5 rounded-full">
+                {filteredEquipment.length} أصناف مسجلة
+              </span>
+              <span className="text-[11px] bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2.5 py-0.5 rounded-full">
+                إجمالي {getSectionTotalPieces(activeTab)} قطعة
               </span>
             </div>
             <p className="text-slate-500 mt-0.5">{sectionsConfig[activeTab].desc}</p>
@@ -260,7 +282,7 @@ export default function EquipmentManager({
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition flex items-center gap-1.5 shadow-sm"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition flex items-center gap-1.5 shadow-sm"
           >
             <span>+</span>
             <span>إضافة في هذا القسم</span>
@@ -287,7 +309,7 @@ export default function EquipmentManager({
             لا توجد معدات مسجلة في {sectionsConfig[activeTab].title} حالياً.
           </p>
           <p className="text-xs text-slate-400 mt-1">
-            اضغط على زر &quot;إضافة معدة جديدة&quot; لتسجيل أول جهاز أو أداة في هذا القسم.
+            اضغط على زر &quot;إضافة معدة / أداة جديدة&quot; لتسجيل أول جهاز أو عدة في هذا القسم.
           </p>
           <button
             onClick={() => setShowAddModal(true)}
@@ -348,7 +370,20 @@ export default function EquipmentManager({
                     </div>
                   </div>
 
-                  <h3 className="text-base font-black text-slate-800 mb-2">{item.name}</h3>
+                  <div className="flex items-baseline justify-between gap-2 mb-2">
+                    <h3 className="text-base font-black text-slate-800 leading-snug">
+                      {item.name}
+                    </h3>
+                  </div>
+
+                  {/* Quantity Badge (عدد القطع) */}
+                  <div className="mb-3 inline-flex items-center gap-1.5 bg-amber-50 border border-amber-300/80 text-amber-950 font-black px-3 py-1 rounded-xl text-xs shadow-2xs">
+                    <span>🔢</span>
+                    <span>عدد القطع المتوفرة:</span>
+                    <span className="font-mono text-sm font-black text-amber-700 bg-white px-2 py-0.5 rounded-md border border-amber-200">
+                      {item.quantity || 1}
+                    </span>
+                  </div>
 
                   <div className="space-y-1.5 text-xs text-slate-500 mb-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
                     {item.location && (
@@ -359,39 +394,41 @@ export default function EquipmentManager({
                     )}
                     {item.serialNumber && (
                       <p className="flex items-center gap-1.5">
-                        <span className="font-bold text-slate-700">الرقم التسلسلي / الموديل:</span>
-                        <span className="font-mono text-slate-900 font-bold">
-                          {item.serialNumber}
-                        </span>
+                        <span className="font-bold text-slate-700">السيريال:</span>
+                        <span className="font-mono text-[11px]">{item.serialNumber}</span>
                       </p>
                     )}
                     {item.notes && (
-                      <p className="flex items-start gap-1.5">
+                      <p className="flex items-start gap-1.5 mt-1 text-slate-600">
                         <span className="font-bold text-slate-700 shrink-0">ملاحظات:</span>
-                        <span>{item.notes}</span>
+                        <span className="leading-relaxed">{item.notes}</span>
                       </p>
                     )}
                   </div>
                 </div>
 
-                {/* Status Toggle Buttons */}
-                <div className="pt-3 border-t border-slate-100">
-                  <p className="text-[11px] font-bold text-slate-400 mb-2">تحديث حالة التشغيل:</p>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {(Object.keys(statusConfig) as EquipmentStatus[]).map((st) => (
-                      <button
-                        key={st}
-                        disabled={isPending || item.status === st}
-                        onClick={() => handleStatusChange(item.id, st)}
-                        className={`text-xs py-1.5 px-1 rounded-xl font-bold border transition ${
-                          item.status === st
-                            ? `${statusConfig[st].badge} font-black ring-1 ring-current`
-                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                        }`}
-                      >
-                        {statusConfig[st].label}
-                      </button>
-                    ))}
+                {/* Quick Status Buttons */}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-1">
+                  <span className="text-[11px] font-bold text-slate-400">تغيير الحالة:</span>
+                  <div className="flex items-center gap-1">
+                    {Object.keys(statusConfig).map((statusKey) => {
+                      const st = statusKey as EquipmentStatus;
+                      const isCurrent = item.status === st;
+                      return (
+                        <button
+                          key={st}
+                          disabled={isCurrent || isPending}
+                          onClick={() => handleStatusChange(item.id, st)}
+                          className={`text-[10px] px-2 py-1 rounded-lg font-bold transition ${
+                            isCurrent
+                              ? "bg-slate-200 text-slate-500 cursor-not-allowed opacity-60"
+                              : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {statusConfig[st].label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -405,11 +442,11 @@ export default function EquipmentManager({
       {/* ======================================================== */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
               <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
-                <span>➕</span>
-                <span>إضافة معدة جديدة ({sectionsConfig[activeTab].title})</span>
+                <span>{sectionsConfig[activeTab].icon}</span>
+                <span>إضافة معدة / أداة إلى: {sectionsConfig[activeTab].title}</span>
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -420,14 +457,14 @@ export default function EquipmentManager({
             </div>
 
             {errorMessage && (
-              <div className="p-3 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+              <div className="p-3 mb-4 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
                 {errorMessage}
               </div>
             )}
 
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">القسم التابع له *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">القسم *</label>
                 <select
                   name="type"
                   defaultValue={activeTab}
@@ -443,7 +480,7 @@ export default function EquipmentManager({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  اسم الجهاز / المعدة *
+                  اسم الأداة أو المعدة *
                 </label>
                 <input
                   name="name"
@@ -453,51 +490,68 @@ export default function EquipmentManager({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  الموقع / القسم داخل واحة بدوي
-                </label>
-                <input
-                  name="location"
-                  placeholder="مثال: ركن الشيشة الخارجي، مغاسل الصالة..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-amber-500 outline-none"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-amber-900 mb-1">
+                    عدد القطع / الكمية المتوفرة *
+                  </label>
+                  <input
+                    name="quantity"
+                    type="number"
+                    min="1"
+                    defaultValue={1}
+                    required
+                    placeholder="1"
+                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-amber-300 text-xs font-mono font-black focus:ring-2 focus:ring-amber-500 outline-none bg-amber-50/40"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    الموقع داخل المنشأة
+                  </label>
+                  <input
+                    name="location"
+                    placeholder="مثال: ركن القهوة، البار، الصالة..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    حالة التشغيل المبدئية
+                  </label>
+                  <select
+                    name="status"
+                    defaultValue={EquipmentStatus.OPERATIONAL}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                  >
+                    <option value={EquipmentStatus.OPERATIONAL}>جاهزة للعمل (Operational)</option>
+                    <option value={EquipmentStatus.MAINTENANCE}>قيد الصيانة (Under Maintenance)</option>
+                    <option value={EquipmentStatus.OUT_OF_SERVICE}>خارج الخدمة (Out of Service)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    الرقم التسلسلي أو الموديل
+                  </label>
+                  <input
+                    name="serialNumber"
+                    placeholder="اختياري"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  الرقم التسلسلي أو الموديل
-                </label>
-                <input
-                  name="serialNumber"
-                  placeholder="SN-123456"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  حالة التشغيل المبدئية
-                </label>
-                <select
-                  name="status"
-                  defaultValue={EquipmentStatus.OPERATIONAL}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white"
-                >
-                  <option value={EquipmentStatus.OPERATIONAL}>جاهزة للعمل (Operational)</option>
-                  <option value={EquipmentStatus.MAINTENANCE}>قيد الصيانة (Under Maintenance)</option>
-                  <option value={EquipmentStatus.OUT_OF_SERVICE}>خارج الخدمة (Out of Service)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  ملاحظات أو جدول الصيانة
+                  ملاحظات أو مواصفات إضافية
                 </label>
                 <textarea
                   name="notes"
                   rows={2}
-                  placeholder="ملاحظات الصيانة الدورية..."
+                  placeholder="أي ملاحظات حول الخامة، المقاس، أو جدول الصيانة..."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-amber-500 outline-none"
                 />
               </div>
@@ -528,11 +582,11 @@ export default function EquipmentManager({
       {/* ======================================================== */}
       {editingItem && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
               <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
                 <span>✏️</span>
-                <span>تعديل بيانات المعدة</span>
+                <span>تعديل بيانات المعدة / الأداة</span>
               </h3>
               <button
                 onClick={() => setEditingItem(null)}
@@ -559,7 +613,7 @@ export default function EquipmentManager({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">اسم المعدة *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">اسم المعدة / الأداة *</label>
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
@@ -568,35 +622,51 @@ export default function EquipmentManager({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">الموقع داخل المنشأة</label>
-                <input
-                  value={editLocation}
-                  onChange={(e) => setEditLocation(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-amber-500 outline-none"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-amber-900 mb-1">
+                    عدد القطع / الكمية *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editQuantity}
+                    onChange={(e) => setEditQuantity(parseInt(e.target.value) || 1)}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-amber-300 text-xs font-mono font-black focus:ring-2 focus:ring-amber-500 outline-none bg-amber-50/40"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">الموقع داخل المنشأة</label>
+                  <input
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">الرقم التسلسلي</label>
-                <input
-                  value={editSerialNumber}
-                  onChange={(e) => setEditSerialNumber(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">حالة التشغيل</label>
-                <select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as EquipmentStatus)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white"
-                >
-                  <option value={EquipmentStatus.OPERATIONAL}>جاهزة للعمل (Operational)</option>
-                  <option value={EquipmentStatus.MAINTENANCE}>قيد الصيانة (Under Maintenance)</option>
-                  <option value={EquipmentStatus.OUT_OF_SERVICE}>خارج الخدمة (Out of Service)</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">حالة التشغيل</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as EquipmentStatus)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                  >
+                    <option value={EquipmentStatus.OPERATIONAL}>جاهزة للعمل (Operational)</option>
+                    <option value={EquipmentStatus.MAINTENANCE}>قيد الصيانة (Under Maintenance)</option>
+                    <option value={EquipmentStatus.OUT_OF_SERVICE}>خارج الخدمة (Out of Service)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">الرقم التسلسلي</label>
+                  <input
+                    value={editSerialNumber}
+                    onChange={(e) => setEditSerialNumber(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
+                </div>
               </div>
 
               <div>
