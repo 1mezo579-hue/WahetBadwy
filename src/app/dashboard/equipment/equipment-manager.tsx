@@ -8,6 +8,7 @@ import {
   updateEquipmentStatus,
   updateEquipment,
   deleteEquipment,
+  clearSectionEquipment,
 } from "@/actions/equipment";
 
 interface EquipmentItem {
@@ -127,6 +128,27 @@ export default function EquipmentManager({
     }
   };
 
+  const handleClearSection = (type: EquipmentType) => {
+    const secName = sectionsConfig[type].title;
+    const count = getSectionCount(type);
+    if (count === 0) {
+      alert(`قسم ${secName} لا يحتوي على أي معدات لحذفها.`);
+      return;
+    }
+    if (
+      confirm(
+        `تحذير: هل أنت متأكد من حذف كافة معدات (${secName}) بالكامل؟\nسيتم حذف عدد (${count}) معدة نهائياً من السيستيم.`
+      )
+    ) {
+      startTransition(async () => {
+        const res = await clearSectionEquipment(type);
+        if (res?.error) {
+          alert(res.error);
+        }
+      });
+    }
+  };
+
   const handleOpenEdit = (item: EquipmentItem) => {
     setEditingItem(item);
     setEditName(item.name);
@@ -218,22 +240,42 @@ export default function EquipmentManager({
       </div>
 
       {/* Active Section Description Banner */}
-      <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+      <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{sectionsConfig[activeTab].icon}</span>
+          <span className="text-3xl">{sectionsConfig[activeTab].icon}</span>
           <div>
-            <h2 className="font-black text-slate-800 text-sm">
-              {sectionsConfig[activeTab].title}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-black text-slate-800 text-sm sm:text-base">
+                {sectionsConfig[activeTab].title}
+              </h2>
+              <span className="text-[11px] bg-slate-200 text-slate-800 font-bold px-2 py-0.5 rounded-full">
+                {filteredEquipment.length} معدة
+              </span>
+            </div>
             <p className="text-slate-500 mt-0.5">{sectionsConfig[activeTab].desc}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 font-bold text-slate-600 shrink-0">
-          <span>إجمالي المعدات بالقسم:</span>
-          <span className="font-mono text-base font-black text-slate-900">
-            {filteredEquipment.length}
-          </span>
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition flex items-center gap-1.5 shadow-sm"
+          >
+            <span>+</span>
+            <span>إضافة في هذا القسم</span>
+          </button>
+          {filteredEquipment.length > 0 && (
+            <button
+              type="button"
+              onClick={() => handleClearSection(activeTab)}
+              className="px-3 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition flex items-center gap-1.5 shadow-sm"
+              title="حذف كافة المعدات المسجلة في هذا القسم"
+            >
+              <span>🗑️</span>
+              <span>مسح معدات هذا القسم</span>
+            </button>
+          )}
         </div>
       </div>
 

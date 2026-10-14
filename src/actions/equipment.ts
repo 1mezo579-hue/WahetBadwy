@@ -115,3 +115,18 @@ export async function deleteEquipment(id: string) {
     return { error: "فشل حذف المعدة" };
   }
 }
+
+export async function clearSectionEquipment(type: EquipmentType | string) {
+  try {
+    await ensureEquipmentTypeColumnIsText();
+    const result = await prisma.equipment.deleteMany({
+      where: { type },
+    });
+    revalidatePath("/dashboard/equipment");
+    return { success: true, count: result.count };
+  } catch (error: any) {
+    console.error("Error clearing section equipment:", error);
+    return { error: "فشل حذف معدات هذا القسم" };
+  }
+}
+

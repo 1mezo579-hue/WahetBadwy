@@ -48,16 +48,94 @@ export async function createCategory(formData: FormData) {
   }
 }
 
+export async function updateCategory(formData: FormData) {
+  try {
+    const id = formData.get("id") as string;
+    const nameAr = formData.get("nameAr") as string;
+    const name = (formData.get("name") as string) || nameAr;
+    const description = (formData.get("description") as string) || null;
+    const orderStr = formData.get("order") as string;
+
+    if (!id) return { error: "معرف القسم غير محدد" };
+    if (!nameAr) return { error: "يرجى كتابة اسم القسم بالعربية" };
+
+    await prisma.category.update({
+      where: { id },
+      data: {
+        nameAr,
+        name,
+        description,
+        order: orderStr ? parseInt(orderStr) : 0,
+      },
+    });
+
+    revalidatePath("/dashboard/menu");
+    revalidatePath("/pos");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating category:", error);
+    return { error: error.message || "فشل تعديل بيانات القسم" };
+  }
+}
+
 export async function deleteCategory(id: string) {
   try {
-    await prisma.category.delete({
-      where: { id },
+    if (!id) return { error: "معرف القسم غير محدد" };
+
+    // Check items in this category
+    const items = await prisma.menuItem.findMany({
+      where: { categoryId: id },
+      select: { id: true, nameAr: true },
     });
+
+    const itemIds = items.map((i) => i.id);
+
+    if (itemIds.length > 0) {
+      // Check if any items have associated order items
+      const orderItemsCount = await prisma.orderItem.count({
+        where: { menuItemId: { in: itemIds } },
+      });
+
+      if (orderItemsCount > 0) {
+        // Items exist in order history: move to an archive category so financial logs aren't broken
+        let fallbackCat = await prisma.category.findFirst({
+          where: { name: "uncategorized" },
+        });
+        if (!fallbackCat) {
+          fallbackCat = await prisma.category.create({
+            data: {
+              name: "uncategorized",
+              nameAr: "أصناف أرشيفية",
+              description: "أصناف من أقسام تم حذفها للحفاظ على سجلات الفواتير",
+              order: 999,
+            },
+          });
+        }
+        await prisma.menuItem.updateMany({
+          where: { categoryId: id },
+          data: { categoryId: fallbackCat.id, active: false },
+        });
+        await prisma.category.delete({ where: { id } });
+      } else {
+        // Safe to remove recipes and items completely
+        await prisma.recipeItem.deleteMany({
+          where: { menuItemId: { in: itemIds } },
+        });
+        await prisma.menuItem.deleteMany({
+          where: { categoryId: id },
+        });
+        await prisma.category.delete({ where: { id } });
+      }
+    } else {
+      await prisma.category.delete({ where: { id } });
+    }
+
     revalidatePath("/dashboard/menu");
+    revalidatePath("/pos");
     return { success: true };
   } catch (error: any) {
     console.error("Error deleting category:", error);
-    return { error: "فشل حذف التصنيف" };
+    return { error: error.message || "فشل حذف القسم" };
   }
 }
 
@@ -167,15 +245,40 @@ export async function toggleMenuItemStatus(id: string, active: boolean) {
 
 export async function deleteMenuItem(id: string) {
   try {
+    // Check if item has order history
+    const orderItemsCount = await prisma.orderItem.count({
+      where: { menuItemId: id },
+    });
+
+    if (orderItemsCount > 0) {
+      // Deactivate instead of hard delete to preserve financial reports integrity
+      await prisma.menuItem.update({
+        where: { id },
+        data: { active: false },
+      });
+      revalidatePath("/dashboard/menu");
+      revalidatePath("/pos");
+      return {
+        success: true,
+        message: "الصنف مرتبط بفواتير سابقة، تم إيقافه وتعطيل ظهوره في الكاشير بنجاح للحفاظ على دقة الحسابات.",
+      };
+    }
+
+    // Delete recipe associations first
+    await prisma.recipeItem.deleteMany({
+      where: { menuItemId: id },
+    });
+
     await prisma.menuItem.delete({
       where: { id },
     });
+
     revalidatePath("/dashboard/menu");
     revalidatePath("/pos");
     return { success: true };
   } catch (error: any) {
     console.error("Error deleting menu item:", error);
-    return { error: "فشل حذف الصنف" };
+    return { error: error.message || "فشل حذف الصنف" };
   }
 }
 

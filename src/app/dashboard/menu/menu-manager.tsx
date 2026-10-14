@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { UnitType } from "@prisma/client";
 import {
   createCategory,
+  updateCategory,
   deleteCategory,
   createMenuItem,
   updateMenuItem,
@@ -72,6 +73,9 @@ export default function MenuManager({
 
   // Modals
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [showManageCategoriesModal, setShowManageCategoriesModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<CategoryItem | null>(null);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItemData | null>(null);
   const [recipeModalItem, setRecipeModalItem] = useState<MenuItemData | null>(null);
@@ -97,17 +101,44 @@ export default function MenuManager({
   const handleDeleteItem = (id: string, name: string) => {
     if (confirm(`هل أنت متأكد من حذف الصنف: ${name}؟`)) {
       startTransition(async () => {
-        await deleteMenuItem(id);
+        const res = await deleteMenuItem(id);
+        if (res?.message) {
+          alert(res.message);
+        } else if (res?.error) {
+          alert(res.error);
+        }
       });
     }
   };
 
-  const handleDeleteCategory = (id: string, name: string) => {
-    if (confirm(`هل أنت متأكد من حذف القسم: ${name}؟ سيتم حذف جميع الأصناف التابعة له!`)) {
-      startTransition(async () => {
-        await deleteCategory(id);
-      });
-    }
+  const handleUpdateCategorySubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    startTransition(async () => {
+      const res = await updateCategory(formData);
+      if (res?.error) {
+        alert(res.error);
+      } else {
+        setEditingCategory(null);
+      }
+    });
+  };
+
+  const handleDeleteCategoryConfirm = async () => {
+    if (!categoryToDelete) return;
+    startTransition(async () => {
+      const res = await deleteCategory(categoryToDelete.id);
+      if (res?.error) {
+        alert(res.error);
+      } else {
+        if (selectedCategory === categoryToDelete.id) {
+          setSelectedCategory("ALL");
+        }
+        setCategoryToDelete(null);
+      }
+    });
   };
 
   const handleAddCategorySubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -236,6 +267,14 @@ export default function MenuManager({
 
         <div className="flex items-center gap-2 shrink-0">
           <button
+            onClick={() => setShowManageCategoriesModal(true)}
+            className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300/80 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-1.5 shadow-sm"
+            title="إدارة وتعديل وحذف كافة الأقسام"
+          >
+            <span>⚙️</span>
+            <span>إدارة الأقسام</span>
+          </button>
+          <button
             onClick={() => setShowAddCategoryModal(true)}
             className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition"
           >
@@ -252,6 +291,64 @@ export default function MenuManager({
           </button>
         </div>
       </div>
+
+      {/* Selected Category Action Banner */}
+      {selectedCategory !== "ALL" && (() => {
+        const activeCat = initialCategories.find((c) => c.id === selectedCategory);
+        if (!activeCat) return null;
+        return (
+          <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100/50 border border-amber-300/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-fade-in">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-xl font-black shadow-md shrink-0">
+                📁
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">
+                    قسم: {activeCat.nameAr}
+                  </h3>
+                  {activeCat.name && (
+                    <span className="text-xs text-slate-500 font-mono bg-white/70 px-2 py-0.5 rounded-md border border-slate-200">
+                      {activeCat.name}
+                    </span>
+                  )}
+                  <span className="text-xs bg-amber-200 text-amber-950 font-black px-2.5 py-0.5 rounded-full border border-amber-300">
+                    {activeCat._count.items} أصناف مدرجة
+                  </span>
+                </div>
+                {activeCat.description ? (
+                  <p className="text-xs text-slate-600 mt-1 max-w-xl leading-relaxed">
+                    {activeCat.description}
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-400 mt-1 italic">
+                    لا يوجد وصف لهذا القسم حتى الآن.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-auto justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-amber-200">
+              <button
+                type="button"
+                onClick={() => setEditingCategory(activeCat)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-amber-950 bg-white hover:bg-amber-100 border border-amber-300 transition flex items-center gap-1.5 shadow-sm"
+              >
+                <span>✏️</span>
+                <span>تعديل هذا القسم</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCategoryToDelete(activeCat)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 transition flex items-center gap-1.5 shadow-sm"
+              >
+                <span>🗑️</span>
+                <span>حذف هذا القسم بالكامل</span>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Menu Items Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -768,6 +865,269 @@ export default function MenuManager({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Category Modal (تعديل بيانات القسم) */}
+      {editingCategory && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl text-right">
+            <div className="flex items-center justify-between pb-3 border-b mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-lg font-bold">
+                  ✏️
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800">
+                    تعديل القسم: {editingCategory.nameAr}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    تعديل اسم القسم، ترتيبه في المنيو والوصف
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCategory(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateCategorySubmit} className="space-y-4">
+              <input type="hidden" name="id" value={editingCategory.id} />
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  اسم القسم بالعربية *
+                </label>
+                <input
+                  name="nameAr"
+                  defaultValue={editingCategory.nameAr}
+                  required
+                  placeholder="مثال: المشويات البدوي"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 outline-none font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  الاسم بالإنجليزية
+                </label>
+                <input
+                  name="name"
+                  defaultValue={editingCategory.name || ""}
+                  placeholder="Bedouin Grill"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  الترتيب في القائمة
+                </label>
+                <input
+                  name="order"
+                  type="number"
+                  defaultValue={editingCategory.order || 0}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  وصف القسم
+                </label>
+                <textarea
+                  name="description"
+                  rows={2}
+                  defaultValue={editingCategory.description || ""}
+                  placeholder="وصف مختصر لمحتويات القسم..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setEditingCategory(null)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 transition shadow-md disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <span>{isPending ? "جاري الحفظ..." : "حفظ التعديلات"}</span>
+                  <span>✓</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Category Confirmation Modal (تأكيد حذف القسم بالكامل) */}
+      {categoryToDelete && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl text-right">
+            <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-2xl mx-auto mb-4">
+              🗑️
+            </div>
+            <h3 className="text-lg font-black text-slate-900 text-center mb-2">
+              حذف قسم: {categoryToDelete.nameAr}
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed text-center mb-4">
+              هل أنت متأكد من حذف هذا القسم بالكامل؟ يحتوي القسم حالياً على{" "}
+              <strong className="text-rose-600 font-bold">{categoryToDelete._count.items}</strong> صنف.
+            </p>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 mb-5 text-right">
+              <p className="text-[11px] text-amber-900 leading-relaxed">
+                🛡️ <strong>حماية البيانات:</strong> الأصناف التي لها سجل مبيعات سابق ستُنقل تلقائياً لقسم الأرشيف للحفاظ على الحسابات والفواتير السابقة، بينما سيتم حذف القسم نهائياً من المنيو.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCategoryToDelete(null)}
+                className="w-1/2 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
+              >
+                تراجع وإلغاء
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={handleDeleteCategoryConfirm}
+                className="w-1/2 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition shadow-md shadow-rose-600/20 disabled:opacity-50"
+              >
+                {isPending ? "جاري الحذف..." : "نعم، حذف القسم الآن"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage All Categories Modal (نافذة إدارة وتعديل وحذف كافة الأقسام) */}
+      {showManageCategoriesModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl max-h-[85vh] flex flex-col text-right">
+            <div className="flex items-center justify-between pb-3 border-b mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-lg font-bold">
+                  ⚙️
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    إدارة أقسام المنيو
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    تعديل أسماء الأقسام، ترتيبها، أو حذف أي قسم غير مطلوب
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowManageCategoriesModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 space-y-2.5 pr-1">
+              {initialCategories.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  لا توجد أقسام مسجلة حالياً
+                </div>
+              ) : (
+                initialCategories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-amber-300 transition flex items-center justify-between gap-3 shadow-xs"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-800 flex items-center justify-center font-black text-sm">
+                        📁
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-black text-slate-800">
+                            {cat.nameAr}
+                          </h4>
+                          {cat.name && (
+                            <span className="text-xs text-slate-400 font-mono">
+                              ({cat.name})
+                            </span>
+                          )}
+                          <span className="text-[11px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">
+                            {cat._count.items} صنف
+                          </span>
+                        </div>
+                        {cat.description && (
+                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                            {cat.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCategory(cat);
+                          setShowManageCategoriesModal(false);
+                        }}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 transition flex items-center gap-1"
+                        title="تعديل هذا القسم"
+                      >
+                        <span>✏️</span>
+                        <span>تعديل</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategoryToDelete(cat);
+                          setShowManageCategoriesModal(false);
+                        }}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-100 hover:bg-rose-200 transition flex items-center gap-1"
+                        title="حذف هذا القسم"
+                      >
+                        <span>🗑️</span>
+                        <span>حذف</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-4 border-t mt-4 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowManageCategoriesModal(false);
+                  setShowAddCategoryModal(true);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 transition flex items-center gap-1.5"
+              >
+                <span>+</span>
+                <span>إضافة قسم جديد للمنيو</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowManageCategoriesModal(false)}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
+              >
+                إغلاق
+              </button>
+            </div>
           </div>
         </div>
       )}
