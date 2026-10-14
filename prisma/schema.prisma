@@ -16,6 +16,9 @@ enum Role {
 enum EquipmentType {
   KITCHEN
   BARISTA
+  SHISHA
+  HALL
+  BATHROOM
 }
 
 enum EquipmentStatus {

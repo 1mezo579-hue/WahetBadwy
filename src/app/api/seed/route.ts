@@ -135,6 +135,9 @@ export async function GET() {
     }
 
     const alterStatements = [
+      `ALTER TYPE "EquipmentType" ADD VALUE IF NOT EXISTS 'SHISHA';`,
+      `ALTER TYPE "EquipmentType" ADD VALUE IF NOT EXISTS 'HALL';`,
+      `ALTER TYPE "EquipmentType" ADD VALUE IF NOT EXISTS 'BATHROOM';`,
       `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "shift_id" TEXT REFERENCES "shifts"("id") ON UPDATE CASCADE;`,
       `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "order_type" "OrderType" NOT NULL DEFAULT 'DINE_IN';`,
       `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "customer_id" TEXT REFERENCES "customers"("id") ON UPDATE CASCADE;`,
@@ -305,7 +308,7 @@ export async function GET() {
       },
     });
 
-    // 3. Seed Equipment
+    // 3. Seed Equipment (Kitchen, Barista, Shisha, Hall, Bathroom)
     const equipmentData = [
       {
         name: "فرن مندي وحفرة تسوية برميلية",
@@ -334,6 +337,93 @@ export async function GET() {
         status: EquipmentStatus.OPERATIONAL,
         location: "ركن الباريستا والمشروبات",
         notes: "معايرة درجة الطحن صباح كل وردية",
+      },
+      // ركن الشيشة
+      {
+        name: "ولاعة فحم وهيتر كهربائي سريع (Charcoal Burner)",
+        type: EquipmentType.SHISHA,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "ركن الشيشة والخدمة الخارجية",
+        notes: "فحص الأسلاك وتغيير الشمعات الحرارية دورياً",
+      },
+      {
+        name: "منقل فحم نحاسي بدوي مزخرف وملاقط أمان",
+        type: EquipmentType.SHISHA,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "ركن الشيشة",
+        notes: "تنظيف الرماد يومياً بعد نهاية الوردية",
+      },
+      {
+        name: "طاولة تحضير ورص وتعبئة المعسل استانلس",
+        type: EquipmentType.SHISHA,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "ركن الشيشة الداخلي",
+        notes: "تجهيز خراطيم طبية ومستلزمات ذات استخدام واحد",
+      },
+      {
+        name: "جهاز تعقيم فواحات وخراطيم الشيشة بالبخار",
+        type: EquipmentType.SHISHA,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "ركن الشيشة",
+        notes: "تعقيم فوري بعد كل استخدام",
+      },
+      // ركن الصالة
+      {
+        name: "شاشات عرض ذكية 65 بوصة للمباريات (Samsung 4K)",
+        type: EquipmentType.HALL,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "الصالة الرئيسية وطاولات الـ VIP",
+        notes: "مربوطة بريسيفرات البث الرياضي والصوتي",
+      },
+      {
+        name: "نظام صوتي ومكبرات ساوند سيستم محيطية (Yamaha)",
+        type: EquipmentType.HALL,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "توزيع في كامل الصالة والباكيات",
+        notes: "صوت نقي متوازن مع لوحة تحكم مركزية",
+      },
+      {
+        name: "تكييفات كونسيلد وتبريد وتدفئة 5 حصان للصالة",
+        type: EquipmentType.HALL,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "صالة الطعام المغلقة",
+        notes: "تنظيف الفلاتر أسبوعياً لضمان برودة ممتازة",
+      },
+      {
+        name: "مراوح رذاذ مائية للترطيب وتلطيف الجو",
+        type: EquipmentType.HALL,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "الصالة المفتوحة والباكيات العائلية",
+        notes: "فحص طلمبات المياه وفتحات الرذاذ",
+      },
+      // معدات الحمام
+      {
+        name: "مجفف أيدي أوتوماتيكي هوائي سريع (High-Speed Dryer)",
+        type: EquipmentType.BATHROOM,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "دورات مياه الرجال والسيدات",
+        notes: "حساس سنسور سريع عالي الكفاءة",
+      },
+      {
+        name: "موزعات صابون رغوي إلكترونية سنسور",
+        type: EquipmentType.BATHROOM,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "أحواض مغاسل دورات المياه",
+        notes: "تعبئة الصابون المعقم وفحص البطاريات أسبوعياً",
+      },
+      {
+        name: "شفاطات تهوية توربينية طاردة للروائح",
+        type: EquipmentType.BATHROOM,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "دورات المياه الرئيسية",
+        notes: "تعمل باستمرار طوال فترة فتح المطعم",
+      },
+      {
+        name: "سخان مياه فوري كهربائي أوتوماتيك",
+        type: EquipmentType.BATHROOM,
+        status: EquipmentStatus.OPERATIONAL,
+        location: "شبكة مياه دورات المياه والمغاسل",
+        notes: "ضبط درجة الحرارة على المستوى الآمن",
       },
     ];
 

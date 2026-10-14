@@ -46,6 +46,30 @@ export async function createEquipment(formData: FormData) {
   }
 }
 
+export async function updateEquipment(
+  id: string,
+  data: {
+    name?: string;
+    type?: EquipmentType;
+    status?: EquipmentStatus;
+    location?: string | null;
+    serialNumber?: string | null;
+    notes?: string | null;
+  }
+) {
+  try {
+    await prisma.equipment.update({
+      where: { id },
+      data,
+    });
+    revalidatePath("/dashboard/equipment");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating equipment:", error);
+    return { error: error.message || "فشل تعديل بيانات المعدة" };
+  }
+}
+
 export async function updateEquipmentStatus(id: string, status: EquipmentStatus) {
   try {
     await prisma.equipment.update({
