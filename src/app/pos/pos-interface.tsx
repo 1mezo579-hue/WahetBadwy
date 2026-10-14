@@ -52,6 +52,7 @@ interface PosMenuItem {
   nameAr: string;
   price: number;
   categoryId: string;
+  description?: string | null;
 }
 
 interface CartItem {
@@ -1048,16 +1049,26 @@ export default function PosInterface({
                   <button
                     key={item.id}
                     onClick={() => handleAddToCart(item)}
-                    className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-400 active:scale-95 transition text-right flex flex-col justify-between h-28 group"
+                    className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-400 active:scale-95 transition text-right flex flex-col justify-between min-h-[7.5rem] group relative overflow-hidden"
                   >
-                    <h4 className="font-extrabold text-slate-800 text-sm group-hover:text-primary-800 transition line-clamp-2">
-                      {item.nameAr}
-                    </h4>
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
-                      <span className="font-mono font-black text-amber-700 text-base">
+                    <div>
+                      <h4 className="font-extrabold text-slate-800 text-xs sm:text-sm group-hover:text-primary-800 transition line-clamp-2">
+                        {item.nameAr}
+                      </h4>
+                      {item.description && (
+                        <p
+                          className="text-[10px] text-slate-500 line-clamp-2 mt-1 leading-snug font-normal bg-amber-50/60 p-1 rounded-md border border-amber-200/60"
+                          title={item.description}
+                        >
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-100">
+                      <span className="font-mono font-black text-amber-700 text-sm sm:text-base">
                         {item.price.toFixed(2)} ج.م
                       </span>
-                      <span className="w-7 h-7 rounded-lg bg-primary-50 group-hover:bg-primary-700 group-hover:text-white text-primary-800 font-bold flex items-center justify-center transition">
+                      <span className="w-7 h-7 rounded-lg bg-primary-50 group-hover:bg-primary-700 group-hover:text-white text-primary-800 font-bold flex items-center justify-center transition text-sm">
                         +
                       </span>
                     </div>

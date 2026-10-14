@@ -6,6 +6,7 @@ import {
   createCategory,
   deleteCategory,
   createMenuItem,
+  updateMenuItem,
   toggleMenuItemStatus,
   deleteMenuItem,
   addRecipeItem,
@@ -72,6 +73,7 @@ export default function MenuManager({
   // Modals
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<MenuItemData | null>(null);
   const [recipeModalItem, setRecipeModalItem] = useState<MenuItemData | null>(null);
 
   // Recipe Builder Form State
@@ -138,6 +140,22 @@ export default function MenuManager({
       } else {
         form.reset();
         setShowAddItemModal(false);
+      }
+    });
+  };
+
+  const handleEditItemSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErrorMessage("");
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    startTransition(async () => {
+      const res = await updateMenuItem(formData);
+      if (res?.error) {
+        alert(res.error);
+      } else {
+        setEditingItem(null);
       }
     });
   };
@@ -267,6 +285,16 @@ export default function MenuManager({
                     >
                       {item.active ? "نشط" : "معطل"}
                     </button>
+                    {/* Edit Item Button */}
+                    <button
+                      onClick={() => setEditingItem(item)}
+                      className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                      title="تعديل الصنف والوصف"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
                     <button
                       onClick={() => handleDeleteItem(item.id, item.nameAr)}
                       className="p-1 text-slate-300 hover:text-rose-500 transition"
@@ -284,10 +312,16 @@ export default function MenuManager({
                   <p className="text-xs text-slate-400 font-medium mb-2">{item.name}</p>
                 )}
 
-                {item.description && (
-                  <p className="text-xs text-slate-500 mb-4 line-clamp-2 leading-relaxed">
-                    {item.description}
-                  </p>
+                {/* Description & Ingredients Box */}
+                {item.description ? (
+                  <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 mb-3 text-xs text-amber-950">
+                    <span className="font-bold text-amber-900 text-[10px] block mb-0.5">المكونات والمحتويات:</span>
+                    <p className="leading-relaxed line-clamp-3 font-normal">{item.description}</p>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-2 mb-3 text-center">
+                    <span className="text-[11px] text-slate-400">لا يوجد وصف للمكونات (اضغط ✏️ للتعديل)</span>
+                  </div>
                 )}
 
                 {/* Pricing & Cost Badge */}
@@ -583,6 +617,154 @@ export default function MenuManager({
                   className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-primary-700 hover:bg-primary-800 disabled:opacity-50"
                 >
                   {isPending ? "جاري الحفظ..." : "إضافة الصنف"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Menu Item Modal (تعديل الصنف والوصف والمكونات) */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto text-right">
+            <div className="flex items-center justify-between pb-3 border-b mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-lg font-bold">
+                  ✏️
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800">
+                    تعديل صنف: {editingItem.nameAr}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    تعديل الاسم، السعر، التصنيف، ووصف المكونات بالتفصيل
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleEditItemSubmit} className="space-y-4">
+              <input type="hidden" name="id" value={editingItem.id} />
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  القسم / التصنيف *
+                </label>
+                <select
+                  name="categoryId"
+                  defaultValue={editingItem.categoryId}
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white font-medium"
+                >
+                  {initialCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nameAr}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    الاسم بالعربية *
+                  </label>
+                  <input
+                    name="nameAr"
+                    defaultValue={editingItem.nameAr}
+                    required
+                    placeholder="مثال: كفتة مشوية"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 outline-none font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    الاسم بالإنجليزية
+                  </label>
+                  <input
+                    name="name"
+                    defaultValue={editingItem.name || ""}
+                    placeholder="Grilled Kofta"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    سعر البيع (ج.م) *
+                  </label>
+                  <input
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    defaultValue={editingItem.price}
+                    required
+                    placeholder="250.00"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 outline-none font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    حالة الصنف
+                  </label>
+                  <select
+                    name="active"
+                    defaultValue={editingItem.active ? "true" : "false"}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold"
+                  >
+                    <option value="true">🟢 متاح ونشط في المنيو</option>
+                    <option value="false">🔴 غير متاح حالياً / معطل</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* خانة الديسكربشن والمكونات */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-black text-slate-800">
+                    وصف ومحتويات الصنف (مكونات الصينية أو الوجبة أو المشروب)
+                  </label>
+                  <span className="text-[11px] text-amber-800 font-bold bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300">
+                    بيتكون من إيه
+                  </span>
+                </div>
+                <textarea
+                  name="description"
+                  rows={3}
+                  defaultValue={editingItem.description || ""}
+                  placeholder="اكتب هنا تفاصيل مكونات الوجبة أو المشروب أو الصينية بالتفصيل (مثال: نص كفتة مشوية + ربع طرب + أرز بسمتي بالمكسرات + سلطات خضراء وطحينة وعيش سخن)..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 outline-none leading-relaxed"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  💡 تظهر هذه المكونات لطاقم الكاشير داخل شاشة الـ POS لمساعدة فريق العمل في الإجابة على استفسارات الزبائن.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 transition shadow-md disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <span>{isPending ? "جاري الحفظ..." : "حفظ التعديلات"}</span>
+                  <span>✓</span>
                 </button>
               </div>
             </form>

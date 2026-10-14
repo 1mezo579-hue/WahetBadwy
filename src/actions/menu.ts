@@ -107,10 +107,46 @@ export async function createMenuItem(formData: FormData) {
     });
 
     revalidatePath("/dashboard/menu");
+    revalidatePath("/pos");
     return { success: true };
   } catch (error: any) {
     console.error("Error creating menu item:", error);
     return { error: error.message || "حدث خطأ أثناء إضافة الصنف" };
+  }
+}
+
+export async function updateMenuItem(formData: FormData) {
+  try {
+    const id = formData.get("id") as string;
+    const name = formData.get("name") as string;
+    const nameAr = formData.get("nameAr") as string;
+    const description = formData.get("description") as string;
+    const priceStr = formData.get("price") as string;
+    const categoryId = formData.get("categoryId") as string;
+    const activeVal = formData.get("active");
+
+    if (!id || !nameAr || !priceStr || !categoryId) {
+      return { error: "يرجى ملء الاسم العربي والسعر والتصنيف" };
+    }
+
+    await prisma.menuItem.update({
+      where: { id },
+      data: {
+        name: name || nameAr,
+        nameAr,
+        description: description ? description.trim() : null,
+        price: parseFloat(priceStr),
+        categoryId,
+        active: activeVal === "true" || activeVal === "on",
+      },
+    });
+
+    revalidatePath("/dashboard/menu");
+    revalidatePath("/pos");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating menu item:", error);
+    return { error: error.message || "حدث خطأ أثناء تعديل الصنف" };
   }
 }
 
@@ -121,6 +157,7 @@ export async function toggleMenuItemStatus(id: string, active: boolean) {
       data: { active },
     });
     revalidatePath("/dashboard/menu");
+    revalidatePath("/pos");
     return { success: true };
   } catch (error: any) {
     console.error("Error toggling menu item:", error);
@@ -134,6 +171,7 @@ export async function deleteMenuItem(id: string) {
       where: { id },
     });
     revalidatePath("/dashboard/menu");
+    revalidatePath("/pos");
     return { success: true };
   } catch (error: any) {
     console.error("Error deleting menu item:", error);
