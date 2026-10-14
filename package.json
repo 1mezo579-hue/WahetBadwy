@@ -18,6 +18,8 @@
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
     "@prisma/client": "^5.22.0",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.45.6",
     "bcryptjs": "^2.4.3",
     "next": "14.2.15",
     "next-auth": "^4.24.8",
