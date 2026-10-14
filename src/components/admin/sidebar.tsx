@@ -13,11 +13,18 @@ interface SidebarProps {
   };
 }
 
+interface NavItem {
+  title: string;
+  href: string;
+  icon: React.ReactNode;
+  badge?: string;
+}
+
 export default function AdminSidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
-  const navItems = [
+  const navItems: NavItem[] = [
     {
       title: "شاشة الكاشير (POS)",
       href: "/pos",
