@@ -48,6 +48,11 @@ enum UnitType {
   PORTION
 }
 
+enum OrderStatus {
+  OPEN
+  PAID
+}
+
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
@@ -55,6 +60,7 @@ model User {
   name      String
   role      Role     @default(CASHIER)
   active    Boolean  @default(true)
+  orders    Order[]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -85,6 +91,7 @@ model MenuItem {
   active      Boolean      @default(true)
   imageUrl    String?      @map("image_url")
   recipeItems RecipeItem[]
+  orderItems  OrderItem[]
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
@@ -142,8 +149,45 @@ model DiningTable {
   type      TableType   @default(REGULAR)
   status    TableStatus @default(AVAILABLE)
   capacity  Int         @default(4)
+  orders    Order[]
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
 
   @@map("dining_tables")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     Int         @default(autoincrement()) @map("order_number")
+  tableId         String      @map("table_id")
+  table           DiningTable @relation(fields: [tableId], references: [id])
+  userId          String?     @map("user_id")
+  user            User?       @relation(fields: [userId], references: [id])
+  status          OrderStatus @default(OPEN)
+  isComplimentary Boolean     @default(false) @map("is_complimentary")
+  subtotal        Float       @default(0)
+  discount        Float       @default(0)
+  totalAmount     Float       @default(0) @map("total_amount")
+  notes           String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String   @map("order_id")
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String   @map("menu_item_id")
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity   Int      @default(1)
+  unitPrice  Float    @map("unit_price")
+  totalPrice Float    @map("total_price")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("order_items")
 }
