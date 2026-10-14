@@ -10,6 +10,7 @@ import { serialPrinter, SerialPrinterStatus } from "@/utils/printer/web-serial";
 import {
   routeAndPrintPrepOrder,
   executePaymentAndOpenDrawer,
+  printCustomerCheckOnly,
   RoutedTicket,
 } from "@/utils/printer/order-router";
 
@@ -108,6 +109,7 @@ export default function PosInterface({
   const [quickPhone, setQuickPhone] = useState<string>("");
   const [quickAddress, setQuickAddress] = useState<string>("");
   const [quickNotes, setQuickNotes] = useState<string>("");
+  const [isCheckPrinted, setIsCheckPrinted] = useState<boolean>(false);
 
   // Hardware Printer & Cash Drawer State (Sprint 4)
   const [printerStatus, setPrinterStatus] = useState<SerialPrinterStatus>(
@@ -340,6 +342,7 @@ export default function PosInterface({
       setCart([]);
     }
 
+    setIsCheckPrinted(false);
     setActiveTab("ORDER");
   };
 
@@ -456,7 +459,7 @@ export default function PosInterface({
       // Display multi-ticket preparation modal (drawerKicked: false)
       setRoutedModal({
         title: "تم حفظ وتوجيه بونات التحضير بنجاح",
-        subtitle: `${selectedTable.name} • (تم توجيه ${routeRes.tickets.length} بونات طباعة - درج النقدية مغلق)`,
+        subtitle: `${selectedTable.name} • (تم توجيه ${routeRes.tickets.length} بونات للأقسام - درج النقدية مغلق)`,
         isPayment: false,
         drawerKicked: false,
         tickets: routeRes.tickets,
@@ -485,7 +488,83 @@ export default function PosInterface({
     });
   };
 
-  // SPRINT 4: Action B - Collect Payment (تحصيل وفتح درج النقدية)
+  // تقفيل الشيك: طباعة فاتورة العميل لطاولة الصالة (دون فتح الدرج)، وتحويل الزر لفتح الدرج بالتحصيل
+  const handlePrintCustomerCheck = () => {
+    if (!selectedTable) return;
+    if (cart.length === 0 && !activeOrderId) {
+      alert("لا توجد أصناف في الطلب لتقفيل الشيك!");
+      return;
+    }
+
+    startTransition(async () => {
+      let orderNum = activeOrderId ? parseInt(activeOrderId.slice(-4)) : undefined;
+
+      // إذا لم يكن الطلب محفوظاً بعد في الداتابيز، يتم حفظه أولاً
+      if (!activeOrderId && cart.length > 0) {
+        const res = await sendOrderToPrep({
+          orderId: activeOrderId,
+          tableId: selectedTable.id,
+          orderType,
+          customerId: selectedCustomerId || undefined,
+          customerName: customerName || undefined,
+          customerPhone: customerPhone || undefined,
+          deliveryAddress: deliveryAddress || undefined,
+          deliveryFee: deliveryFeeNumber,
+          items: cart,
+          notes: orderNotes,
+        });
+
+        if (res.order) {
+          setActiveOrderId(res.order.id);
+          orderNum = res.order.orderNumber;
+          setTables((prev) =>
+            prev.map((t) =>
+              t.id === selectedTable.id
+                ? {
+                    ...t,
+                    status: TableStatus.OCCUPIED,
+                    orders: [res.order as any],
+                  }
+                : t
+            )
+          );
+        }
+      }
+
+      // طباعة فاتورة / شيك العميل عبر الطابعة الحرارية (درج النقدية مغلق)
+      const checkRes = await printCustomerCheckOnly({
+        tableName: selectedTable.name,
+        orderNumber: orderNum,
+        orderType,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
+        deliveryAddress: deliveryAddress || undefined,
+        deliveryFee: deliveryFeeNumber,
+        items: cart,
+        subtotal,
+        discount,
+        totalAmount,
+        isComplimentary,
+        notes: orderNotes,
+        cashierName: userName,
+      });
+
+      // تم تقفيل الشيك -> تفعيل حالة طباعة الشيك ليتحول الزر لفتح الدرج بالتحصيل
+      setIsCheckPrinted(true);
+
+      // عرض معاينة الشيك المطبوع
+      setRoutedModal({
+        title: "🧾 تم تقفيل وطباعة شيك العميل",
+        subtitle: `${selectedTable.name} • تم إرسال الشيك للطابعة (جاهز للتحصيل وفتح الدرج)`,
+        isPayment: false,
+        drawerKicked: false,
+        tickets: [checkRes.checkTicket],
+        activeTicketIndex: 0,
+      });
+    });
+  };
+
+  // SPRINT 4 & REQ: Collect Payment (فتح درج النقدية والتحصيل بدون أي رسالة تأكيد)
   const handleCollectPayment = () => {
     if (!selectedTable) return;
     if (cart.length === 0 && !activeOrderId) {
@@ -493,16 +572,7 @@ export default function PosInterface({
       return;
     }
 
-    const confirmMsg = isComplimentary
-      ? `تأكيد إغلاق طلب الضيافة لطاولة ${selectedTable.name} (المبلغ: 0 ج.م)؟`
-      : orderType === "DELIVERY"
-      ? `تأكيد تحصيل طلب الدليفري بمبلغ ${totalAmount.toFixed(2)} ج.م (شامل رسوم التوصيل ${deliveryFeeNumber} ج.م) وفتح درج النقدية؟`
-      : `تأكيد تحصيل مبلغ ${totalAmount.toFixed(
-          2
-        )} ج.م لطاولة ${selectedTable.name} وفتح درج النقدية وإخلاء الطاولة؟`;
-
-    if (!confirm(confirmMsg)) return;
-
+    // تنبيه المستخدم تم إلغاؤه تماماً بناء على طلب العميل (بدون رسالة تأكيد)
     startTransition(async () => {
       const res = await collectOrderPayment({
         orderId: activeOrderId,
@@ -559,10 +629,11 @@ export default function PosInterface({
         )
       );
 
-      // Reset cart and return to map
+      // Reset cart and check state and return to map
       setCart([]);
       setActiveOrderId(undefined);
       setSelectedTable(null);
+      setIsCheckPrinted(false);
       setActiveTab("MAP");
 
       // Refresh shift metrics
@@ -1321,32 +1392,107 @@ export default function PosInterface({
                   </div>
                 </div>
 
-                {/* SPRINT 4 & 5 WORKFLOW: Action A vs Action B */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  {/* Action A: Send to Prep (حفظ وتوجيه بونات التحضير وخصم المخزون) */}
-                  <button
-                    disabled={isPending || cart.length === 0}
-                    onClick={handleSendToPrep}
-                    className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition shadow-sm flex flex-col items-center justify-center gap-0.5"
-                  >
-                    <span>🖨️ إرسال للتحضير (طباعة)</span>
-                    <span className="text-[10px] text-indigo-200 font-normal">
-                      مطبخ / باريستا / شيشة (خصم المخزون)
-                    </span>
-                  </button>
+                {/* DINE-IN VS TAKEAWAY/DELIVERY WORKFLOW */}
+                {orderType === "DINE_IN" ? (
+                  <div className="space-y-2 pt-1">
+                    {!isCheckPrinted ? (
+                      /* المرحلة الأولى: قبل تقفيل الشيك (إرسال للتحضير أو تقفيل الشيك) */
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* زر إرسال للتحضير: يوجه فقط للمطبخ والباريستا والشيشة ولا يطبع فاتورة العميل */}
+                        <button
+                          disabled={isPending || cart.length === 0}
+                          onClick={handleSendToPrep}
+                          className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition shadow-sm flex flex-col items-center justify-center gap-0.5"
+                        >
+                          <span className="flex items-center gap-1">
+                            <span>🖨️</span>
+                            <span>إرسال للتحضير</span>
+                          </span>
+                          <span className="text-[10px] text-indigo-200 font-normal">
+                            مطبخ / باريستا / شيشة
+                          </span>
+                        </button>
 
-                  {/* Action B: Collect Payment (تحصيل وفتح درج النقدية) */}
-                  <button
-                    disabled={isPending || (cart.length === 0 && !activeOrderId)}
-                    onClick={handleCollectPayment}
-                    className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition shadow-sm flex flex-col items-center justify-center gap-0.5"
-                  >
-                    <span>💳 تحصيل وفتح الدرج 🚪</span>
-                    <span className="text-[10px] text-emerald-200 font-normal">
-                      فتح الدرج (ESC/POS) + إيصال سداد
-                    </span>
-                  </button>
-                </div>
+                        {/* زر تقفيل الشيك: يطبع فاتورة العميل فقط بدون فتح الدرج */}
+                        <button
+                          disabled={isPending || (cart.length === 0 && !activeOrderId)}
+                          onClick={handlePrintCustomerCheck}
+                          className="py-3 px-2 rounded-xl text-xs font-bold text-amber-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 active:opacity-90 disabled:opacity-50 transition shadow-md flex flex-col items-center justify-center gap-0.5 border border-amber-600/30"
+                        >
+                          <span className="flex items-center gap-1">
+                            <span>🧾</span>
+                            <span>تقفيل الشيك (طباعة)</span>
+                          </span>
+                          <span className="text-[10px] text-amber-900 font-bold">
+                            طباعة فاتورة العميل
+                          </span>
+                        </button>
+                      </div>
+                    ) : (
+                      /* المرحلة الثانية: بعد طباعة الشيك -> يتحول الزر تلقائياً لفتح الدرج بالتحصيل بدون رسالة تأكيد */
+                      <div className="space-y-1.5 animate-fade-in">
+                        <button
+                          disabled={isPending || (cart.length === 0 && !activeOrderId)}
+                          onClick={handleCollectPayment}
+                          className="w-full py-3.5 px-3 rounded-2xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition shadow-lg ring-4 ring-emerald-500/30 flex items-center justify-between"
+                        >
+                          <span className="text-xl">🚪</span>
+                          <div className="flex flex-col items-center">
+                            <span className="text-sm font-black">
+                              فتح الدرج بالتحصيل ({totalAmount.toFixed(2)} ج.م)
+                            </span>
+                            <span className="text-[10px] text-emerald-100 font-normal">
+                              فتح فوري للدرج (بدون رسالة تأكيد) + إخلاء الطاولة
+                            </span>
+                          </div>
+                          <span className="text-xl">💵</span>
+                        </button>
+
+                        <div className="flex items-center justify-between px-1 pt-0.5">
+                          <button
+                            type="button"
+                            onClick={handlePrintCustomerCheck}
+                            className="text-[11px] text-slate-500 hover:text-slate-800 underline font-semibold flex items-center gap-1"
+                          >
+                            <span>🖨️ إعادة طباعة الفاتورة</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSendToPrep}
+                            className="text-[11px] text-indigo-600 hover:text-indigo-800 underline font-semibold flex items-center gap-1"
+                          >
+                            <span>+ إضافة أصناف جديدة</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* بالنسبة للدليفري والتيك أواي */
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      disabled={isPending || cart.length === 0}
+                      onClick={handleSendToPrep}
+                      className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition shadow-sm flex flex-col items-center justify-center gap-0.5"
+                    >
+                      <span>🖨️ إرسال للتحضير</span>
+                      <span className="text-[10px] text-indigo-200 font-normal">
+                        توجيه للأقسام
+                      </span>
+                    </button>
+
+                    <button
+                      disabled={isPending || (cart.length === 0 && !activeOrderId)}
+                      onClick={handleCollectPayment}
+                      className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition shadow-sm flex flex-col items-center justify-center gap-0.5"
+                    >
+                      <span>💳 تحصيل وفتح الدرج 🚪</span>
+                      <span className="text-[10px] text-emerald-200 font-normal">
+                        فتح فوري للدرج (بدون تأكيد)
+                      </span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1938,10 +2084,24 @@ export default function PosInterface({
             <div className="pt-2 border-t flex items-center gap-2">
               <button
                 onClick={() => setRoutedModal(null)}
-                className="flex-1 py-3 bg-primary-800 hover:bg-primary-900 text-white font-bold rounded-xl text-xs transition shadow"
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition shadow-sm"
               >
-                إغلاق والمتابعة
+                إغلاق المعاينة
               </button>
+
+              {/* إذا كان المعروض شيك العميل: إتاحة زر فتح الدرج والتحصيل الفوري مباشرة */}
+              {routedModal.tickets.some((t) => t.type === "CUSTOMER_CHECK") && (
+                <button
+                  onClick={() => {
+                    setRoutedModal(null);
+                    handleCollectPayment();
+                  }}
+                  className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-1.5 ring-2 ring-emerald-400/40"
+                >
+                  <span>🚪 فتح الدرج والتحصيل فوراً ({totalAmount.toFixed(2)} ج.م)</span>
+                  <span>💵</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

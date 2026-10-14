@@ -99,6 +99,7 @@ export interface RoutePrepOrderInput {
   isComplimentary: boolean;
   notes?: string;
   cashierName?: string;
+  includeCustomerCheck?: boolean;
 }
 
 /**
@@ -207,7 +208,72 @@ export async function routeAndPrintPrepOrder(
     });
   }
 
-  // 4. Customer Check (Always generated for billing check)
+  // 4. Customer Check:
+  // For DINE_IN (الصالة), customer check must NOT be printed during initial prep!
+  // It only prints upon "تقفيل الشيك" (closing the check).
+  const shouldIncludeCheck =
+    input.includeCustomerCheck ?? (input.orderType !== "DINE_IN");
+
+  if (shouldIncludeCheck) {
+    const customerCheckBytes = buildCustomerCheck({
+      tableName: input.tableName,
+      orderNumber: input.orderNumber,
+      orderType: input.orderType,
+      customerName: input.customerName,
+      customerPhone: input.customerPhone,
+      deliveryAddress: input.deliveryAddress,
+      deliveryFee: input.deliveryFee,
+      items: input.items,
+      subtotal: input.subtotal,
+      discount: input.discount,
+      totalAmount: input.totalAmount,
+      isComplimentary: input.isComplimentary,
+      notes: input.notes,
+      timestamp,
+      cashierName: input.cashierName,
+    });
+
+    tickets.push({
+      id: "ticket-customer-check",
+      type: "CUSTOMER_CHECK",
+      title: "شيك العميل المبدئي (Customer Check)",
+      badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-300",
+      tableName: input.tableName,
+      orderNumber: input.orderNumber,
+      items: input.items,
+      rawBytes: customerCheckBytes,
+      notes: input.notes,
+      timestamp,
+    });
+  }
+
+  // Send raw bytes to hardware printer via Web Serial (NO cash drawer kick!)
+  const printResults: Array<{ title: string; success: boolean }> = [];
+  for (const ticket of tickets) {
+    const res = await serialPrinter.sendRaw(ticket.rawBytes);
+    printResults.push({
+      title: ticket.title,
+      success: res.success,
+    });
+  }
+
+  return {
+    success: true,
+    tickets,
+    printResults,
+  };
+}
+
+/**
+ * تقفيل الشيك لطاولة الصالة: طباعة شيك / فاتورة العميل فقط (بدون فتح الدرج)
+ */
+export async function printCustomerCheckOnly(
+  input: RoutePrepOrderInput
+): Promise<{
+  success: boolean;
+  checkTicket: RoutedTicket;
+}> {
+  const timestamp = new Date();
   const customerCheckBytes = buildCustomerCheck({
     tableName: input.tableName,
     orderNumber: input.orderNumber,
@@ -226,33 +292,25 @@ export async function routeAndPrintPrepOrder(
     cashierName: input.cashierName,
   });
 
-  tickets.push({
+  const checkTicket: RoutedTicket = {
     id: "ticket-customer-check",
     type: "CUSTOMER_CHECK",
-    title: "شيك العميل المبدئي (Customer Check)",
-    badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-300",
+    title: "شيك العميل (Customer Check)",
+    badgeColor: "bg-amber-100 text-amber-800 border-amber-300",
     tableName: input.tableName,
     orderNumber: input.orderNumber,
     items: input.items,
     rawBytes: customerCheckBytes,
     notes: input.notes,
     timestamp,
-  });
+  };
 
-  // Send raw bytes to hardware printer via Web Serial (NO cash drawer kick!)
-  const printResults: Array<{ title: string; success: boolean }> = [];
-  for (const ticket of tickets) {
-    const res = await serialPrinter.sendRaw(ticket.rawBytes);
-    printResults.push({
-      title: ticket.title,
-      success: res.success,
-    });
-  }
+  // Send to serial printer without kicking drawer
+  await serialPrinter.sendRaw(customerCheckBytes);
 
   return {
     success: true,
-    tickets,
-    printResults,
+    checkTicket,
   };
 }
 
