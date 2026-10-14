@@ -73,8 +73,12 @@ export async function GET() {
           "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
       `);
-    } catch (e) {
-      console.warn("customers table creation note:", e);
+    } catch (e: any) {
+      return NextResponse.json({
+        success: false,
+        step: "customers table creation",
+        error: e?.message || String(e),
+      }, { status: 500 });
     }
 
     const alterStatements = [
