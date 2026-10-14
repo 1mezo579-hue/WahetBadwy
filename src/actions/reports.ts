@@ -1,14 +1,15 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { OrderStatus, ShiftStatus, TableType } from "@prisma/client";
+import { OrderStatus, ShiftStatus, TableType, TableStatus } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
 export async function getAdminReportsData() {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [shifts, paidOrders, complimentaryOrders, rawMaterials, categories] =
+    const [shifts, allOrders, complimentaryOrders, rawMaterials, categories] =
       await Promise.all([
         // 1. All Shifts
         prisma.shift.findMany({
@@ -23,13 +24,15 @@ export async function getAdminReportsData() {
           },
         }),
 
-        // 2. All Paid Orders (General Sales)
+        // 2. All Invoices / Orders (Both PAID and OPEN for full accounting log)
         prisma.order.findMany({
-          where: { status: OrderStatus.PAID },
           orderBy: { createdAt: "desc" },
+          take: 300,
           include: {
             table: true,
-            user: { select: { name: true } },
+            customer: true,
+            user: { select: { id: true, name: true, username: true } },
+            shift: { select: { id: true, shiftNumber: true, status: true } },
             items: {
               include: {
                 menuItem: {
@@ -85,7 +88,8 @@ export async function getAdminReportsData() {
         }),
       ]);
 
-    // Calculate Daily Sales (Today)
+    // Filter paid orders for sales calculation
+    const paidOrders = allOrders.filter((o) => o.status === OrderStatus.PAID);
     const todayOrders = paidOrders.filter((o) => new Date(o.createdAt) >= today);
     const todaySales = todayOrders.reduce((sum, o) => sum + o.totalAmount, 0);
     const allTimeSales = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
@@ -116,6 +120,7 @@ export async function getAdminReportsData() {
 
     return {
       shifts,
+      allOrders,
       sales: {
         todaySales,
         todayOrdersCount: todayOrders.length,
@@ -133,6 +138,7 @@ export async function getAdminReportsData() {
     console.error("Error generating admin reports:", error);
     return {
       shifts: [],
+      allOrders: [],
       sales: {
         todaySales: 0,
         todayOrdersCount: 0,
@@ -146,5 +152,91 @@ export async function getAdminReportsData() {
       rawMaterials: [],
       error: error.message,
     };
+  }
+}
+
+/**
+ * Refund / Void / Delete Order (حذف الفاتورة كمرتجع واستعادة المخزون)
+ */
+export async function refundOrDeleteOrder(orderId: string, reason?: string) {
+  try {
+    if (!orderId) return { error: "معرف الطلب غير محدد" };
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        table: true,
+        items: {
+          include: {
+            menuItem: {
+              include: {
+                recipeItems: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) return { error: "الفاتورة غير موجودة" };
+
+    // 1. Return/Restore raw materials to inventory stock (استرجاع المكونات للمخزون)
+    for (const item of order.items) {
+      if (item.menuItem && item.menuItem.recipeItems.length > 0) {
+        for (const recipe of item.menuItem.recipeItems) {
+          const returnQty = recipe.quantity * item.quantity;
+          try {
+            await prisma.rawMaterial.update({
+              where: { id: recipe.rawMaterialId },
+              data: {
+                currentStock: {
+                  increment: returnQty,
+                },
+              },
+            });
+          } catch (stockErr) {
+            console.warn("Could not increment stock for material:", recipe.rawMaterialId, stockErr);
+          }
+        }
+      }
+    }
+
+    // 2. If table was occupied by this order, check if table should be freed
+    if (order.tableId) {
+      const otherOrders = await prisma.order.count({
+        where: {
+          tableId: order.tableId,
+          id: { not: order.id },
+          status: OrderStatus.OPEN,
+        },
+      });
+      if (otherOrders === 0) {
+        try {
+          await prisma.diningTable.update({
+            where: { id: order.tableId },
+            data: { status: TableStatus.AVAILABLE },
+          });
+        } catch (tableErr) {
+          console.warn("Table update error:", tableErr);
+        }
+      }
+    }
+
+    // 3. Delete the order (cascade deletes order_items)
+    await prisma.order.delete({
+      where: { id: orderId },
+    });
+
+    revalidatePath("/dashboard/reports");
+    revalidatePath("/pos");
+    revalidatePath("/dashboard/tables");
+
+    return {
+      success: true,
+      message: `تم حذف الفاتورة رقم #${order.orderNumber} بنجاح كمرتجع واستعادة رصيد المواد الخام في المخزن.`,
+    };
+  } catch (error: any) {
+    console.error("Error refunding/deleting order:", error);
+    return { error: error.message || "فشل حذف الفاتورة واسترجاعها" };
   }
 }

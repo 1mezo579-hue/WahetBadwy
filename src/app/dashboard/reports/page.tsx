@@ -18,6 +18,7 @@ export default async function ReportsPage() {
   return (
     <ReportsView
       shifts={reportsData.shifts}
+      allOrders={reportsData.allOrders}
       sales={reportsData.sales}
       complimentaryOrders={reportsData.complimentaryOrders}
       totalComplimentaryWaived={reportsData.totalComplimentaryWaived}
