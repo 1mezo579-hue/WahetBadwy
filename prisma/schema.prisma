@@ -245,3 +245,44 @@ model OrderItem {
 
   @@map("order_items")
 }
+
+enum AttendanceStatus {
+  PRESENT
+  COMPLETED
+  ABSENT
+}
+
+model Staff {
+  id            String            @id @default(cuid())
+  name          String
+  role          String
+  phone         String?
+  nationalId    String?           @map("national_id")
+  hourlyRate    Float?            @default(0) @map("hourly_rate")
+  monthlySalary Float?            @default(0) @map("monthly_salary")
+  active        Boolean           @default(true)
+  notes         String?
+  attendances   StaffAttendance[]
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  @@map("staff")
+}
+
+model StaffAttendance {
+  id          String           @id @default(cuid())
+  staffId     String           @map("staff_id")
+  staff       Staff            @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  date        DateTime         @default(now())
+  checkIn     DateTime         @default(now()) @map("check_in")
+  checkOut    DateTime?        @map("check_out")
+  hoursWorked Float?           @default(0) @map("hours_worked")
+  shiftName   String?          @map("shift_name")
+  status      AttendanceStatus @default(PRESENT)
+  notes       String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  @@map("staff_attendances")
+}
+

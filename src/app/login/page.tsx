@@ -95,7 +95,7 @@ export default function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-2.5 bg-stone-950 border border-stone-700 focus:border-amber-500 rounded-xl outline-none text-stone-100 placeholder-stone-500 text-sm"
-              placeholder="مثال: admin أو cashier1"
+              placeholder="أدخل اسم المستخدم"
               required
               autoComplete="username"
               autoFocus
@@ -135,33 +135,6 @@ export default function LoginPage() {
             )}
           </button>
         </form>
-
-        {/* Quick Demo Credentials */}
-        <div className="mt-6 pt-4 border-t border-stone-800 text-center">
-          <p className="text-[11px] text-stone-400 mb-2">حسابات الدخول السريع:</p>
-          <div className="flex items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setUsername("admin");
-                setPassword("WahetBadawy@2026");
-              }}
-              className="text-[10px] bg-stone-800 hover:bg-stone-700 text-amber-300 px-2.5 py-1 rounded-lg border border-stone-700"
-            >
-              المدير (admin)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setUsername("cashier1");
-                setPassword("123456");
-              }}
-              className="text-[10px] bg-stone-800 hover:bg-stone-700 text-emerald-300 px-2.5 py-1 rounded-lg border border-stone-700"
-            >
-              كاشير 1 (123456)
-            </button>
-          </div>
-        </div>
 
         {/* Footer */}
         <p className="text-center text-[10px] text-stone-500 mt-6">

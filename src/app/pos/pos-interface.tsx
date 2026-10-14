@@ -1407,55 +1407,36 @@ export default function PosInterface({
                 {orderType === "DINE_IN" ? (
                   <div className="space-y-2 pt-1">
                     {!isCheckPrinted ? (
-                      /* المرحلة الأولى: قبل تقفيل الشيك (إرسال للتحضير أو تقفيل الشيك) */
+                      /* قبل تقفيل الشيك: إرسال للتحضير أو تقفيل الشيك */
                       <div className="grid grid-cols-2 gap-2">
-                        {/* زر إرسال للتحضير: يوجه فقط للمطبخ والباريستا والشيشة ولا يطبع فاتورة العميل */}
                         <button
                           disabled={isPending || cart.length === 0}
                           onClick={handleSendToPrep}
-                          className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition shadow-sm flex flex-col items-center justify-center gap-0.5"
+                          className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition shadow-sm flex items-center justify-center gap-1.5"
                         >
-                          <span className="flex items-center gap-1">
-                            <span>🖨️</span>
-                            <span>إرسال للتحضير</span>
-                          </span>
-                          <span className="text-[10px] text-indigo-200 font-normal">
-                            مطبخ / باريستا / شيشة
-                          </span>
+                          <span>🖨️</span>
+                          <span>إرسال للتحضير</span>
                         </button>
 
-                        {/* زر تقفيل الشيك: يطبع فاتورة العميل فقط بدون فتح الدرج */}
                         <button
                           disabled={isPending || (cart.length === 0 && !activeOrderId)}
                           onClick={handlePrintCustomerCheck}
-                          className="py-3 px-2 rounded-xl text-xs font-bold text-amber-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 active:opacity-90 disabled:opacity-50 transition shadow-md flex flex-col items-center justify-center gap-0.5 border border-amber-600/30"
+                          className="py-3 px-2 rounded-xl text-xs font-black text-amber-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 active:opacity-90 disabled:opacity-50 transition shadow-md flex items-center justify-center gap-1.5 border border-amber-600/30"
                         >
-                          <span className="flex items-center gap-1">
-                            <span>🧾</span>
-                            <span>تقفيل الشيك (طباعة)</span>
-                          </span>
-                          <span className="text-[10px] text-amber-900 font-bold">
-                            طباعة فاتورة العميل
-                          </span>
+                          <span>🧾</span>
+                          <span>تقفيل الشيك (طباعة)</span>
                         </button>
                       </div>
                     ) : (
-                      /* المرحلة الثانية: بعد طباعة الشيك -> يتحول الزر تلقائياً لفتح الدرج بالتحصيل بدون رسالة تأكيد */
+                      /* بعد طباعة الشيك -> زر فتح الدرج والتحصيل المباشر */
                       <div className="space-y-1.5 animate-fade-in">
                         <button
                           disabled={isPending || (cart.length === 0 && !activeOrderId)}
                           onClick={handleCollectPayment}
-                          className="w-full py-3.5 px-3 rounded-2xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition shadow-lg ring-4 ring-emerald-500/30 flex items-center justify-between"
+                          className="w-full py-3.5 px-4 rounded-2xl text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition shadow-lg ring-4 ring-emerald-500/30 flex items-center justify-between"
                         >
                           <span className="text-xl">🚪</span>
-                          <div className="flex flex-col items-center">
-                            <span className="text-sm font-black">
-                              فتح الدرج بالتحصيل ({totalAmount.toFixed(2)} ج.م)
-                            </span>
-                            <span className="text-[10px] text-emerald-100 font-normal">
-                              فتح فوري للدرج (بدون رسالة تأكيد) + إخلاء الطاولة
-                            </span>
-                          </div>
+                          <span>فتح الدرج والتحصيل ({totalAmount.toFixed(2)} ج.م)</span>
                           <span className="text-xl">💵</span>
                         </button>
 
@@ -1484,23 +1465,19 @@ export default function PosInterface({
                     <button
                       disabled={isPending || cart.length === 0}
                       onClick={handleSendToPrep}
-                      className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition shadow-sm flex flex-col items-center justify-center gap-0.5"
+                      className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition shadow-sm flex items-center justify-center gap-1.5"
                     >
-                      <span>🖨️ إرسال للتحضير</span>
-                      <span className="text-[10px] text-indigo-200 font-normal">
-                        توجيه للأقسام
-                      </span>
+                      <span>🖨️</span>
+                      <span>إرسال للتحضير</span>
                     </button>
 
                     <button
                       disabled={isPending || (cart.length === 0 && !activeOrderId)}
                       onClick={handleCollectPayment}
-                      className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition shadow-sm flex flex-col items-center justify-center gap-0.5"
+                      className="py-3 px-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition shadow-sm flex items-center justify-center gap-1.5"
                     >
-                      <span>💳 تحصيل وفتح الدرج 🚪</span>
-                      <span className="text-[10px] text-emerald-200 font-normal">
-                        فتح فوري للدرج (بدون تأكيد)
-                      </span>
+                      <span>💳</span>
+                      <span>تحصيل وفتح الدرج ({totalAmount.toFixed(2)} ج.م)</span>
                     </button>
                   </div>
                 )}

@@ -81,6 +81,59 @@ export async function GET() {
       }, { status: 500 });
     }
 
+    // Staff & Attendance DDL
+    try {
+      await prisma.$executeRawUnsafe(`
+        DO $$ BEGIN
+          CREATE TYPE "AttendanceStatus" AS ENUM ('PRESENT', 'COMPLETED', 'ABSENT');
+        EXCEPTION
+          WHEN duplicate_object THEN null;
+        END $$;
+      `);
+    } catch (e) {
+      console.warn("AttendanceStatus type note:", e);
+    }
+
+    try {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "staff" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "name" TEXT NOT NULL,
+          "role" TEXT NOT NULL,
+          "phone" TEXT,
+          "national_id" TEXT,
+          "hourly_rate" DOUBLE PRECISION DEFAULT 0,
+          "monthly_salary" DOUBLE PRECISION DEFAULT 0,
+          "active" BOOLEAN NOT NULL DEFAULT true,
+          "notes" TEXT,
+          "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+    } catch (e) {
+      console.warn("staff table creation note:", e);
+    }
+
+    try {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "staff_attendances" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "staff_id" TEXT NOT NULL REFERENCES "staff"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+          "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "check_in" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "check_out" TIMESTAMP(3),
+          "hours_worked" DOUBLE PRECISION DEFAULT 0,
+          "shift_name" TEXT,
+          "status" "AttendanceStatus" NOT NULL DEFAULT 'PRESENT',
+          "notes" TEXT,
+          "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+    } catch (e) {
+      console.warn("staff_attendances table creation note:", e);
+    }
+
     const alterStatements = [
       `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "shift_id" TEXT REFERENCES "shifts"("id") ON UPDATE CASCADE;`,
       `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "order_type" "OrderType" NOT NULL DEFAULT 'DINE_IN';`,

@@ -82,13 +82,13 @@ export default async function DashboardPage() {
       <div className="bg-gradient-to-l from-primary-900 via-primary-800 to-primary-950 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10 max-w-2xl">
           <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-400 text-primary-950 mb-3">
-            سبرنت 2 • واحة بدوي POS
+            واحة بدوي • طعم زمان على أصوله
           </span>
           <h1 className="text-2xl sm:text-3xl font-extrabold mb-2">
-            لوحة الإدارة الشاملة (Admin Dashboard)
+            لوحة الإدارة والتشغيل (Admin Dashboard)
           </h1>
           <p className="text-primary-200 text-sm leading-relaxed">
-            مرحباً بك في نظام إدارة وتجهيز العمليات لمطعم وكافيه واحة بدوي. يمكنك الآن إدارة الطاولات (28 طاولة)، هندسة قائمة الطعام وربطها بالمخزون، وتتبع المعدات بين المطبخ وركن الباريستا.
+            مرحباً بك في نظام إدارة وتجهيز العمليات لمطعم وكافيه واحة بدوي.
           </p>
         </div>
         <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -114,47 +114,58 @@ export default async function DashboardPage() {
             </div>
             <h3 className="text-slate-500 text-sm font-semibold mb-1">{card.title}</h3>
             <p className="text-2xl font-black text-slate-800 tracking-tight">{card.value}</p>
-            <p className="text-xs text-slate-500 mt-2 font-medium">{card.subtext}</p>
           </Link>
         ))}
       </div>
 
       {/* Quick Launchpad */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+        <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-          الوصول السريع لعمليات Sprint 2
+          الوصول السريع للأقسام
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Link
+            href="/pos"
+            className="p-4 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-amber-950 text-xs shadow-sm"
+          >
+            <span className="text-2xl">💻</span>
+            <span>نقطة البيع (POS)</span>
+          </Link>
           <Link
             href="/dashboard/tables"
-            className="p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-primary-50 hover:border-primary-200 transition p-4 flex items-center gap-3"
+            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-slate-800 text-xs shadow-sm"
           >
             <span className="text-2xl">🪑</span>
-            <div>
-              <p className="font-bold text-slate-800 text-sm">خريطة الصالة والطاولات</p>
-              <p className="text-xs text-slate-500">6 باكيات عائلات • 8 VIP • 12 عادية • 2 خاصة</p>
-            </div>
+            <span>إدارة الطاولات</span>
           </Link>
           <Link
             href="/dashboard/menu"
-            className="p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-amber-50 hover:border-amber-200 transition p-4 flex items-center gap-3"
+            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-slate-800 text-xs shadow-sm"
           >
             <span className="text-2xl">📖</span>
-            <div>
-              <p className="font-bold text-slate-800 text-sm">الأصناف وبناء الوصفات</p>
-              <p className="text-xs text-slate-500">ربط كميات المكونات بكل وجبة ومشروب</p>
-            </div>
+            <span>قائمة الطعام والوصفات</span>
           </Link>
           <Link
-            href="/dashboard/equipment"
-            className="p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-purple-50 hover:border-purple-200 transition p-4 flex items-center gap-3"
+            href="/dashboard/customers"
+            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-slate-800 text-xs shadow-sm"
           >
-            <span className="text-2xl">⚙️</span>
-            <div>
-              <p className="font-bold text-slate-800 text-sm">معدات المطبخ والكافيه</p>
-              <p className="text-xs text-slate-500">فصل المطبخ والباريستا وتتبع الصيانة</p>
-            </div>
+            <span className="text-2xl">🛵</span>
+            <span>العملاء والدليفري</span>
+          </Link>
+          <Link
+            href="/dashboard/staff"
+            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-slate-800 text-xs shadow-sm"
+          >
+            <span className="text-2xl">👥</span>
+            <span>الموظفين والورديات</span>
+          </Link>
+          <Link
+            href="/dashboard/reports"
+            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-slate-800 text-xs shadow-sm"
+          >
+            <span className="text-2xl">📊</span>
+            <span>التقارير المالية</span>
           </Link>
         </div>
       </div>
