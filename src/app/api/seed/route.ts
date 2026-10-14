@@ -157,6 +157,18 @@ export async function GET() {
       },
     });
 
+    const catShisha = await prisma.category.upsert({
+      where: { id: "cat_shisha_03" },
+      update: {},
+      create: {
+        id: "cat_shisha_03",
+        name: "Shisha & Tobacco",
+        nameAr: "قسم الشيشة والمعسل",
+        description: "شيشة فاخرة، معسل سلوم وتفاحتين على الفحم الطبيعي",
+        order: 3,
+      },
+    });
+
     // Menu Items
     const existingMandi = await prisma.menuItem.findFirst({
       where: { nameAr: "وجبة مندي لحم ضأن ربع تيس" },
@@ -201,6 +213,38 @@ export async function GET() {
           description: "إسبريسو مع حليب طازج مبخر بطبقة كريمية ناعمة",
           price: 70,
           categoryId: catDrinks.id,
+          active: true,
+        },
+      });
+    }
+
+    const existingShisha1 = await prisma.menuItem.findFirst({
+      where: { nameAr: "شيشة تفاحتين فاخر" },
+    });
+    if (!existingShisha1) {
+      await prisma.menuItem.create({
+        data: {
+          name: "Double Apple Shisha",
+          nameAr: "شيشة تفاحتين فاخر",
+          description: "تفاحتين نخلة فاخر على الفحم الطبيعي",
+          price: 65,
+          categoryId: catShisha.id,
+          active: true,
+        },
+      });
+    }
+
+    const existingShisha2 = await prisma.menuItem.findFirst({
+      where: { nameAr: "شيشة معسل سلوم بدوي" },
+    });
+    if (!existingShisha2) {
+      await prisma.menuItem.create({
+        data: {
+          name: "Salloum Traditional Shisha",
+          nameAr: "شيشة معسل سلوم بدوي",
+          description: "معسل سلوم وقص أصلي على الحطب",
+          price: 40,
+          categoryId: catShisha.id,
           active: true,
         },
       });

@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { TableType, TableStatus, OrderStatus } from "@prisma/client";
-import { sendOrderToPrep, collectOrderPayment, CartItemInput } from "@/actions/pos";
+import { sendOrderToPrep, collectOrderPayment } from "@/actions/pos";
 import Link from "next/link";
+import { serialPrinter, SerialPrinterStatus } from "@/utils/printer/web-serial";
+import {
+  routeAndPrintPrepOrder,
+  executePaymentAndOpenDrawer,
+  RoutedTicket,
+} from "@/utils/printer/order-router";
 
 interface PosTable {
   id: string;
@@ -27,6 +33,7 @@ interface PosTable {
       notes: string | null;
       menuItem: {
         nameAr: string;
+        categoryId?: string;
       };
     }>;
   }>;
@@ -47,6 +54,7 @@ interface PosMenuItem {
 interface CartItem {
   menuItemId: string;
   nameAr: string;
+  categoryName?: string;
   price: number;
   quantity: number;
   notes?: string;
@@ -73,31 +81,83 @@ export default function PosInterface({
   const [orderNotes, setOrderNotes] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  // Print Modal State
-  const [printModalData, setPrintModalData] = useState<{
+  // Hardware Printer & Cash Drawer State (Sprint 4)
+  const [printerStatus, setPrinterStatus] = useState<SerialPrinterStatus>(
+    serialPrinter.getStatus()
+  );
+  const [showPrinterSettings, setShowPrinterSettings] = useState(false);
+  const [selectedBaudRate, setSelectedBaudRate] = useState<number>(9600);
+  const [hardwareFeedback, setHardwareFeedback] = useState<string | null>(null);
+
+  // Routed Tickets Modal State (Sprint 4)
+  const [routedModal, setRoutedModal] = useState<{
     title: string;
-    orderNumber?: number;
-    tableName: string;
-    items: CartItem[];
-    total: number;
-    isComplimentary: boolean;
+    subtitle: string;
+    isPayment: boolean;
+    drawerKicked: boolean;
+    tickets: RoutedTicket[];
+    activeTicketIndex: number;
   } | null>(null);
+
+  // Subscribe to Web Serial status updates
+  useEffect(() => {
+    const unsubscribe = serialPrinter.onStatusChange((status) => {
+      setPrinterStatus(status);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Connect to Web Serial printer
+  const handleConnectPrinter = async () => {
+    setHardwareFeedback("جاري فتح نافذة اختيار منفذ الطابعة...");
+    const res = await serialPrinter.connect(selectedBaudRate);
+    if (res.success) {
+      setHardwareFeedback("🟢 تم الاتصال بالطابعة الحرارية بنجاح!");
+      setTimeout(() => setHardwareFeedback(null), 3000);
+    } else {
+      setHardwareFeedback(`❌ ${res.error}`);
+    }
+  };
+
+  // Disconnect printer
+  const handleDisconnectPrinter = async () => {
+    await serialPrinter.disconnect();
+    setHardwareFeedback("تم فصل الاتصال بالطابعة.");
+    setTimeout(() => setHardwareFeedback(null), 3000);
+  };
+
+  // Test Cash Drawer Kick (Independent hardware test)
+  const handleTestCashDrawer = async () => {
+    setHardwareFeedback("جاري إرسال نبضة فتح درج النقدية (ESC p)...");
+    const res = await serialPrinter.kickDrawer();
+    if (res.success) {
+      setHardwareFeedback("🚪 تم فتح درج النقدية بنجاح! (ESC/POS 0x1B 0x70)");
+      setTimeout(() => setHardwareFeedback(null), 4000);
+    } else {
+      setHardwareFeedback(`❌ ${res.error}`);
+    }
+  };
 
   // Table Selection logic
   const handleSelectTable = (table: PosTable) => {
     setSelectedTable(table);
-    const existingOpenOrder = table.orders && table.orders.length > 0 ? table.orders[0] : null;
+    const existingOpenOrder =
+      table.orders && table.orders.length > 0 ? table.orders[0] : null;
 
     if (existingOpenOrder) {
       setActiveOrderId(existingOpenOrder.id);
       setCart(
-        existingOpenOrder.items.map((i) => ({
-          menuItemId: i.menuItemId,
-          nameAr: i.menuItem.nameAr,
-          price: i.unitPrice,
-          quantity: i.quantity,
-          notes: i.notes || undefined,
-        }))
+        existingOpenOrder.items.map((i) => {
+          const cat = categories.find((c) => c.id === i.menuItem.categoryId);
+          return {
+            menuItemId: i.menuItemId,
+            nameAr: i.menuItem.nameAr,
+            categoryName: cat?.nameAr,
+            price: i.unitPrice,
+            quantity: i.quantity,
+            notes: i.notes || undefined,
+          };
+        })
       );
     } else {
       setActiveOrderId(undefined);
@@ -115,6 +175,8 @@ export default function PosInterface({
       return;
     }
 
+    const cat = categories.find((c) => c.id === item.categoryId);
+
     setCart((prev) => {
       const existing = prev.find((i) => i.menuItemId === item.id);
       if (existing) {
@@ -122,7 +184,16 @@ export default function PosInterface({
           i.menuItemId === item.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
-      return [...prev, { menuItemId: item.id, nameAr: item.nameAr, price: item.price, quantity: 1 }];
+      return [
+        ...prev,
+        {
+          menuItemId: item.id,
+          nameAr: item.nameAr,
+          categoryName: cat?.nameAr,
+          price: item.price,
+          quantity: 1,
+        },
+      ];
     });
   };
 
@@ -146,13 +217,23 @@ export default function PosInterface({
 
   // Check Complimentary status for selected table
   const isComplimentary =
-    selectedTable?.type === TableType.OWNER || selectedTable?.type === TableType.MANAGER;
+    selectedTable?.type === TableType.OWNER ||
+    selectedTable?.type === TableType.MANAGER;
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const discount = isComplimentary ? subtotal : 0;
   const totalAmount = isComplimentary ? 0 : subtotal;
 
-  // CASHIER WORKFLOW: Action A - Send to Prep (حفظ وطباعة الأوردر -> Saves order as OPEN)
+  /**
+   * SPRINT 4 REQUIREMENT 1: Action A - Send to Prep (حفظ وطباعة الأوردر)
+   * - Saves order as OPEN.
+   * - Routes dedicated Kitchen Ticket for kitchen items.
+   * - Routes dedicated Barista Ticket for barista items.
+   * - Routes dedicated Shisha Ticket for shisha items.
+   * - Generates Customer Check.
+   * - CRITICAL: Every prep ticket displays DiningTable.name!
+   * - CRITICAL: NONE of these print jobs open the cash drawer.
+   */
   const handleSendToPrep = () => {
     if (!selectedTable) return;
     if (cart.length === 0) {
@@ -170,35 +251,55 @@ export default function PosInterface({
 
       if (res?.error) {
         alert(res.error);
-      } else {
-        // Trigger thermal print modal simulation
-        setPrintModalData({
-          title: "بون تحضير المطبخ والباريستا (KITCHEN PREP TICKET)",
-          orderNumber: res.order?.orderNumber,
-          tableName: selectedTable.name,
-          items: cart,
-          total: totalAmount,
-          isComplimentary,
-        });
-
-        // Update local table status to OCCUPIED
-        setTables((prev) =>
-          prev.map((t) =>
-            t.id === selectedTable.id
-              ? {
-                  ...t,
-                  status: TableStatus.OCCUPIED,
-                  orders: res.order ? [res.order as any] : t.orders,
-                }
-              : t
-          )
-        );
-        if (res.order) setActiveOrderId(res.order.id);
+        return;
       }
+
+      // Execute Order Routing to Kitchen, Barista, Shisha, and Customer Check
+      const routeRes = await routeAndPrintPrepOrder({
+        tableName: selectedTable.name,
+        orderNumber: res.order?.orderNumber,
+        items: cart,
+        subtotal,
+        discount,
+        totalAmount,
+        isComplimentary,
+        notes: orderNotes,
+        cashierName: userName,
+      });
+
+      // Display multi-ticket preparation modal (drawerKicked: false)
+      setRoutedModal({
+        title: "تم حفظ وتوجيه بونات التحضير بنجاح",
+        subtitle: `طاولة: ${selectedTable.name} • (تم توجيه ${routeRes.tickets.length} بونات طباعة - درج النقدية مغلق)`,
+        isPayment: false,
+        drawerKicked: false,
+        tickets: routeRes.tickets,
+        activeTicketIndex: 0,
+      });
+
+      // Update local table status to OCCUPIED
+      setTables((prev) =>
+        prev.map((t) =>
+          t.id === selectedTable.id
+            ? {
+                ...t,
+                status: TableStatus.OCCUPIED,
+                orders: res.order ? [res.order as any] : t.orders,
+              }
+            : t
+        )
+      );
+      if (res.order) setActiveOrderId(res.order.id);
     });
   };
 
-  // CASHIER WORKFLOW: Action B - Collect Payment (تحصيل -> Changes status to PAID)
+  /**
+   * SPRINT 4 REQUIREMENT 2: Action B - Collect Payment (تحصيل)
+   * - Saves order as PAID and frees table.
+   * - CRITICAL CASH DRAWER LOGIC: Kicks open the cash drawer via ESC/POS command (0x1B 0x70...).
+   * - DRAWER MUST ONLY OPEN ON THIS ACTION.
+   * - Prints final tax receipt.
+   */
   const handleCollectPayment = () => {
     if (!selectedTable) return;
     if (cart.length === 0 && !activeOrderId) {
@@ -208,7 +309,9 @@ export default function PosInterface({
 
     const confirmMsg = isComplimentary
       ? `تأكيد إغلاق طلب الضيافة لطاولة ${selectedTable.name} (المبلغ: 0 ج.م)؟`
-      : `تأكيد تحصيل مبلغ ${totalAmount.toFixed(2)} ج.م لطاولة ${selectedTable.name} وإخلاء الطاولة؟`;
+      : `تأكيد تحصيل مبلغ ${totalAmount.toFixed(
+          2
+        )} ج.م لطاولة ${selectedTable.name} وفتح درج النقدية وإخلاء الطاولة؟`;
 
     if (!confirm(confirmMsg)) return;
 
@@ -222,38 +325,56 @@ export default function PosInterface({
 
       if (res?.error) {
         alert(res.error);
-      } else {
-        // Customer receipt modal
-        setPrintModalData({
-          title: "فاتورة ضريبية مبسطة (CUSTOMER RECEIPT)",
-          tableName: selectedTable.name,
-          items: cart,
-          total: totalAmount,
-          isComplimentary,
-        });
-
-        // Free table locally
-        setTables((prev) =>
-          prev.map((t) =>
-            t.id === selectedTable.id
-              ? { ...t, status: TableStatus.AVAILABLE, orders: [] }
-              : t
-          )
-        );
-
-        // Reset cart and return to map
-        setCart([]);
-        setActiveOrderId(undefined);
-        setSelectedTable(null);
-        setActiveTab("MAP");
+        return;
       }
+
+      // CRITICAL: Execute payment receipt & KICK OPEN CASH DRAWER
+      const paymentRes = await executePaymentAndOpenDrawer({
+        tableName: selectedTable.name,
+        orderNumber: activeOrderId ? parseInt(activeOrderId.slice(-4)) : undefined,
+        items: cart,
+        subtotal,
+        discount,
+        totalAmount,
+        isComplimentary,
+        notes: orderNotes,
+        cashierName: userName,
+      });
+
+      // Display final paid receipt modal with CASH DRAWER OPENED confirmation
+      setRoutedModal({
+        title: "تم التحصيل وسداد الحساب بنجاح ✓",
+        subtitle: `طاولة: ${selectedTable.name} • 🚪 تم فتح درج النقدية بنجاح عبر إشارة ESC/POS`,
+        isPayment: true,
+        drawerKicked: true,
+        tickets: [paymentRes.receiptTicket],
+        activeTicketIndex: 0,
+      });
+
+      // Free table locally
+      setTables((prev) =>
+        prev.map((t) =>
+          t.id === selectedTable.id
+            ? { ...t, status: TableStatus.AVAILABLE, orders: [] }
+            : t
+        )
+      );
+
+      // Reset cart and return to map
+      setCart([]);
+      setActiveOrderId(undefined);
+      setSelectedTable(null);
+      setActiveTab("MAP");
     });
   };
 
   // Filtered menu items
   const filteredMenuItems = menuItems.filter((item) => {
-    const matchCat = selectedCategory === "ALL" || item.categoryId === selectedCategory;
-    const matchSearch = item.nameAr.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchCat =
+      selectedCategory === "ALL" || item.categoryId === selectedCategory;
+    const matchSearch = item.nameAr
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     return matchCat && matchSearch;
   });
 
@@ -266,7 +387,9 @@ export default function PosInterface({
             <div className="w-8 h-8 rounded-lg bg-amber-500 text-primary-950 font-black flex items-center justify-center text-sm shadow">
               وب
             </div>
-            <span className="font-black text-base tracking-wide">واحة بدوي POS</span>
+            <span className="font-black text-base tracking-wide">
+              واحة بدوي POS
+            </span>
           </div>
 
           {/* View Mode Switcher */}
@@ -297,13 +420,38 @@ export default function PosInterface({
               }`}
             >
               <span>🍽️</span>
-              <span>تسجيل الطلب {selectedTable ? `(${selectedTable.name})` : ""}</span>
+              <span>
+                تسجيل الطلب {selectedTable ? `(${selectedTable.name})` : ""}
+              </span>
             </button>
           </div>
         </div>
 
-        {/* User Info & Admin Link */}
+        {/* Right side: Hardware Web Serial Status & Admin link */}
         <div className="flex items-center gap-3 text-xs">
+          {/* SPRINT 4: Thermal Printer Web Serial Status Pill */}
+          <button
+            onClick={() => setShowPrinterSettings(true)}
+            className={`px-3 py-1.5 rounded-lg font-bold border transition flex items-center gap-2 ${
+              printerStatus.isConnected
+                ? "bg-emerald-950/80 border-emerald-500 text-emerald-300 hover:bg-emerald-900"
+                : "bg-slate-800/80 border-slate-600 text-slate-300 hover:bg-slate-700"
+            }`}
+          >
+            <span
+              className={`w-2.5 h-2.5 rounded-full ${
+                printerStatus.isConnected
+                  ? "bg-emerald-400 animate-pulse"
+                  : "bg-slate-400"
+              }`}
+            ></span>
+            <span>
+              {printerStatus.isConnected
+                ? "🖨️ طابعة الكاشير متصلة"
+                : "🖨️ ربط الطابعة (Serial)"}
+            </span>
+          </button>
+
           <div className="hidden sm:flex items-center gap-2 text-primary-200 bg-primary-900/60 px-3 py-1.5 rounded-lg border border-primary-800">
             <span>👤 الكاشير:</span>
             <strong className="text-white font-bold">{userName}</strong>
@@ -324,7 +472,9 @@ export default function PosInterface({
           <div className="flex-1 p-6 overflow-y-auto bg-slate-100 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
               <div>
-                <h2 className="text-lg font-black text-slate-800">خريطة وتوزيع طاولات الصالة</h2>
+                <h2 className="text-lg font-black text-slate-800">
+                  خريطة وتوزيع طاولات الصالة
+                </h2>
                 <p className="text-xs text-slate-500">
                   انقر على أي طاولة لفتح طلبها أو إنشاء أوردر جديد فوراً.
                 </p>
@@ -351,10 +501,13 @@ export default function PosInterface({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3.5">
               {tables.map((table) => {
                 const hasOpenOrder = table.orders && table.orders.length > 0;
-                const isSpecial = table.type === TableType.OWNER || table.type === TableType.MANAGER;
+                const isSpecial =
+                  table.type === TableType.OWNER ||
+                  table.type === TableType.MANAGER;
 
                 let cardBg = "bg-white border-slate-200 hover:border-primary-400";
-                let statusBadge = "bg-emerald-100 text-emerald-800 border-emerald-200";
+                let statusBadge =
+                  "bg-emerald-100 text-emerald-800 border-emerald-200";
                 let statusLabel = "متاحة";
 
                 if (hasOpenOrder || table.status === TableStatus.OCCUPIED) {
@@ -363,7 +516,8 @@ export default function PosInterface({
                   statusLabel = "مشغولة";
                 } else if (isSpecial) {
                   cardBg = "bg-purple-50/60 border-purple-300";
-                  statusBadge = "bg-purple-100 text-purple-800 border-purple-200";
+                  statusBadge =
+                    "bg-purple-100 text-purple-800 border-purple-200";
                   statusLabel = "طاولة خاصة";
                 }
 
@@ -375,11 +529,16 @@ export default function PosInterface({
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadge}`}>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadge}`}
+                        >
                           {statusLabel}
                         </span>
                         {isSpecial && (
-                          <span className="text-[11px] font-bold text-amber-600" title="أوردرات هذه الطاولة ضيافة تلقائياً">
+                          <span
+                            className="text-[11px] font-bold text-amber-600"
+                            title="أوردرات هذه الطاولة ضيافة تلقائياً"
+                          >
                             👑 ضيافة
                           </span>
                         )}
@@ -389,7 +548,8 @@ export default function PosInterface({
                         {table.name}
                       </h3>
                       <p className="text-[11px] text-slate-500 mt-0.5">
-                        سعة {table.capacity} أفراد {table.number ? `• #${table.number}` : ""}
+                        سعة {table.capacity} أفراد{" "}
+                        {table.number ? `• #${table.number}` : ""}
                       </p>
                     </div>
 
@@ -429,10 +589,12 @@ export default function PosInterface({
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="ابحث عن صنف أو وجبة أو مشروب..."
+                      placeholder="ابحث عن صنف أو وجبة أو مشروب أو شيشة..."
                       className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                     />
-                    <span className="absolute right-3.5 top-3 text-slate-400">🔍</span>
+                    <span className="absolute right-3.5 top-3 text-slate-400">
+                      🔍
+                    </span>
                   </div>
 
                   <button
@@ -503,9 +665,13 @@ export default function PosInterface({
                   <div className="flex items-center gap-2">
                     <span className="text-xl">🪑</span>
                     <div>
-                      <h3 className="font-black text-slate-800 text-base">{selectedTable.name}</h3>
+                      <h3 className="font-black text-slate-800 text-base">
+                        {selectedTable.name}
+                      </h3>
                       <p className="text-[11px] text-slate-500">
-                        {activeOrderId ? `طلب مفتوح رقم: #${activeOrderId.slice(-4)}` : "طلب جديد (قيد التجهيز)"}
+                        {activeOrderId
+                          ? `طلب مفتوح رقم: #${activeOrderId.slice(-4)}`
+                          : "طلب جديد (قيد التجهيز)"}
                       </p>
                     </div>
                   </div>
@@ -523,7 +689,9 @@ export default function PosInterface({
                   <div className="bg-amber-100 border border-amber-300 rounded-xl p-2.5 text-xs text-amber-900 font-bold flex items-center gap-2 animate-pulse">
                     <span className="text-base">👑</span>
                     <div>
-                      <p className="font-black">طلب ضيافة (Complimentary Order)</p>
+                      <p className="font-black">
+                        طلب ضيافة (Complimentary Order)
+                      </p>
                       <p className="text-[10px] font-medium text-amber-800">
                         طاولة خاصة بالمالك/المدير - يتم إعفاء الحساب بنسبة 100%.
                       </p>
@@ -538,7 +706,9 @@ export default function PosInterface({
                   <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center p-6">
                     <span className="text-4xl mb-2">🛒</span>
                     <p className="font-bold text-sm">السلة فارغة حالياً</p>
-                    <p className="text-xs mt-1">اضغط على الأصناف من القائمة لإضافتها للطلب</p>
+                    <p className="text-xs mt-1">
+                      اضغط على الأصناف من القائمة لإضافتها للطلب
+                    </p>
                   </div>
                 ) : (
                   cart.map((item) => (
@@ -547,17 +717,23 @@ export default function PosInterface({
                       className="p-3 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between gap-2"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="font-extrabold text-slate-800 text-xs truncate">{item.nameAr}</p>
+                        <p className="font-extrabold text-slate-800 text-xs truncate">
+                          {item.nameAr}
+                        </p>
                         <p className="font-mono text-xs text-slate-500 mt-0.5">
                           {item.price.toFixed(2)} ج.م × {item.quantity} ={" "}
-                          <strong className="text-slate-800">{(item.price * item.quantity).toFixed(2)} ج.م</strong>
+                          <strong className="text-slate-800">
+                            {(item.price * item.quantity).toFixed(2)} ج.م
+                          </strong>
                         </p>
                       </div>
 
                       {/* Quantity Controls */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
-                          onClick={() => handleUpdateQuantity(item.menuItemId, -1)}
+                          onClick={() =>
+                            handleUpdateQuantity(item.menuItemId, -1)
+                          }
                           className="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs hover:bg-slate-100"
                         >
                           -
@@ -566,7 +742,9 @@ export default function PosInterface({
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => handleUpdateQuantity(item.menuItemId, 1)}
+                          onClick={() =>
+                            handleUpdateQuantity(item.menuItemId, 1)
+                          }
                           className="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs hover:bg-slate-100"
                         >
                           +
@@ -599,12 +777,16 @@ export default function PosInterface({
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between text-slate-500">
                     <span>المجموع الفرعي:</span>
-                    <span className="font-mono font-bold">{subtotal.toFixed(2)} ج.م</span>
+                    <span className="font-mono font-bold">
+                      {subtotal.toFixed(2)} ج.م
+                    </span>
                   </div>
                   {isComplimentary && (
                     <div className="flex justify-between text-amber-700 font-bold">
                       <span>خصم الضيافة (100%):</span>
-                      <span className="font-mono">-{discount.toFixed(2)} ج.م</span>
+                      <span className="font-mono">
+                        -{discount.toFixed(2)} ج.م
+                      </span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm font-black text-slate-900 pt-1 border-t border-slate-200">
@@ -615,26 +797,30 @@ export default function PosInterface({
                   </div>
                 </div>
 
-                {/* CASHIER WORKFLOW (CRITICAL SEPARATION): Action A vs Action B */}
+                {/* SPRINT 4 WORKFLOW: Action A vs Action B */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  {/* Action A: Send to Prep (حفظ وطباعة الأوردر) */}
+                  {/* Action A: Send to Prep (حفظ وتوجيه بونات التحضير) */}
                   <button
                     disabled={isPending || cart.length === 0}
                     onClick={handleSendToPrep}
                     className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition shadow-sm flex flex-col items-center justify-center gap-0.5"
                   >
-                    <span>🖨️ حفظ وطباعة (تحضير)</span>
-                    <span className="text-[10px] text-indigo-200 font-normal">Action A • حالة OPEN</span>
+                    <span>🖨️ إرسال للتحضير (طباعة)</span>
+                    <span className="text-[10px] text-indigo-200 font-normal">
+                      مطبخ / باريستا / شيشة (بدون فتح الدرج)
+                    </span>
                   </button>
 
-                  {/* Action B: Collect Payment (تحصيل) */}
+                  {/* Action B: Collect Payment (تحصيل وفتح درج النقدية) */}
                   <button
                     disabled={isPending || (cart.length === 0 && !activeOrderId)}
                     onClick={handleCollectPayment}
                     className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition shadow-sm flex flex-col items-center justify-center gap-0.5"
                   >
-                    <span>💳 تحصيل الحساب</span>
-                    <span className="text-[10px] text-emerald-200 font-normal">Action B • حالة PAID</span>
+                    <span>💳 تحصيل وفتح الدرج 🚪</span>
+                    <span className="text-[10px] text-emerald-200 font-normal">
+                      فتح الدرج (ESC/POS) + إيصال سداد
+                    </span>
                   </button>
                 </div>
               </div>
@@ -643,48 +829,285 @@ export default function PosInterface({
         )}
       </div>
 
-      {/* Simulated Thermal Ticket Modal */}
-      {printModalData && (
+      {/* SPRINT 4: Web Serial Printer Hardware Settings Modal */}
+      {showPrinterSettings && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4">
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-700 text-2xl font-bold">
-              ✓
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800 text-base">{printModalData.title}</h3>
-              <p className="text-xs text-slate-500 mt-1">واحة بدوي - نظام نقاط البيع</p>
-            </div>
-
-            {/* Thermal Ticket Paper Look */}
-            <div className="bg-slate-50 border border-dashed border-slate-300 p-4 rounded-xl text-right font-mono text-xs space-y-2">
-              <div className="flex justify-between border-b pb-1 font-bold text-slate-700">
-                <span>الطاولة: {printModalData.tableName}</span>
-                {printModalData.orderNumber && <span>#{printModalData.orderNumber}</span>}
-              </div>
-
-              {printModalData.items.map((i, idx) => (
-                <div key={idx} className="flex justify-between text-slate-600">
-                  <span>
-                    {i.quantity}x {i.nameAr}
-                  </span>
-                  <span>{(i.price * i.quantity).toFixed(2)}</span>
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl text-right space-y-5 border border-slate-100">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-800 flex items-center justify-center text-xl">
+                  🖨️
                 </div>
-              ))}
+                <div>
+                  <h3 className="font-black text-slate-800 text-base">
+                    إعدادات الطابعة الحرارية ودرج النقدية
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Web Serial API Hardware Integration
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPrinterSettings(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
 
-              <div className="border-t pt-1 flex justify-between font-black text-slate-800 text-sm">
-                <span>الإجمالي:</span>
-                <span>
-                  {printModalData.isComplimentary ? "0.00 ج.م (ضيافة)" : `${printModalData.total.toFixed(2)} ج.م`}
+            {/* Connection Status Card */}
+            <div
+              className={`p-4 rounded-2xl border text-xs font-bold flex items-center justify-between ${
+                printerStatus.isConnected
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                  : "bg-slate-50 border-slate-200 text-slate-700"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`w-3.5 h-3.5 rounded-full ${
+                    printerStatus.isConnected
+                      ? "bg-emerald-500 animate-pulse"
+                      : "bg-slate-400"
+                  }`}
+                ></span>
+                <div>
+                  <p className="text-sm font-black">
+                    {printerStatus.isConnected
+                      ? "الطابعة متصلة وجاهزة للعمل"
+                      : "الطابعة غير متصلة"}
+                  </p>
+                  <p className="text-[11px] font-normal text-slate-500 mt-0.5">
+                    {printerStatus.isConnected
+                      ? `معدل النقل: ${printerStatus.baudRate} Baud`
+                      : "اضغط على زر الربط لاختيار منفذ USB/Serial COM"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Hardware feedback banner */}
+            {hardwareFeedback && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs font-bold text-amber-900">
+                {hardwareFeedback}
+              </div>
+            )}
+
+            {/* Baud Rate Config */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 block">
+                معدل نقل البيانات (Baud Rate):
+              </label>
+              <select
+                value={selectedBaudRate}
+                disabled={printerStatus.isConnected}
+                onChange={(e) => setSelectedBaudRate(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none bg-slate-50 font-mono"
+              >
+                <option value={9600}>9600 (الافتراضي لمعظم طابعات POS)</option>
+                <option value={19200}>19200</option>
+                <option value={38400}>38400</option>
+                <option value={115200}>115200 (طابعات USB سريعة)</option>
+              </select>
+            </div>
+
+            {/* Hardware Action Buttons */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              {printerStatus.isConnected ? (
+                <button
+                  onClick={handleDisconnectPrinter}
+                  className="w-full py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition"
+                >
+                  فصل اتصال الطابعة
+                </button>
+              ) : (
+                <button
+                  onClick={handleConnectPrinter}
+                  className="w-full py-3 rounded-xl bg-primary-800 hover:bg-primary-900 text-white text-xs font-bold shadow-md transition flex items-center justify-center gap-2"
+                >
+                  <span>🔌 ربط الطابعة الحرارية (Web Serial)</span>
+                </button>
+              )}
+
+              {/* Dedicated Cash Drawer Kick Test Button */}
+              <button
+                onClick={handleTestCashDrawer}
+                className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-primary-950 font-black text-xs shadow transition flex items-center justify-center gap-2"
+              >
+                <span>🚪 اختبار فتح درج النقدية (Test Drawer Kick)</span>
+              </button>
+            </div>
+
+            <p className="text-[11px] text-slate-400 text-center">
+              يدعم طابعات الإيصالات الحرارية Epson, Xprinter, Bixolon المتصلة عبر
+              USB أو RS232 Serial.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* SPRINT 4: Multi-Ticket Routed Visual Modal */}
+      {routedModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl text-right space-y-4 max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center text-2xl font-bold ${
+                    routedModal.drawerKicked
+                      ? "bg-amber-100 text-amber-800 ring-4 ring-amber-300/40 animate-bounce"
+                      : "bg-emerald-100 text-emerald-800"
+                  }`}
+                >
+                  {routedModal.drawerKicked ? "🚪" : "🖨️"}
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base">
+                    {routedModal.title}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {routedModal.subtitle}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRoutedModal(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Cash Drawer Status Alert */}
+            {routedModal.drawerKicked && (
+              <div className="p-3 bg-amber-100 border border-amber-300 rounded-2xl text-xs font-black text-amber-950 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <span className="text-lg">🚪</span>
+                  <span>تم فتح درج النقدية بنجاح عبر أمر ESC/POS (0x1B 0x70)</span>
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px]">
+                  Action B
                 </span>
               </div>
-            </div>
+            )}
 
-            <button
-              onClick={() => setPrintModalData(null)}
-              className="w-full py-2.5 bg-primary-800 hover:bg-primary-900 text-white font-bold rounded-xl text-xs transition"
-            >
-              إغلاق وإتمام
-            </button>
+            {!routedModal.drawerKicked && (
+              <div className="p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-900 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span>ℹ️</span>
+                  <span>
+                    تم توجيه البونات إلى الأقسام مع الاحتفاظ بدرج النقدية مغلقاً.
+                  </span>
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-indigo-200 text-indigo-900 text-[10px]">
+                  Action A
+                </span>
+              </div>
+            )}
+
+            {/* Ticket Department Tabs */}
+            {routedModal.tickets.length > 1 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {routedModal.tickets.map((t, idx) => (
+                  <button
+                    key={t.id}
+                    onClick={() =>
+                      setRoutedModal((prev) =>
+                        prev ? { ...prev, activeTicketIndex: idx } : null
+                      )
+                    }
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition border ${
+                      routedModal.activeTicketIndex === idx
+                        ? `${t.badgeColor} shadow-sm ring-2 ring-primary-500`
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    {t.title.split("(")[0].trim()} ({t.items.length})
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Thermal Paper Ticket Visual Rendering */}
+            {routedModal.tickets[routedModal.activeTicketIndex] && (
+              <div className="flex-1 overflow-y-auto">
+                <div className="bg-slate-50 border-2 border-dashed border-slate-300 p-5 rounded-2xl font-mono text-xs space-y-3 shadow-inner">
+                  <div className="text-center border-b pb-2">
+                    <p className="font-black text-sm tracking-wide text-slate-900">
+                      واحة بدوي - WAHET BADAWY
+                    </p>
+                    <p className="font-bold text-primary-800 text-xs mt-0.5">
+                      {routedModal.tickets[routedModal.activeTicketIndex].title}
+                    </p>
+                  </div>
+
+                  {/* CRITICAL: Prominent Table Name Display on Every Ticket */}
+                  <div className="bg-amber-100/70 border border-amber-300 p-2 rounded-xl text-center">
+                    <p className="text-[10px] text-amber-800 font-bold">
+                      طاولة العميل (Dining Table):
+                    </p>
+                    <p className="text-base font-black text-amber-950 font-sans">
+                      {routedModal.tickets[routedModal.activeTicketIndex].tableName}
+                    </p>
+                    {routedModal.tickets[routedModal.activeTicketIndex].orderNumber && (
+                      <p className="text-[11px] font-bold text-amber-900 mt-0.5">
+                        رقم الطلب: #{routedModal.tickets[routedModal.activeTicketIndex].orderNumber}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Items List */}
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex justify-between font-bold text-slate-700 border-b pb-1 text-[11px]">
+                      <span>الصنف والكمية</span>
+                      <span>السعر</span>
+                    </div>
+
+                    {routedModal.tickets[routedModal.activeTicketIndex].items.map((i, idx) => (
+                      <div key={idx} className="space-y-0.5">
+                        <div className="flex justify-between text-slate-800 font-semibold">
+                          <span>
+                            {i.quantity}x {i.nameAr}
+                          </span>
+                          <span>{(i.price * i.quantity).toFixed(2)} ج.م</span>
+                        </div>
+                        {i.notes && (
+                          <p className="text-[10px] text-amber-800 font-sans pr-3">
+                            └ ملاحظة: {i.notes}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Footer of ticket */}
+                  <div className="border-t pt-2 flex justify-between font-black text-slate-900 text-sm">
+                    <span>حالة البون:</span>
+                    <span className="text-emerald-700">
+                      {routedModal.drawerKicked
+                        ? "مدفوع بالكامل (PAID)"
+                        : "مرسل للتحضير (OPEN)"}
+                    </span>
+                  </div>
+
+                  <p className="text-[10px] text-slate-400 text-center pt-2">
+                    {new Date().toLocaleDateString("ar-EG")} -{" "}
+                    {new Date().toLocaleTimeString("ar-EG")}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Controls */}
+            <div className="pt-2 border-t flex items-center gap-2">
+              <button
+                onClick={() => setRoutedModal(null)}
+                className="flex-1 py-3 bg-primary-800 hover:bg-primary-900 text-white font-bold rounded-xl text-xs transition shadow"
+              >
+                إغلاق والمتابعة
+              </button>
+            </div>
           </div>
         </div>
       )}

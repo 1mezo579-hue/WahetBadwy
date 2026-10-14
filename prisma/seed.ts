@@ -252,6 +252,28 @@ async function main() {
         },
       ],
     },
+    {
+      name: "Shisha & Tobacco",
+      nameAr: "قسم الشيشة والمعسل",
+      description: "شيشة فاخرة، معسل سلوم وتفاحتين على الفحم الطبيعي",
+      order: 3,
+      items: [
+        {
+          name: "Double Apple Shisha",
+          nameAr: "شيشة تفاحتين فاخر",
+          description: "تفاحتين نخلة فاخر على الفحم الطبيعي",
+          price: 65,
+          recipe: [],
+        },
+        {
+          name: "Salloum Traditional Shisha",
+          nameAr: "شيشة معسل سلوم بدوي",
+          description: "معسل سلوم وقص أصلي على الحطب",
+          price: 40,
+          recipe: [],
+        },
+      ],
+    },
   ];
 
   for (const catData of categoriesData) {
