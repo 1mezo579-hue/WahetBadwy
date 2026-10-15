@@ -472,15 +472,13 @@ export function silentPrintHtml(htmlContent: string): Promise<boolean> {
       setTimeout(() => {
         try {
           window.print();
-          // Safety timeout to clean up after print dialog finishes
-          setTimeout(cleanup, 1200);
           resolve(true);
         } catch (err) {
           console.error("Xprinter Print Execution Error:", err);
           cleanup();
           resolve(false);
         }
-      }, 60);
+      }, 80);
 
     } catch (err) {
       console.error("Xprinter Print Setup Error:", err);
