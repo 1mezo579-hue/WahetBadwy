@@ -369,9 +369,9 @@ export function buildZReportHtml(reportData: any, cashierName: string): string {
 }
 
 /**
- * Executes Silent Printing by writing HTML to an invisible iframe and calling print().
- * In Chrome/Edge launched with `--kiosk-printing`, this immediately prints to the
- * OS Default Printer with ZERO dialogs or user clicks.
+ * Executes 80mm Thermal Printing targeting Xprinter 80mm / Windows Default Printer.
+ * In Chrome/Edge launched with `--kiosk-printing`, this immediately prints with ZERO dialogs.
+ * In standard browser mode, it opens the exact 80mm print preview ready to print.
  */
 export function silentPrintHtml(htmlContent: string): Promise<boolean> {
   return new Promise((resolve) => {
@@ -381,49 +381,109 @@ export function silentPrintHtml(htmlContent: string): Promise<boolean> {
     }
 
     try {
-      const iframeId = "wahet-badawy-silent-printer-frame";
-      let iframe = document.getElementById(iframeId) as HTMLIFrameElement;
-
-      if (!iframe) {
-        iframe = document.createElement("iframe");
-        iframe.id = iframeId;
-        iframe.style.position = "fixed";
-        iframe.style.top = "-9999px";
-        iframe.style.left = "-9999px";
-        iframe.style.width = "80mm";
-        iframe.style.height = "100px";
-        iframe.style.border = "none";
-        iframe.style.opacity = "0";
-        iframe.style.pointerEvents = "none";
-        document.body.appendChild(iframe);
+      // 1. Ensure print styles for Xprinter 80mm are injected into document head
+      const styleId = "xprinter-80mm-thermal-styles";
+      let styleEl = document.getElementById(styleId) as HTMLStyleElement;
+      if (!styleEl) {
+        styleEl = document.createElement("style");
+        styleEl.id = styleId;
+        styleEl.textContent = `
+          @media screen {
+            #xprinter-80mm-print-area {
+              display: none !important;
+              position: absolute !important;
+              left: -9999px !important;
+              top: -9999px !important;
+              visibility: hidden !important;
+              opacity: 0 !important;
+            }
+          }
+          @media print {
+            @page {
+              size: 80mm auto !important;
+              margin: 0mm !important;
+            }
+            html, body {
+              width: 80mm !important;
+              max-width: 80mm !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            body.xprinter-printing > *:not(#xprinter-80mm-print-area) {
+              display: none !important;
+            }
+            body.xprinter-printing #xprinter-80mm-print-area {
+              display: block !important;
+              visibility: visible !important;
+              position: static !important;
+              width: 76mm !important;
+              max-width: 76mm !important;
+              margin: 0 auto !important;
+              padding: 2mm 1mm 6mm 1mm !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif !important;
+              direction: rtl !important;
+              text-align: right !important;
+            }
+            body.xprinter-printing #xprinter-80mm-print-area * {
+              visibility: visible !important;
+              color: #000000 !important;
+            }
+          }
+        `;
+        document.head.appendChild(styleEl);
       }
 
-      const doc = iframe.contentWindow?.document || iframe.contentDocument;
-      if (!doc) {
-        console.error("Silent Print Error: cannot access iframe document");
-        resolve(false);
-        return;
+      // 2. Ensure print container exists in document body
+      const containerId = "xprinter-80mm-print-area";
+      let container = document.getElementById(containerId);
+      if (!container) {
+        container = document.createElement("div");
+        container.id = containerId;
+        document.body.appendChild(container);
       }
 
-      doc.open();
-      doc.write(htmlContent);
-      doc.close();
+      // Extract body content or use full htmlContent
+      let bodyContent = htmlContent;
+      const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      if (bodyMatch && bodyMatch[1]) {
+        bodyContent = bodyMatch[1];
+      }
 
-      // Wait a moment for styles and layout to calculate, then print
+      container.innerHTML = bodyContent;
+      document.body.classList.add("xprinter-printing");
+
+      // 3. Setup cleanup after print
+      const cleanup = () => {
+        document.body.classList.remove("xprinter-printing");
+        if (container) {
+          container.innerHTML = "";
+        }
+        window.removeEventListener("afterprint", cleanup);
+      };
+      window.addEventListener("afterprint", cleanup);
+
+      // 4. Trigger Print
       setTimeout(() => {
         try {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
+          window.print();
+          // Safety timeout to clean up after print dialog finishes
+          setTimeout(cleanup, 1200);
           resolve(true);
         } catch (err) {
-          console.error("Silent Print Execution Error:", err);
-          // Fallback to window.print if iframe print is restricted
-          window.print();
+          console.error("Xprinter Print Execution Error:", err);
+          cleanup();
           resolve(false);
         }
-      }, 250);
+      }, 60);
+
     } catch (err) {
-      console.error("Silent Print Setup Error:", err);
+      console.error("Xprinter Print Setup Error:", err);
       resolve(false);
     }
   });

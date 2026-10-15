@@ -13,29 +13,30 @@ echo [2/2] جاري تشغيل شاشة الكاشير بوضع (--kiosk-printin
 echo.
 
 set POS_URL=https://wahetbadwy.vercel.app/pos
+set USER_DATA=%LOCALAPPDATA%\WahetBadawyPOS
 
 :: 1. محاولة التشغيل عبر Microsoft Edge (مدمج في كل أجهزة ويندوز 10 و 11)
-start msedge.exe --kiosk-printing --app="%POS_URL%"
+start msedge.exe --kiosk-printing --user-data-dir="%USER_DATA%" --app="%POS_URL%"
 if %ERRORLEVEL% EQU 0 (
-    echo [✓] تم تشغيل شاشة الكاشير بنجاح عبر Microsoft Edge مع الطباعة الصامتة!
+    echo [✓] تم تشغيل شاشة الكاشير بنجاح عبر Microsoft Edge مع الطباعة التلقائية الصامتة على Xprinter!
     exit
 )
 
 :: 2. محاولة التشغيل عبر Google Chrome إذا كان مثبتاً
-start chrome.exe --kiosk-printing --app="%POS_URL%"
+start chrome.exe --kiosk-printing --user-data-dir="%USER_DATA%" --app="%POS_URL%"
 if %ERRORLEVEL% EQU 0 (
-    echo [✓] تم تشغيل شاشة الكاشير بنجاح عبر Google Chrome مع الطباعة الصامتة!
+    echo [✓] تم تشغيل شاشة الكاشير بنجاح عبر Google Chrome مع الطباعة التلقائية الصامتة على Xprinter!
     exit
 )
 
 :: 3. في حالة عدم العثور على المسار التلقائي، البحث في المسارات القياسية
 if exist "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" (
-    start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --kiosk-printing --app="%POS_URL%"
+    start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --kiosk-printing --user-data-dir="%USER_DATA%" --app="%POS_URL%"
     exit
 )
 
 if exist "C:\Program Files\Google\Chrome\Application\chrome.exe" (
-    start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing --app="%POS_URL%"
+    start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing --user-data-dir="%USER_DATA%" --app="%POS_URL%"
     exit
 )
 

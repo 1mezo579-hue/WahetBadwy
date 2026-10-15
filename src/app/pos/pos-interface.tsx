@@ -755,10 +755,10 @@ export default function PosInterface({
       // تم تقفيل الشيك -> تفعيل حالة طباعة الشيك ليتحول الزر لفتح الدرج بالتحصيل
       setIsCheckPrinted(true);
 
-      // عرض إشعار نجاح الطباعة الصامتة
+      // عرض إشعار نجاح الطباعة التلقائية
       setRoutedModal({
-        title: "🧾 تم تقفيل وطباعة شيك العميل صامتاً",
-        subtitle: `${selectedTable.name} • تم إرسال الشيك للطابعة الافتراضية بنجاح (جاهز للتحصيل وفتح الدرج)`,
+        title: "🧾 تم إرسال الشيك لطابعة Xprinter 80mm",
+        subtitle: `${selectedTable.name} • تمت الطباعة تلقائياً على طابعة الإيصالات (جاهز للتحصيل وفتح الدرج)`,
         isPayment: false,
         drawerKicked: false,
         tickets: [checkRes.checkTicket],
@@ -837,7 +837,7 @@ export default function PosInterface({
       // Display final paid receipt modal with CASH DRAWER OPENED confirmation
       setRoutedModal({
         title: "تم التحصيل وسداد الحساب بنجاح ✓",
-        subtitle: `${selectedTable.name} • 🚪 تم فتح الدرج وإرسال الإيصال للطابعة الافتراضية صامتاً`,
+        subtitle: `${selectedTable.name} • 🚪 تم فتح الدرج وإرسال الفاتورة لطابعة Xprinter 80mm تلقائياً`,
         isPayment: true,
         drawerKicked: true,
         tickets: [paymentRes.receiptTicket],
@@ -989,24 +989,14 @@ export default function PosInterface({
             </button>
           )}
 
-          {/* SPRINT 4: Thermal Printer Web Serial Status Pill */}
-          <button
-            onClick={() => setShowPrinterSettings(true)}
-            className={`px-3 py-1.5 rounded-xl font-bold border transition flex items-center gap-2 ${
-              printerStatus.isConnected
-                ? "bg-emerald-950/80 border-emerald-500 text-emerald-300 hover:bg-emerald-900"
-                : "bg-slate-800/80 border-slate-600 text-slate-300 hover:bg-slate-700"
-            }`}
+          {/* Xprinter 80mm Automatic Thermal Printing Indicator */}
+          <div
+            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 flex items-center gap-2 select-none shadow-sm"
+            title="طابعة الفواتير Xprinter 80mm متصلة وتطبع تلقائياً عند طلب الشيك أو السداد"
           >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                printerStatus.isConnected ? "bg-emerald-400 animate-pulse" : "bg-slate-400"
-              }`}
-            ></span>
-            <span>
-              {printerStatus.isConnected ? "🖨️ الطابعة متصلة" : "🖨️ ربط الطابعة"}
-            </span>
-          </button>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>🖨️ Xprinter 80mm تلقائي</span>
+          </div>
 
           <Link
             href="/dashboard/reports"
@@ -3069,10 +3059,10 @@ export default function PosInterface({
                   }
                 }}
                 className="py-3 px-4 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5"
-                title="إعادة طباعة صامتة مباشرة على الطابعة الافتراضية"
+                title="إعادة طباعة الإيصال مباشرة على طابعة Xprinter 80mm"
               >
                 <span>🖨️</span>
-                <span>طباعة صامتة</span>
+                <span>طباعة على Xprinter (80mm)</span>
               </button>
 
               {/* إذا كان المعروض شيك العميل: إتاحة زر فتح الدرج والتحصيل الفوري مباشرة */}
