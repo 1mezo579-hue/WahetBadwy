@@ -423,7 +423,10 @@ export default function PosInterface({
         staffWasteTotal: wasteTotal,
         staffWasteDetails: staffWasteList,
         managementWithdrawalsTotal: withTotal,
-        managementWithdrawalsDetails: withdrawalsList,
+        managementWithdrawalsDetails: withdrawalsList.map((w) => ({
+          ...w,
+          item: w.receiver,
+        })),
         receivedBy: closingReceivedBy,
       });
 

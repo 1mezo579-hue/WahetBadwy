@@ -148,7 +148,7 @@ export async function startShift({
 
 export interface ClosingItem {
   id?: string;
-  item: string;
+  item?: string;
   amount: number;
   notes?: string;
   receiver?: string;
