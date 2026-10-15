@@ -13,6 +13,11 @@ import {
   printCustomerCheckOnly,
   RoutedTicket,
 } from "@/utils/printer/order-router";
+import {
+  triggerSilentThermalPrint,
+  silentPrintHtml,
+  buildZReportHtml,
+} from "@/utils/printer/silent-print";
 
 interface PosTable {
   id: string;
@@ -726,13 +731,34 @@ export default function PosInterface({
         cashierName: userName,
       });
 
+      // الطباعة الصامتة المباشرة على طابعة الويندوز الافتراضية
+      triggerSilentThermalPrint({
+        title: "شيك حساب العميل (CUSTOMER CHECK)",
+        receiptType: "CHECK",
+        tableName: selectedTable.name,
+        orderNumber: orderNum,
+        orderType,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
+        deliveryAddress: deliveryAddress || undefined,
+        deliveryFee: deliveryFeeNumber,
+        items: cart,
+        subtotal,
+        discount,
+        totalAmount,
+        isComplimentary,
+        notes: orderNotes,
+        cashierName: userName,
+        isPaid: false,
+      }).catch((e) => console.error("Silent Print Error:", e));
+
       // تم تقفيل الشيك -> تفعيل حالة طباعة الشيك ليتحول الزر لفتح الدرج بالتحصيل
       setIsCheckPrinted(true);
 
-      // عرض معاينة الشيك المطبوع
+      // عرض إشعار نجاح الطباعة الصامتة
       setRoutedModal({
-        title: "🧾 تم تقفيل وطباعة شيك العميل",
-        subtitle: `${selectedTable.name} • تم إرسال الشيك للطابعة (جاهز للتحصيل وفتح الدرج)`,
+        title: "🧾 تم تقفيل وطباعة شيك العميل صامتاً",
+        subtitle: `${selectedTable.name} • تم إرسال الشيك للطابعة الافتراضية بنجاح (جاهز للتحصيل وفتح الدرج)`,
         isPayment: false,
         drawerKicked: false,
         tickets: [checkRes.checkTicket],
@@ -787,10 +813,31 @@ export default function PosInterface({
         cashierName: userName,
       });
 
+      // الطباعة الصامتة المباشرة لفاتورة السداد على الطابعة الافتراضية
+      triggerSilentThermalPrint({
+        title: "فاتورة سداد نقدي (PAID RECEIPT)",
+        receiptType: "RECEIPT",
+        tableName: selectedTable.name,
+        orderNumber: activeOrderId ? parseInt(activeOrderId.slice(-4)) : undefined,
+        orderType,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
+        deliveryAddress: deliveryAddress || undefined,
+        deliveryFee: deliveryFeeNumber,
+        items: cart,
+        subtotal,
+        discount,
+        totalAmount,
+        isComplimentary,
+        notes: orderNotes,
+        cashierName: userName,
+        isPaid: true,
+      }).catch((e) => console.error("Silent Print Error:", e));
+
       // Display final paid receipt modal with CASH DRAWER OPENED confirmation
       setRoutedModal({
         title: "تم التحصيل وسداد الحساب بنجاح ✓",
-        subtitle: `${selectedTable.name} • 🚪 تم فتح درج النقدية بنجاح عبر إشارة ESC/POS`,
+        subtitle: `${selectedTable.name} • 🚪 تم فتح الدرج وإرسال الإيصال للطابعة الافتراضية صامتاً`,
         isPayment: true,
         drawerKicked: true,
         tickets: [paymentRes.receiptTicket],
@@ -2648,11 +2695,12 @@ export default function PosInterface({
 
             <div className="grid grid-cols-2 gap-2 pt-2">
               <button
-                onClick={() => window.print()}
-                className="py-3 bg-sky-700 hover:bg-sky-800 text-white font-bold rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5"
+                onClick={() => silentPrintHtml(buildZReportHtml(zReportData, userName))}
+                className="py-3 bg-sky-700 hover:bg-sky-800 text-white font-black rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5"
+                title="طباعة صامتة مباشرة على الطابعة الافتراضية"
               >
                 <span>🖨️</span>
-                <span>طباعة ورقة التقفيل</span>
+                <span>طباعة صامتة للتقفيل</span>
               </button>
               <button
                 onClick={() => setZReportData(null)}
@@ -2772,6 +2820,62 @@ export default function PosInterface({
               >
                 <span>🚪 اختبار فتح درج النقدية (Test Drawer Kick)</span>
               </button>
+            </div>
+
+            {/* Silent Printing to Windows Default Printer Section */}
+            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-300 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                  <span>⚡</span>
+                  <span>الطباعة الصامتة على طابعة الويندوز الافتراضية</span>
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                  ● نشطة وتعمل تلقائياً
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                يتم إرسال كافة الشيكات وفواتير السداد تلقائياً عبر الإطار المخفي للطباعة مباشرة على طابعة الويندوز الافتراضية.
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerSilentThermalPrint({
+                      title: "اختبار طباعة صامتة (TEST PRINT)",
+                      receiptType: "CHECK",
+                      tableName: "طاولة تجربة #1",
+                      orderNumber: 101,
+                      orderType: "DINE_IN",
+                      items: [
+                        { nameAr: "شاي بدوي زرد بالنعناع", quantity: 2, price: 20 },
+                        { nameAr: "مندي لحم بلدي واحة بدوي", quantity: 1, price: 350 },
+                      ],
+                      subtotal: 390,
+                      totalAmount: 390,
+                      cashierName: userName,
+                      isPaid: true,
+                      notes: "تجربة الطباعة الصامتة على الطابعة الافتراضية",
+                    });
+                  }}
+                  className="py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <span>🖨️</span>
+                  <span>اختبار طباعة صامتة</span>
+                </button>
+
+                <a
+                  href="/تشغيل_كاشير_واحة_بدوي_طباعة_صامتة.bat"
+                  download="تشغيل_كاشير_واحة_بدوي_طباعة_صامتة.bat"
+                  className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-black text-amber-300 font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5 text-center"
+                  title="تحميل اختصار سطح المكتب للتشغيل الصامت بدون نوافذ"
+                >
+                  <span>📥</span>
+                  <span>تحميل اختصار Kiosk (.bat)</span>
+                </a>
+              </div>
+              <p className="text-[10px] text-amber-900 bg-amber-100/60 p-2 rounded-xl">
+                💡 <strong>للطباعة الفورية بدون ظهور نافذة معاينة نهائياً:</strong> قم بتشغيل شاشة الكاشير من ملف (.bat) أعلاه أو تشغيل المتصفح بأمر <code className="font-mono bg-white px-1 py-0.5 rounded border border-amber-300">--kiosk-printing</code>.
+              </p>
             </div>
 
             <p className="text-[11px] text-slate-400 text-center">
@@ -2942,6 +3046,33 @@ export default function PosInterface({
                 className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition shadow-sm"
               >
                 إغلاق المعاينة
+              </button>
+
+              <button
+                onClick={() => {
+                  const activeT = routedModal.tickets[routedModal.activeTicketIndex];
+                  if (activeT) {
+                    triggerSilentThermalPrint({
+                      title: activeT.title,
+                      receiptType: routedModal.isPayment ? "RECEIPT" : "CHECK",
+                      tableName: activeT.tableName,
+                      orderNumber: activeT.orderNumber,
+                      items: activeT.items,
+                      subtotal,
+                      discount,
+                      totalAmount,
+                      isComplimentary,
+                      notes: orderNotes,
+                      cashierName: userName,
+                      isPaid: routedModal.isPayment,
+                    });
+                  }
+                }}
+                className="py-3 px-4 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5"
+                title="إعادة طباعة صامتة مباشرة على الطابعة الافتراضية"
+              >
+                <span>🖨️</span>
+                <span>طباعة صامتة</span>
               </button>
 
               {/* إذا كان المعروض شيك العميل: إتاحة زر فتح الدرج والتحصيل الفوري مباشرة */}

@@ -4,6 +4,11 @@ import { useState } from "react";
 import { ShiftStatus, OrderStatus, OrderType } from "@prisma/client";
 import { refundOrDeleteOrder } from "@/actions/reports";
 import { useRouter } from "next/navigation";
+import {
+  triggerSilentThermalPrint,
+  silentPrintHtml,
+  buildZReportHtml,
+} from "@/utils/printer/silent-print";
 
 interface ReportsViewProps {
   shifts: any[];
@@ -94,7 +99,38 @@ export default function ReportsView({
   });
 
   const handlePrint = () => {
-    window.print();
+    if (printableOrder) {
+      triggerSilentThermalPrint({
+        title: "فاتورة سداد نقدي (PAID RECEIPT)",
+        receiptType: "RECEIPT",
+        tableName:
+          printableOrder.table?.name ||
+          (printableOrder.type === OrderType.TAKEAWAY ? "تيك أواي" : "دليفري"),
+        orderNumber: printableOrder.orderNumber,
+        orderType: printableOrder.type,
+        customerName: printableOrder.customer?.name,
+        customerPhone: printableOrder.customer?.phone,
+        deliveryAddress: printableOrder.customer?.address || undefined,
+        deliveryFee: printableOrder.deliveryFee || 0,
+        items:
+          printableOrder.items?.map((i: any) => ({
+            nameAr: i.menuItem?.nameAr || "صنف",
+            quantity: i.quantity,
+            price: i.unitPrice || i.totalPrice / (i.quantity || 1),
+            notes: i.notes,
+          })) || [],
+        subtotal: printableOrder.subtotal,
+        discount: printableOrder.discount || 0,
+        totalAmount: printableOrder.totalAmount,
+        isComplimentary: printableOrder.isComplimentary,
+        notes: printableOrder.notes,
+        timestamp: new Date(printableOrder.createdAt),
+        cashierName: printableOrder.user?.name || "كاشير واحة بدوي",
+        isPaid: true,
+      });
+    } else {
+      window.print();
+    }
   };
 
   const handleConfirmRefund = async () => {
