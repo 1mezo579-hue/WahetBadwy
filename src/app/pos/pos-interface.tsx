@@ -26,13 +26,14 @@ interface PosTable {
   type: TableType;
   status: TableStatus;
   capacity: number;
-  orders?: Array<{
+  orders: Array<{
     id: string;
     orderNumber: number;
     status: OrderStatus;
     totalAmount: number;
     subtotal: number;
     isComplimentary: boolean;
+    customerName?: string | null;
     items: Array<{
       id: string;
       menuItemId: string;
@@ -1288,9 +1289,9 @@ export default function PosInterface({
                       </p>
                     </div>
 
-                    {hasOpenOrder ? (
+                    {hasOpenOrder && table.orders && table.orders.length > 0 && table.orders[0] ? (
                       <div className={`${isTakeaway ? "bg-amber-100/90 border border-amber-300" : "bg-rose-100"} p-1.5 rounded-lg text-center`}>
-                        {isTakeaway && table.orders[0].customerName && (
+                        {isTakeaway && table.orders[0]?.customerName && (
                           <p className="text-[10px] font-black text-amber-950 truncate">
                             👤 {table.orders[0].customerName}
                           </p>
