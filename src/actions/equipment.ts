@@ -31,7 +31,7 @@ async function ensureEquipmentColumns() {
   } catch {}
 }
 
-export const heroInvoiceEquipmentData = [
+const heroInvoiceEquipmentData = [
   // من رقم 1 إلى 29: عدة شيشة
   { itemNo: 1, name: "قلب كورة منقوش 1 دور", type: EquipmentType.SHISHA, unit: "قطعة", quantity: 6, unitPrice: 240, purchaseDate: new Date("2026-09-30"), notes: "فاتورة شيشة هيرو - صنف #1" },
   { itemNo: 2, name: "قلب كورة منقوش 2 دور", type: EquipmentType.SHISHA, unit: "قطعة", quantity: 4, unitPrice: 275, purchaseDate: new Date("2026-09-30"), notes: "فاتورة شيشة هيرو - صنف #2" },
