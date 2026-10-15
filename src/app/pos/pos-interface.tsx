@@ -374,10 +374,10 @@ export default function PosInterface({
       tables.find(
         (t) =>
           (t.name.includes("تليفون") || t.name.includes("تيك أواي")) &&
-          t.number < 900 &&
+          (t.number ?? 0) < 900 &&
           (t.status === TableStatus.AVAILABLE || !t.orders || t.orders.length === 0)
       ) ||
-      tables.find((t) => (t.name.includes("تليفون") || t.name.includes("تيك أواي")) && t.number < 900);
+      tables.find((t) => (t.name.includes("تليفون") || t.name.includes("تيك أواي")) && (t.number ?? 0) < 900);
 
     if (freeTakeawayTable) {
       handleSelectTable(freeTakeawayTable, "TAKEAWAY");
@@ -1068,7 +1068,7 @@ export default function PosInterface({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">🥡</span>
-                    <h3 className="font-black text-base">طاولات التيك أواي ({tables.filter(t => (t.name.includes("تيك أواي") || t.name.includes("تليفون")) && t.number < 900).length})</h3>
+                    <h3 className="font-black text-base">طاولات التيك أواي ({tables.filter(t => (t.name.includes("تيك أواي") || t.name.includes("تليفون")) && (t.number ?? 0) < 900).length})</h3>
                   </div>
                   <p className="text-xs text-amber-100 mt-1">
                     حجز خانة تيك أواي بالاسم ورقم الهاتف للاستلام عند وصول العميل
@@ -1142,7 +1142,7 @@ export default function PosInterface({
                   }`}
                 >
                   <span>🥡</span>
-                  <span>طاولات التيك أواي ({tables.filter(t => (t.name.includes("تيك أواي") || t.name.includes("تليفون")) && t.number < 900).length})</span>
+                  <span>طاولات التيك أواي ({tables.filter(t => (t.name.includes("تيك أواي") || t.name.includes("تليفون")) && (t.number ?? 0) < 900).length})</span>
                 </button>
                 <button
                   onClick={() => setTableFilter("REGULAR")}
@@ -1200,7 +1200,7 @@ export default function PosInterface({
               {tables
                 .filter((table) => {
                   if (tableFilter === "ALL") return true;
-                  if (tableFilter === "PHONE_TAKEAWAY") return (table.name.includes("تليفون") || table.name.includes("تيك أواي")) && table.number < 900;
+                  if (tableFilter === "PHONE_TAKEAWAY") return (table.name.includes("تليفون") || table.name.includes("تيك أواي")) && (table.number ?? 0) < 900;
                   if (tableFilter === "FAMILY") return table.type === TableType.FAMILY_BOOTH;
                   if (tableFilter === "VIP") return table.type === TableType.VIP;
                   if (tableFilter === "REGULAR")
@@ -1222,7 +1222,7 @@ export default function PosInterface({
                 const isSpecial =
                   table.type === TableType.OWNER ||
                   table.type === TableType.MANAGER;
-                const isTakeaway = (table.name.includes("تليفون") || table.name.includes("تيك أواي")) && table.number < 900;
+                const isTakeaway = (table.name.includes("تليفون") || table.name.includes("تيك أواي")) && (table.number ?? 0) < 900;
 
                 let cardBg = "bg-white border-slate-200 hover:border-primary-400";
                 let statusBadge =
