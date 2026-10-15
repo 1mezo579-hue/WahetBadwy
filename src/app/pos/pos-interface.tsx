@@ -26,7 +26,7 @@ interface PosTable {
   type: TableType;
   status: TableStatus;
   capacity: number;
-  orders: Array<{
+  orders?: Array<{
     id: string;
     orderNumber: number;
     status: OrderStatus;
@@ -353,6 +353,7 @@ export default function PosInterface({
     type: TableType.REGULAR,
     status: TableStatus.AVAILABLE,
     capacity: 99,
+    orders: [],
   };
 
   const handleStartDirectTakeaway = () => {
