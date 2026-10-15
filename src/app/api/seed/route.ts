@@ -149,6 +149,19 @@ export async function GET() {
       `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_address" TEXT;`,
       `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_fee" DOUBLE PRECISION NOT NULL DEFAULT 0;`,
       `ALTER TABLE "orders" ALTER COLUMN "table_id" DROP NOT NULL;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "gross_sales" DOUBLE PRECISION DEFAULT 0;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "discounts" DOUBLE PRECISION DEFAULT 0;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "visa_amount" DOUBLE PRECISION DEFAULT 0;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "other_balance" DOUBLE PRECISION DEFAULT 0;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "expenses_total" DOUBLE PRECISION DEFAULT 0;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "expenses_details" JSONB DEFAULT '[]'::jsonb;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "management_checks" DOUBLE PRECISION DEFAULT 0;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "staff_waste_total" DOUBLE PRECISION DEFAULT 0;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "staff_waste_details" JSONB DEFAULT '[]'::jsonb;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "management_withdrawals_total" DOUBLE PRECISION DEFAULT 0;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "management_withdrawals_details" JSONB DEFAULT '[]'::jsonb;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "end_of_day_balance" DOUBLE PRECISION DEFAULT 0;`,
+      `ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "received_by" TEXT;`,
     ];
 
     for (const stmt of alterStatements) {
@@ -235,6 +248,54 @@ export async function GET() {
         capacity: 99,
       },
     });
+
+    await prisma.diningTable.upsert({
+      where: { name: "تيك أواي فوري مباشر (بدون طاولة)" },
+      update: {},
+      create: {
+        name: "تيك أواي فوري مباشر (بدون طاولة)",
+        number: 997,
+        type: TableType.REGULAR,
+        status: TableStatus.AVAILABLE,
+        capacity: 99,
+      },
+    });
+
+    // 10 Dedicated Takeaway Phone Tables (طلبات التليفون واستلام التيك أواي)
+    for (let i = 1; i <= 10; i++) {
+      await prisma.diningTable.upsert({
+        where: { name: `تيك أواي تليفون ${i}` },
+        update: {
+          number: 500 + i,
+          capacity: 1,
+        },
+        create: {
+          name: `تيك أواي تليفون ${i}`,
+          number: 500 + i,
+          type: TableType.REGULAR,
+          status: TableStatus.AVAILABLE,
+          capacity: 1,
+        },
+      });
+    }
+
+    // 10 Dedicated Takeaway Tables (طاولات التيك أواي 1 إلى 10)
+    for (let i = 1; i <= 10; i++) {
+      await prisma.diningTable.upsert({
+        where: { name: `تيك أواي ${i}` },
+        update: {
+          number: 510 + i,
+          capacity: 1,
+        },
+        create: {
+          name: `تيك أواي ${i}`,
+          number: 510 + i,
+          type: TableType.REGULAR,
+          status: TableStatus.AVAILABLE,
+          capacity: 1,
+        },
+      });
+    }
 
     for (let i = 1; i <= 6; i++) {
       await prisma.diningTable.upsert({

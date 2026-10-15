@@ -109,7 +109,57 @@ async function main() {
       capacity: 4,
     },
   });
-  console.log("✅ All 28 dining tables seeded successfully (6 Family + 8 VIP + 12 Regular + 1 Owner + 1 Manager)");
+
+  // - Fast Takeaway Virtual Table
+  await prisma.diningTable.upsert({
+    where: { name: "تيك أواي فوري مباشر (بدون طاولة)" },
+    update: {},
+    create: {
+      name: "تيك أواي فوري مباشر (بدون طاولة)",
+      number: 997,
+      type: TableType.REGULAR,
+      status: TableStatus.AVAILABLE,
+      capacity: 99,
+    },
+  });
+
+  // - 10 Dedicated Takeaway Phone Tables (طلبات التليفون واستلام التيك أواي)
+  for (let i = 1; i <= 10; i++) {
+    await prisma.diningTable.upsert({
+      where: { name: `تيك أواي تليفون ${i}` },
+      update: {
+        number: 500 + i,
+        capacity: 1,
+      },
+      create: {
+        name: `تيك أواي تليفون ${i}`,
+        number: 500 + i,
+        type: TableType.REGULAR,
+        status: TableStatus.AVAILABLE,
+        capacity: 1,
+      },
+    });
+  }
+
+  // - 10 Dedicated Takeaway Tables (طاولات تيك أواي 1 إلى 10)
+  for (let i = 1; i <= 10; i++) {
+    await prisma.diningTable.upsert({
+      where: { name: `تيك أواي ${i}` },
+      update: {
+        number: 510 + i,
+        capacity: 1,
+      },
+      create: {
+        name: `تيك أواي ${i}`,
+        number: 510 + i,
+        type: TableType.REGULAR,
+        status: TableStatus.AVAILABLE,
+        capacity: 1,
+      },
+    });
+  }
+
+  console.log("✅ All dining tables and 20 takeaway tables seeded successfully");
 
   // 3. Seed Equipment (Kitchen & Barista)
   console.log("🍳 Seeding Equipment...");

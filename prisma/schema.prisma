@@ -231,6 +231,19 @@ model Shift {
   status          ShiftStatus @default(OPEN)
   notes           String?
   orders          Order[]
+  grossSales                 Float?      @default(0) @map("gross_sales")
+  discounts                  Float?      @default(0) @map("discounts")
+  visaAmount                 Float?      @default(0) @map("visa_amount")
+  otherBalance               Float?      @default(0) @map("other_balance")
+  expensesTotal              Float?      @default(0) @map("expenses_total")
+  expensesDetails            Json?       @default("[]") @map("expenses_details")
+  managementChecks           Float?      @default(0) @map("management_checks")
+  staffWasteTotal            Float?      @default(0) @map("staff_waste_total")
+  staffWasteDetails          Json?       @default("[]") @map("staff_waste_details")
+  managementWithdrawalsTotal Float?      @default(0) @map("management_withdrawals_total")
+  managementWithdrawalsDetails Json?     @default("[]") @map("management_withdrawals_details")
+  endOfDayBalance            Float?      @default(0) @map("end_of_day_balance")
+  receivedBy                 String?     @map("received_by")
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 

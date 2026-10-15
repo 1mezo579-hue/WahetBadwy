@@ -142,6 +142,47 @@ export default function PosInterface({
   const [shiftFeedback, setShiftFeedback] = useState<string | null>(null);
   const [zReportData, setZReportData] = useState<any | null>(null);
 
+  // Table Filter State
+  const [tableFilter, setTableFilter] = useState<
+    "ALL" | "PHONE_TAKEAWAY" | "REGULAR" | "FAMILY" | "VIP" | "SPECIAL"
+  >("ALL");
+
+  // Bedouin Grill Official Closing Sheet State (ورقة التقفيل الرسمية)
+  const [closingGrossSales, setClosingGrossSales] = useState<string>("");
+  const [closingDiscounts, setClosingDiscounts] = useState<string>("0");
+  const [closingVisa, setClosingVisa] = useState<string>("0");
+  const [closingOtherBalance, setClosingOtherBalance] = useState<string>("0");
+  const [closingManagementChecks, setClosingManagementChecks] = useState<string>("0");
+  const [closingReceivedBy, setClosingReceivedBy] = useState<string>("");
+
+  // Detailed Breakdown Lists
+  const [expensesList, setExpensesList] = useState<
+    Array<{ id: string; item: string; amount: number; notes?: string }>
+  >([]);
+  const [withdrawalsList, setWithdrawalsList] = useState<
+    Array<{ id: string; receiver: string; amount: number; notes?: string }>
+  >([]);
+  const [staffWasteList, setStaffWasteList] = useState<
+    Array<{ id: string; item: string; amount: number; responsible?: string; notes?: string }>
+  >([]);
+
+  // Dynamic Add Row Fields
+  const [newExpenseItem, setNewExpenseItem] = useState("");
+  const [newExpenseAmount, setNewExpenseAmount] = useState("");
+  const [newExpenseNotes, setNewExpenseNotes] = useState("");
+
+  const [newWithdrawalReceiver, setNewWithdrawalReceiver] = useState("");
+  const [newWithdrawalAmount, setNewWithdrawalAmount] = useState("");
+  const [newWithdrawalNotes, setNewWithdrawalNotes] = useState("");
+
+  const [newWasteItem, setNewWasteItem] = useState("");
+  const [newWasteAmount, setNewWasteAmount] = useState("");
+  const [newWasteResponsible, setNewWasteResponsible] = useState("");
+
+  const [activeClosingSubTab, setActiveClosingSubTab] = useState<
+    "SUMMARY" | "EXPENSES" | "WITHDRAWALS" | "WASTE"
+  >("SUMMARY");
+
   // Subscribe to Web Serial status updates
   useEffect(() => {
     const unsubscribe = serialPrinter.onStatusChange((status) => {
@@ -236,7 +277,111 @@ export default function PosInterface({
     });
   };
 
-  // SPRINT 5: Action - End Shift (تقفيل وتسليم الوردية)
+  // Helper to add Expense Item
+  const handleAddExpenseItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = parseFloat(newExpenseAmount);
+    if (!newExpenseItem || isNaN(amount) || amount <= 0) {
+      alert("يرجى كتابة بيان المصروف والمبلغ بشكل صحيح");
+      return;
+    }
+    setExpensesList((prev) => [
+      ...prev,
+      { id: Date.now().toString(), item: newExpenseItem, amount, notes: newExpenseNotes },
+    ]);
+    setNewExpenseItem("");
+    setNewExpenseAmount("");
+    setNewExpenseNotes("");
+  };
+
+  const handleRemoveExpenseItem = (id: string) => {
+    setExpensesList((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  // Helper to add Management Withdrawal Item
+  const handleAddWithdrawalItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = parseFloat(newWithdrawalAmount);
+    if (!newWithdrawalReceiver || isNaN(amount) || amount <= 0) {
+      alert("يرجى كتابة اسم المستلم والمبلغ بشكل صحيح");
+      return;
+    }
+    setWithdrawalsList((prev) => [
+      ...prev,
+      { id: Date.now().toString(), receiver: newWithdrawalReceiver, amount, notes: newWithdrawalNotes },
+    ]);
+    setNewWithdrawalReceiver("");
+    setNewWithdrawalAmount("");
+    setNewWithdrawalNotes("");
+  };
+
+  const handleRemoveWithdrawalItem = (id: string) => {
+    setWithdrawalsList((prev) => prev.filter((w) => w.id !== id));
+  };
+
+  // Helper to add Staff Waste Item
+  const handleAddWasteItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = parseFloat(newWasteAmount);
+    if (!newWasteItem || isNaN(amount) || amount <= 0) {
+      alert("يرجى كتابة الصنف أو سبب التالف والقيمة بشكل صحيح");
+      return;
+    }
+    setStaffWasteList((prev) => [
+      ...prev,
+      { id: Date.now().toString(), item: newWasteItem, amount, responsible: newWasteResponsible },
+    ]);
+    setNewWasteItem("");
+    setNewWasteAmount("");
+    setNewWasteResponsible("");
+  };
+
+  const handleRemoveWasteItem = (id: string) => {
+    setStaffWasteList((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  // Fast Direct Takeaway Virtual Table (حساب فوري بدون حجز طاولة)
+  const directFastTakeawayTable: PosTable = {
+    id: "DIRECT_TAKEAWAY",
+    name: "تيك أواي فوري مباشر (بدون طاولة)",
+    number: 997,
+    type: TableType.REGULAR,
+    status: TableStatus.AVAILABLE,
+    capacity: 99,
+  };
+
+  const handleStartDirectTakeaway = () => {
+    setSelectedTable(directFastTakeawayTable);
+    setOrderType("TAKEAWAY");
+    setActiveOrderId(undefined);
+    setCart([]);
+    setIsCheckPrinted(false);
+    setCustomerName("");
+    setCustomerPhone("");
+    setDeliveryAddress("");
+    setActiveTab("ORDER");
+  };
+
+  // Takeaway Tables (20 Tables: Phone & Counter): Find first available slot
+  const handleStartPhoneTakeaway = () => {
+    const freeTakeawayTable =
+      tables.find(
+        (t) =>
+          (t.name.includes("تليفون") || t.name.includes("تيك أواي")) &&
+          t.number < 900 &&
+          (t.status === TableStatus.AVAILABLE || !t.orders || t.orders.length === 0)
+      ) ||
+      tables.find((t) => (t.name.includes("تليفون") || t.name.includes("تيك أواي")) && t.number < 900);
+
+    if (freeTakeawayTable) {
+      handleSelectTable(freeTakeawayTable, "TAKEAWAY");
+    } else {
+      const fallback = tables.find((t) => t.name.includes("تيك أواي")) || tables[0];
+      if (fallback) handleSelectTable(fallback, "TAKEAWAY");
+    }
+  };
+
+  // SPRINT 5: Action - End Shift (تقفيل وتسليم الوردية - ورقة تقفيل واحة بدوي الرسمية)
   const handleEndShiftSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeShift) return;
@@ -247,11 +392,33 @@ export default function PosInterface({
       return;
     }
 
+    const expTotal = expensesList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const withTotal = withdrawalsList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const wasteTotal = staffWasteList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+    const grossSalesVal = parseFloat(closingGrossSales) || (activeShift.paidOrdersTotal || 0);
+    const discountsVal = parseFloat(closingDiscounts) || 0;
+    const visaVal = parseFloat(closingVisa) || 0;
+    const otherBalanceVal = parseFloat(closingOtherBalance) || 0;
+    const checksVal = parseFloat(closingManagementChecks) || 0;
+
     startTransition(async () => {
       const res = await endShift({
         shiftId: activeShift.id,
         actualCash: actual,
         notes: shiftNotes,
+        grossSales: grossSalesVal,
+        discounts: discountsVal,
+        visaAmount: visaVal,
+        otherBalance: otherBalanceVal,
+        expensesTotal: expTotal,
+        expensesDetails: expensesList,
+        managementChecks: checksVal,
+        staffWasteTotal: wasteTotal,
+        staffWasteDetails: staffWasteList,
+        managementWithdrawalsTotal: withTotal,
+        managementWithdrawalsDetails: withdrawalsList,
+        receivedBy: closingReceivedBy,
       });
 
       if (res?.error) {
@@ -266,6 +433,15 @@ export default function PosInterface({
         setCountedCash("");
         setShiftNotes("");
         setShiftFeedback(null);
+        setClosingGrossSales("");
+        setClosingDiscounts("0");
+        setClosingVisa("0");
+        setClosingOtherBalance("0");
+        setClosingManagementChecks("0");
+        setClosingReceivedBy("");
+        setExpensesList([]);
+        setWithdrawalsList([]);
+        setStaffWasteList([]);
       }
     });
   };
@@ -621,21 +797,33 @@ export default function PosInterface({
         activeTicketIndex: 0,
       });
 
-      // Free table locally
-      setTables((prev) =>
-        prev.map((t) =>
-          t.id === selectedTable.id
-            ? { ...t, status: TableStatus.AVAILABLE, orders: [] }
-            : t
-        )
-      );
+      const isDirectFastTakeaway = selectedTable.id === "DIRECT_TAKEAWAY";
 
-      // Reset cart and check state and return to map
-      setCart([]);
-      setActiveOrderId(undefined);
-      setSelectedTable(null);
-      setIsCheckPrinted(false);
-      setActiveTab("MAP");
+      // Free table locally if not virtual fast takeaway
+      if (!isDirectFastTakeaway) {
+        setTables((prev) =>
+          prev.map((t) =>
+            t.id === selectedTable.id
+              ? { ...t, status: TableStatus.AVAILABLE, orders: [] }
+              : t
+          )
+        );
+
+        // Reset cart and check state and return to map
+        setCart([]);
+        setActiveOrderId(undefined);
+        setSelectedTable(null);
+        setIsCheckPrinted(false);
+        setActiveTab("MAP");
+      } else {
+        // FAST TAKEAWAY (بدون طاولة): تفريغ السلة والبقاء في شاشة المنيو فوراً لخدمة العميل التالي
+        setCart([]);
+        setActiveOrderId(undefined);
+        setIsCheckPrinted(false);
+        setCustomerName("");
+        setCustomerPhone("");
+        setOrderNotes("");
+      }
 
       // Refresh shift metrics
       if (userId) {
@@ -813,23 +1001,39 @@ export default function PosInterface({
         {/* VIEW 1: Visual Table Map */}
         {activeTab === "MAP" && (
           <div className="flex-1 p-6 overflow-y-auto bg-slate-100 space-y-6">
-            {/* Top Quick Actions for Delivery & Takeaway */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Top Quick Actions: Direct Takeaway (بدون طاولة), Phone Takeaway (10 طاولات), Delivery, Customers */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Option: Punch Takeaway and Cash out immediately without table */}
               <button
-                onClick={() => {
-                  const delTable =
-                    tables.find((t) => t.name.includes("دليفري")) || tables[0];
-                  if (delTable) handleSelectTable(delTable, "DELIVERY");
-                }}
-                className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white p-4 rounded-2xl shadow-md flex items-center justify-between text-right active:scale-[0.99] transition group"
+                onClick={handleStartDirectTakeaway}
+                className="bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 hover:from-emerald-700 hover:to-teal-900 text-white p-4 rounded-2xl shadow-md flex items-center justify-between text-right active:scale-[0.99] transition group border border-emerald-500/40"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">🛵</span>
-                    <h3 className="font-black text-base">طلب دليفري جديد (توصيل)</h3>
+                    <span className="text-2xl animate-bounce">⚡</span>
+                    <h3 className="font-black text-base">تيك أواي فوري (بدون طاولة)</h3>
+                  </div>
+                  <p className="text-xs text-emerald-100 mt-1">
+                    أضرب تيك أواي وحاسب على طول من غير حجز أي طاولة
+                  </p>
+                </div>
+                <span className="w-8 h-8 rounded-xl bg-white/20 text-white font-black flex items-center justify-center text-sm group-hover:bg-white group-hover:text-emerald-800 transition">
+                  ←
+                </span>
+              </button>
+
+              {/* Takeaway Tables for Pickup Orders */}
+              <button
+                onClick={handleStartPhoneTakeaway}
+                className="bg-gradient-to-r from-amber-600 via-amber-700 to-orange-800 hover:from-amber-700 hover:to-orange-900 text-white p-4 rounded-2xl shadow-md flex items-center justify-between text-right active:scale-[0.99] transition group border border-amber-500/40"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🥡</span>
+                    <h3 className="font-black text-base">طاولات التيك أواي ({tables.filter(t => (t.name.includes("تيك أواي") || t.name.includes("تليفون")) && t.number < 900).length})</h3>
                   </div>
                   <p className="text-xs text-amber-100 mt-1">
-                    تسجيل عميل جديد وتحديد رسوم توصيل مفتوحة
+                    حجز خانة تيك أواي بالاسم ورقم الهاتف للاستلام عند وصول العميل
                   </p>
                 </div>
                 <span className="w-8 h-8 rounded-xl bg-white/20 text-white font-black flex items-center justify-center text-sm group-hover:bg-white group-hover:text-amber-800 transition">
@@ -837,28 +1041,30 @@ export default function PosInterface({
                 </span>
               </button>
 
+              {/* Delivery */}
               <button
                 onClick={() => {
-                  const takeTable =
-                    tables.find((t) => t.name.includes("تيك أواي")) || tables[0];
-                  if (takeTable) handleSelectTable(takeTable, "TAKEAWAY");
+                  const delTable =
+                    tables.find((t) => t.name.includes("دليفري")) || tables[0];
+                  if (delTable) handleSelectTable(delTable, "DELIVERY");
                 }}
-                className="bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black text-white p-4 rounded-2xl shadow-md flex items-center justify-between text-right active:scale-[0.99] transition group"
+                className="bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white p-4 rounded-2xl shadow-md flex items-center justify-between text-right active:scale-[0.99] transition group border border-blue-600/30"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">🥡</span>
-                    <h3 className="font-black text-base">طلب تيك أواي جديد (سفري)</h3>
+                    <span className="text-2xl">🛵</span>
+                    <h3 className="font-black text-base">طلب دليفري جديد (توصيل)</h3>
                   </div>
-                  <p className="text-xs text-slate-300 mt-1">
-                    طلب سريع بدون حجز طاولة صالة
+                  <p className="text-xs text-blue-100 mt-1">
+                    تسجيل عميل وتحديد رسوم توصيل
                   </p>
                 </div>
-                <span className="w-8 h-8 rounded-xl bg-white/20 text-white font-black flex items-center justify-center text-sm group-hover:bg-white group-hover:text-slate-900 transition">
+                <span className="w-8 h-8 rounded-xl bg-white/20 text-white font-black flex items-center justify-center text-sm group-hover:bg-white group-hover:text-blue-900 transition">
                   ←
                 </span>
               </button>
 
+              {/* Customers Directory */}
               <Link
                 href="/dashboard/customers"
                 className="bg-white border border-slate-200 hover:border-amber-400 p-4 rounded-2xl shadow-sm flex items-center justify-between text-right transition group"
@@ -871,7 +1077,7 @@ export default function PosInterface({
                     </h3>
                   </div>
                   <p className="text-xs text-slate-500 mt-1 font-mono">
-                    📞 خدمة التوصيل: 01558962994
+                    📞 خدمة العملاء: 01558962994
                   </p>
                 </div>
                 <span className="text-xs bg-amber-50 text-amber-800 font-bold px-2.5 py-1 rounded-lg">
@@ -880,40 +1086,105 @@ export default function PosInterface({
               </Link>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-              <div>
-                <h2 className="text-lg font-black text-slate-800">
-                  خريطة وتوزيع طاولات الصالة
-                </h2>
-                <p className="text-xs text-slate-500">
-                  انقر على أي طاولة لفتح طلبها أو إنشاء أوردر جديد فوراً.
-                </p>
+            {/* Table Filters & Distribution */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setTableFilter("ALL")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    tableFilter === "ALL" ? "bg-primary-900 text-white shadow-sm" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  الكل ({tables.length})
+                </button>
+                <button
+                  onClick={() => setTableFilter("PHONE_TAKEAWAY")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                    tableFilter === "PHONE_TAKEAWAY" ? "bg-amber-600 text-white shadow-sm" : "bg-amber-50 text-amber-800 hover:bg-amber-100"
+                  }`}
+                >
+                  <span>🥡</span>
+                  <span>طاولات التيك أواي ({tables.filter(t => (t.name.includes("تيك أواي") || t.name.includes("تليفون")) && t.number < 900).length})</span>
+                </button>
+                <button
+                  onClick={() => setTableFilter("REGULAR")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    tableFilter === "REGULAR" ? "bg-slate-800 text-white shadow-sm" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  طاولات عادية ({tables.filter(t => t.type === TableType.REGULAR && !t.name.includes("تليفون") && !t.name.includes("تيك أواي") && !t.name.includes("دليفري")).length})
+                </button>
+                <button
+                  onClick={() => setTableFilter("FAMILY")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    tableFilter === "FAMILY" ? "bg-indigo-600 text-white shadow-sm" : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                  }`}
+                >
+                  باكيات عائلات ({tables.filter(t => t.type === TableType.FAMILY_BOOTH).length})
+                </button>
+                <button
+                  onClick={() => setTableFilter("VIP")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    tableFilter === "VIP" ? "bg-amber-600 text-white shadow-sm" : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                  }`}
+                >
+                  طاولات VIP ({tables.filter(t => t.type === TableType.VIP).length})
+                </button>
+                <button
+                  onClick={() => setTableFilter("SPECIAL")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    tableFilter === "SPECIAL" ? "bg-purple-600 text-white shadow-sm" : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+                  }`}
+                >
+                  المالك والمدير ({tables.filter(t => t.type === TableType.OWNER || t.type === TableType.MANAGER).length})
+                </button>
               </div>
 
               {/* Status Legend */}
               <div className="flex items-center gap-3 text-xs font-bold">
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                  <span>متاحة (فاضية)</span>
+                  <span>متاحة</span>
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-full bg-rose-500 animate-pulse"></span>
-                  <span>مشغولة (عليها طلب)</span>
+                  <span>مشغولة</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-purple-500"></span>
-                  <span>طاولة خاصة (ضيافة)</span>
+                  <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                  <span>تيك أواي</span>
                 </span>
               </div>
             </div>
 
             {/* Tables Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3.5">
-              {tables.map((table) => {
+              {tables
+                .filter((table) => {
+                  if (tableFilter === "ALL") return true;
+                  if (tableFilter === "PHONE_TAKEAWAY") return (table.name.includes("تليفون") || table.name.includes("تيك أواي")) && table.number < 900;
+                  if (tableFilter === "FAMILY") return table.type === TableType.FAMILY_BOOTH;
+                  if (tableFilter === "VIP") return table.type === TableType.VIP;
+                  if (tableFilter === "REGULAR")
+                    return (
+                      table.type === TableType.REGULAR &&
+                      !table.name.includes("تليفون") &&
+                      !table.name.includes("تيك أواي") &&
+                      !table.name.includes("دليفري")
+                    );
+                  if (tableFilter === "SPECIAL")
+                    return (
+                      table.type === TableType.OWNER ||
+                      table.type === TableType.MANAGER
+                    );
+                  return true;
+                })
+                .map((table) => {
                 const hasOpenOrder = table.orders && table.orders.length > 0;
                 const isSpecial =
                   table.type === TableType.OWNER ||
                   table.type === TableType.MANAGER;
+                const isTakeaway = (table.name.includes("تليفون") || table.name.includes("تيك أواي")) && table.number < 900;
 
                 let cardBg = "bg-white border-slate-200 hover:border-primary-400";
                 let statusBadge =
@@ -921,9 +1192,17 @@ export default function PosInterface({
                 let statusLabel = "متاحة";
 
                 if (hasOpenOrder || table.status === TableStatus.OCCUPIED) {
-                  cardBg = "bg-rose-50/70 border-rose-300 ring-2 ring-rose-200";
-                  statusBadge = "bg-rose-500 text-white border-rose-600";
-                  statusLabel = "مشغولة";
+                  cardBg = isTakeaway
+                    ? "bg-amber-50/90 border-amber-400 ring-2 ring-amber-300"
+                    : "bg-rose-50/70 border-rose-300 ring-2 ring-rose-200";
+                  statusBadge = isTakeaway
+                    ? "bg-amber-500 text-white border-amber-600"
+                    : "bg-rose-500 text-white border-rose-600";
+                  statusLabel = isTakeaway ? "قيد الاستلام" : "مشغولة";
+                } else if (isTakeaway) {
+                  cardBg = "bg-amber-50/40 border-amber-200 hover:border-amber-400";
+                  statusBadge = "bg-amber-100 text-amber-900 border-amber-300";
+                  statusLabel = "جاهزة للحجز";
                 } else if (isSpecial) {
                   cardBg = "bg-purple-50/60 border-purple-300";
                   statusBadge =
@@ -952,6 +1231,11 @@ export default function PosInterface({
                             👑 ضيافة
                           </span>
                         )}
+                        {isTakeaway && (
+                          <span className="text-[11px] font-black text-amber-700">
+                            {table.name.includes("تليفون") ? "📞 هاتف" : "🥡 سفري"}
+                          </span>
+                        )}
                       </div>
 
                       <h3 className="font-black text-slate-800 text-sm group-hover:text-primary-800 transition line-clamp-1">
@@ -964,11 +1248,16 @@ export default function PosInterface({
                     </div>
 
                     {hasOpenOrder ? (
-                      <div className="bg-rose-100 p-1.5 rounded-lg text-center">
-                        <p className="text-[10px] font-bold text-rose-800">
+                      <div className={`${isTakeaway ? "bg-amber-100/90 border border-amber-300" : "bg-rose-100"} p-1.5 rounded-lg text-center`}>
+                        {isTakeaway && table.orders[0].customerName && (
+                          <p className="text-[10px] font-black text-amber-950 truncate">
+                            👤 {table.orders[0].customerName}
+                          </p>
+                        )}
+                        <p className={`text-[10px] font-bold ${isTakeaway ? "text-amber-900" : "text-rose-800"}`}>
                           أوردر #{table.orders[0].orderNumber}
                         </p>
-                        <p className="text-xs font-mono font-black text-rose-900">
+                        <p className={`text-xs font-mono font-black ${isTakeaway ? "text-amber-950" : "text-rose-900"}`}>
                           {table.orders[0].isComplimentary
                             ? "ضيافة (0 ج.م)"
                             : `${table.orders[0].totalAmount.toFixed(2)} ج.م`}
@@ -1264,19 +1553,40 @@ export default function PosInterface({
                   </div>
                 )}
 
-                {/* 4. Takeaway Customer Name */}
+                {/* 4. Takeaway Customer Name & Direct Fast Notice */}
                 {orderType === "TAKEAWAY" && (
-                  <div className="bg-slate-100 border border-slate-200 rounded-xl p-2.5 space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 block">
-                      اسم عميل السفري / رقم الطلب (اختياري):
-                    </label>
-                    <input
-                      type="text"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="مثال: أحمد عبد الله (سفري)"
-                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 outline-none"
-                    />
+                  <div className={`${selectedTable?.id === "DIRECT_TAKEAWAY" ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200" : "bg-slate-100 border-slate-200"} border rounded-xl p-2.5 space-y-1.5`}>
+                    {selectedTable?.id === "DIRECT_TAKEAWAY" ? (
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-black text-emerald-800 flex items-center gap-1">
+                          <span className="animate-bounce">⚡</span>
+                          <span>كاشير تيك أواي فوري مباشر (بدون طاولة)</span>
+                        </span>
+                        <span className="text-[10px] bg-emerald-200 text-emerald-900 font-bold px-2 py-0.5 rounded-full">
+                          محاسبة فورية
+                        </span>
+                      </div>
+                    ) : (
+                      <label className="text-xs font-bold text-slate-700 block">
+                        اسم عميل السفري / هاتف الاستلام (اختياري):
+                      </label>
+                    )}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="اسم العميل (اختياري)..."
+                        className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="رقم الهاتف (اختياري)..."
+                        className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 outline-none font-mono"
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -1461,24 +1771,41 @@ export default function PosInterface({
                   </div>
                 ) : (
                   /* بالنسبة للدليفري والتيك أواي */
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button
-                      disabled={isPending || cart.length === 0}
-                      onClick={handleSendToPrep}
-                      className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition shadow-sm flex items-center justify-center gap-1.5"
-                    >
-                      <span>🖨️</span>
-                      <span>إرسال للتحضير</span>
-                    </button>
+                  <div className="space-y-2 pt-1">
+                    {selectedTable?.id === "DIRECT_TAKEAWAY" ? (
+                      /* FAST TAKEAWAY DIRECT CHECKOUT WITHOUT TABLE */
+                      <div className="space-y-2 animate-fade-in">
+                        <button
+                          disabled={isPending || cart.length === 0}
+                          onClick={handleCollectPayment}
+                          className="w-full py-4 px-4 rounded-2xl text-base font-black text-white bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 hover:from-emerald-700 hover:to-teal-900 active:scale-[0.99] disabled:opacity-50 transition shadow-lg ring-4 ring-emerald-500/30 flex items-center justify-between"
+                        >
+                          <span className="text-2xl">🚪</span>
+                          <span>⚡ تحصيل كاش فوري وفتح الدرج ({totalAmount.toFixed(2)} ج.م)</span>
+                          <span className="text-2xl">💵</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          disabled={isPending || cart.length === 0}
+                          onClick={handleSendToPrep}
+                          className="py-3 px-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition shadow-sm flex items-center justify-center gap-1.5"
+                        >
+                          <span>🖨️</span>
+                          <span>إرسال للتحضير</span>
+                        </button>
 
-                    <button
-                      disabled={isPending || (cart.length === 0 && !activeOrderId)}
-                      onClick={handleCollectPayment}
-                      className="py-3 px-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition shadow-sm flex items-center justify-center gap-1.5"
-                    >
-                      <span>💳</span>
-                      <span>تحصيل وفتح الدرج ({totalAmount.toFixed(2)} ج.م)</span>
-                    </button>
+                        <button
+                          disabled={isPending || (cart.length === 0 && !activeOrderId)}
+                          onClick={handleCollectPayment}
+                          className="py-3 px-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition shadow-sm flex items-center justify-center gap-1.5"
+                        >
+                          <span>💳</span>
+                          <span>تحصيل وفتح الدرج ({totalAmount.toFixed(2)} ج.م)</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1566,234 +1893,774 @@ export default function PosInterface({
         </div>
       )}
 
-      {/* SPRINT 5: End Shift & Handover Modal (CRITICAL REQUIREMENT #3) */}
-      {showEndShiftModal && activeShift && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl text-right space-y-4 max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-primary-100 text-primary-900 flex items-center justify-center text-xl">
-                  📋
-                </div>
-                <div>
-                  <h3 className="font-black text-slate-800 text-base">
-                    تقفيل وتسليم الوردية (Shift Handover)
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    وردية #{activeShift.shiftNumber} • الكاشير: {userName}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowEndShiftModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
+      {/* SPRINT 5 & REQ: End Shift & Handover Modal (ورقة تقفيل واحة بدوي الرسمية) */}
+      {showEndShiftModal && activeShift && (() => {
+        const expTotal = expensesList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        const withTotal = withdrawalsList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        const wasteTotal = staffWasteList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
-            {shiftFeedback && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800">
-                {shiftFeedback}
-              </div>
-            )}
+        const grossVal = closingGrossSales !== "" ? (parseFloat(closingGrossSales) || 0) : (activeShift.paidOrdersTotal || 0);
+        const discVal = parseFloat(closingDiscounts) || 0;
+        const visaVal = parseFloat(closingVisa) || 0;
+        const otherVal = parseFloat(closingOtherBalance) || 0;
+        const checksVal = parseFloat(closingManagementChecks) || 0;
 
-            {/* Shift Financial Summary Breakdown */}
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
-              <div className="flex justify-between text-slate-600">
-                <span>وقت بدء الوردية:</span>
-                <span className="font-mono font-bold">
-                  {new Date(activeShift.startTime).toLocaleTimeString("ar-EG")}
-                </span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>مدة العمل المنقضية:</span>
-                <span className="font-mono font-bold text-primary-800">
-                  {shiftTimer} {hasExceeded12Hours && "(تجاوزت 12 ساعة ⚠️)"}
-                </span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>العهدة الافتتاحية للدرج:</span>
-                <span className="font-mono font-bold">
-                  {(activeShift.initialCash || 0).toFixed(2)} ج.م
-                </span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>المبيعات النقدية المحصلة:</span>
-                <span className="font-mono font-bold text-emerald-700">
-                  +{(activeShift.paidOrdersTotal || 0).toFixed(2)} ج.م
-                </span>
-              </div>
+        const liveExpectedClosing = Math.max(
+          0,
+          (activeShift.initialCash || 0) + grossVal - discVal - visaVal - otherVal - expTotal - checksVal - withTotal
+        );
 
-              {/* CRITICAL REQUIREMENT 3: Notice of Complimentary Exclusion */}
-              {(activeShift.complimentaryOrdersCount || 0) > 0 && (
-                <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl text-[11px] text-purple-900 font-bold flex items-center gap-2">
-                  <span>👑</span>
+        const diff = countedCash !== "" ? (parseFloat(countedCash) || 0) - liveExpectedClosing : 0;
+        const todayArabicDay = new Date().toLocaleDateString("ar-EG", { weekday: "long" });
+        const todayArabicDate = new Date().toLocaleDateString("ar-EG");
+
+        return (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl text-right space-y-4 max-h-[94vh] overflow-y-auto border border-slate-100">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between border-b pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-800 flex items-center justify-center text-xl font-bold">
+                    📋
+                  </div>
                   <div>
-                    <span>تم استبعاد طلبات الضيافة بنجاح: </span>
-                    <strong className="text-purple-950">
-                      {activeShift.complimentaryOrdersCount} طلب بقيمة{" "}
-                      {(activeShift.complimentaryWaivedTotal || 0).toFixed(2)} ج.م
-                    </strong>
-                    <p className="text-[10px] text-purple-700 font-normal">
-                      (طاولة المالك وطاولة المدير - معفاة 100% ولا تدخل في عهدة الدرج)
+                    <h3 className="font-black text-slate-800 text-base">
+                      ورقة التقفيل الرسمية - واحة بدوي للمشويات
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      وردية #{activeShift.shiftNumber} • الكاشير: {userName}
                     </p>
                   </div>
                 </div>
-              )}
-
-              {/* Expected Cash in Drawer */}
-              <div className="pt-2 border-t border-slate-200 flex justify-between text-sm font-black text-slate-900">
-                <span>النقدية المتوقعة بالدرج (Expected Cash):</span>
-                <span className="font-mono text-base text-primary-900">
-                  {liveExpected.toFixed(2)} ج.م
-                </span>
-              </div>
-            </div>
-
-            {/* Cashier Counted Cash Form */}
-            <form onSubmit={handleEndShiftSubmit} className="space-y-4">
-              <div>
-                <label className="text-xs font-black text-slate-800 block mb-1">
-                  أدخل النقدية الفعلية بعد الجرد (Actual Cash Counted):
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  required
-                  value={countedCash}
-                  onChange={(e) => setCountedCash(e.target.value)}
-                  placeholder="قم بعد النقود بالدرج وأدخل المبلغ هنا..."
-                  className="w-full px-4 py-3 rounded-2xl border-2 border-primary-500 text-lg font-mono font-black outline-none focus:ring-4 focus:ring-primary-200"
-                />
-              </div>
-
-              {/* Live Shortage / Overage Indicator */}
-              {countedCash !== "" && (
-                <div
-                  className={`p-3.5 rounded-2xl border text-xs font-black flex items-center justify-between ${
-                    liveShortageOverage === 0
-                      ? "bg-emerald-50 border-emerald-300 text-emerald-900"
-                      : liveShortageOverage < 0
-                      ? "bg-rose-50 border-rose-300 text-rose-900"
-                      : "bg-blue-50 border-blue-300 text-blue-900"
-                  }`}
+                <button
+                  onClick={() => setShowEndShiftModal(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">
-                      {liveShortageOverage === 0
-                        ? "✅"
-                        : liveShortageOverage < 0
-                        ? "⚠️"
-                        : "ℹ️"}
-                    </span>
-                    <span>
-                      {liveShortageOverage === 0
-                        ? "الدرج متطابق تماماً بدون أي عجز أو زيادة!"
-                        : liveShortageOverage < 0
-                        ? `يوجد عجز نقدي بقيمة: ${Math.abs(liveShortageOverage).toFixed(2)} ج.م`
-                        : `يوجد زيادة نقدية بقيمة: ${liveShortageOverage.toFixed(2)} ج.م`}
-                    </span>
-                  </div>
-                  <span className="font-mono text-sm font-black">
-                    {liveShortageOverage > 0 ? "+" : ""}
-                    {liveShortageOverage.toFixed(2)} ج.م
-                  </span>
+                  ✕
+                </button>
+              </div>
+
+              {shiftFeedback && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800">
+                  {shiftFeedback}
                 </div>
               )}
 
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  ملاحظات تسليم الوردية:
-                </label>
-                <textarea
-                  rows={2}
-                  value={shiftNotes}
-                  onChange={(e) => setShiftNotes(e.target.value)}
-                  placeholder="أي ملاحظات حول الجرد أو التسليم..."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-primary-500"
-                ></textarea>
+              {/* Sub-Tabs: Main Voucher, Expenses, Withdrawals, Waste */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => setActiveClosingSubTab("SUMMARY")}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${
+                    activeClosingSubTab === "SUMMARY"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>📋</span>
+                  <span>الورقة الأساسية (9 بنود)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveClosingSubTab("EXPENSES")}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${
+                    activeClosingSubTab === "EXPENSES"
+                      ? "bg-white text-sky-900 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>🛒</span>
+                  <span>المصاريف ({expensesList.length})</span>
+                  {expTotal > 0 && <span className="font-mono text-[10px] text-sky-700">({expTotal} ج)</span>}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveClosingSubTab("WITHDRAWALS")}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${
+                    activeClosingSubTab === "WITHDRAWALS"
+                      ? "bg-white text-purple-900 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>💼</span>
+                  <span>مسحوبات إدارة ({withdrawalsList.length})</span>
+                  {withTotal > 0 && <span className="font-mono text-[10px] text-purple-700">({withTotal} ج)</span>}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveClosingSubTab("WASTE")}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${
+                    activeClosingSubTab === "WASTE"
+                      ? "bg-white text-rose-900 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>⚠️</span>
+                  <span>توالف إستاف ({staffWasteList.length})</span>
+                  {wasteTotal > 0 && <span className="font-mono text-[10px] text-rose-700">({wasteTotal} ج)</span>}
+                </button>
               </div>
 
-              <button
-                type="submit"
-                disabled={isPending || countedCash === ""}
-                className="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-black text-sm shadow-md transition disabled:opacity-50"
-              >
-                {isPending ? "جاري التقفيل..." : "تأكيد تقفيل الوردية وطباعة Z-Report 🖨️"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+              {/* TAB 1: SUMMARY VOUCHER (Matches the uploaded sheet exactly) */}
+              {activeClosingSubTab === "SUMMARY" && (
+                <div className="space-y-3">
+                  {/* Voucher Header Banner matching original paper */}
+                  <div className="bg-sky-100/80 border-2 border-sky-300 rounded-2xl p-3 text-center space-y-1">
+                    <h2 className="text-xl font-black text-slate-800 tracking-wide">واحة بدوي</h2>
+                    <p className="text-xs font-bold text-slate-600">للمشويات</p>
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700 pt-1 border-t border-sky-200">
+                      <span>إيراد يوم : <strong className="text-slate-900">{todayArabicDay}</strong></span>
+                      <span>الموافق: <strong className="text-slate-900 font-mono">{todayArabicDate}</strong></span>
+                    </div>
+                  </div>
 
-      {/* SPRINT 5: Z-Report Shift Closing Modal */}
+                  {/* 9 Voucher Line Items with Arrows and Boxes */}
+                  <div className="space-y-2 text-xs">
+                    {/* 1. Gross Sales */}
+                    <div className="flex items-center justify-between gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                      <div className="w-36 font-black text-slate-800 text-sm">
+                        إجمالى المبيعات
+                      </div>
+                      <div className="text-sky-600 font-black text-lg">←</div>
+                      <div className="flex-1 max-w-[170px]">
+                        <input
+                          type="number"
+                          step="any"
+                          value={closingGrossSales !== "" ? closingGrossSales : (activeShift.paidOrdersTotal || 0).toString()}
+                          onChange={(e) => setClosingGrossSales(e.target.value)}
+                          className="w-full text-center font-mono font-black text-base py-1 px-2 border-2 border-slate-700 rounded-lg bg-white outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 2. Discounts */}
+                    <div className="flex items-center justify-between gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                      <div className="w-36 font-black text-slate-800 text-sm">
+                        خصومات
+                      </div>
+                      <div className="text-sky-600 font-black text-lg">←</div>
+                      <div className="flex-1 max-w-[170px]">
+                        <input
+                          type="number"
+                          step="any"
+                          value={closingDiscounts}
+                          onChange={(e) => setClosingDiscounts(e.target.value)}
+                          className="w-full text-center font-mono font-black text-base py-1 px-2 border-2 border-slate-700 rounded-lg bg-white outline-none text-rose-700"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 3. Visa */}
+                    <div className="flex items-center justify-between gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                      <div className="w-36 font-black text-slate-800 text-sm">
+                        فيزا
+                      </div>
+                      <div className="text-sky-600 font-black text-lg">←</div>
+                      <div className="flex-1 max-w-[170px]">
+                        <input
+                          type="number"
+                          step="any"
+                          value={closingVisa}
+                          onChange={(e) => setClosingVisa(e.target.value)}
+                          placeholder="0"
+                          className="w-full text-center font-mono font-black text-base py-1 px-2 border-2 border-slate-700 rounded-lg bg-white outline-none text-blue-700"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 4. Other Balance */}
+                    <div className="flex items-center justify-between gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                      <div className="w-36 font-black text-slate-800 text-sm">
+                        رصيد أخر
+                      </div>
+                      <div className="text-sky-600 font-black text-lg">←</div>
+                      <div className="flex-1 max-w-[170px]">
+                        <input
+                          type="number"
+                          step="any"
+                          value={closingOtherBalance}
+                          onChange={(e) => setClosingOtherBalance(e.target.value)}
+                          placeholder="0"
+                          className="w-full text-center font-mono font-black text-base py-1 px-2 border-2 border-slate-700 rounded-lg bg-white outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 5. Expenses */}
+                    <div className="flex items-center justify-between gap-3 bg-amber-50/60 p-2 rounded-xl border border-amber-200">
+                      <div className="w-36 font-black text-slate-800 text-sm flex items-center justify-between">
+                        <span>مصاريف</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveClosingSubTab("EXPENSES")}
+                          className="text-[10px] bg-amber-200 hover:bg-amber-300 text-amber-900 px-2 py-0.5 rounded font-bold"
+                        >
+                          تعديل ({expensesList.length}) ✏️
+                        </button>
+                      </div>
+                      <div className="text-sky-600 font-black text-lg">←</div>
+                      <div className="flex-1 max-w-[170px]">
+                        <div
+                          onClick={() => setActiveClosingSubTab("EXPENSES")}
+                          className="w-full text-center font-mono font-black text-base py-1 px-2 border-2 border-slate-700 rounded-lg bg-white cursor-pointer hover:border-amber-500 text-rose-800"
+                        >
+                          {expTotal.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 6. Management Checks */}
+                    <div className="flex items-center justify-between gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                      <div className="w-36 font-black text-slate-800 text-sm">
+                        شيكات إداره
+                      </div>
+                      <div className="text-sky-600 font-black text-lg">←</div>
+                      <div className="flex-1 max-w-[170px]">
+                        <input
+                          type="number"
+                          step="any"
+                          value={closingManagementChecks}
+                          onChange={(e) => setClosingManagementChecks(e.target.value)}
+                          placeholder="0"
+                          className="w-full text-center font-mono font-black text-base py-1 px-2 border-2 border-slate-700 rounded-lg bg-white outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 7. Staff Waste */}
+                    <div className="flex items-center justify-between gap-3 bg-rose-50/60 p-2 rounded-xl border border-rose-200">
+                      <div className="w-36 font-black text-slate-800 text-sm flex items-center justify-between">
+                        <span>توالف إصطاف</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveClosingSubTab("WASTE")}
+                          className="text-[10px] bg-rose-200 hover:bg-rose-300 text-rose-900 px-2 py-0.5 rounded font-bold"
+                        >
+                          تعديل ({staffWasteList.length}) ✏️
+                        </button>
+                      </div>
+                      <div className="text-sky-600 font-black text-lg">←</div>
+                      <div className="flex-1 max-w-[170px]">
+                        <div
+                          onClick={() => setActiveClosingSubTab("WASTE")}
+                          className="w-full text-center font-mono font-black text-base py-1 px-2 border-2 border-slate-700 rounded-lg bg-white cursor-pointer hover:border-rose-500 text-rose-700"
+                        >
+                          {wasteTotal.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 8. Management Withdrawals */}
+                    <div className="flex items-center justify-between gap-3 bg-purple-50/60 p-2 rounded-xl border border-purple-200">
+                      <div className="w-36 font-black text-slate-800 text-sm flex items-center justify-between">
+                        <span>مسحوبات اداره</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveClosingSubTab("WITHDRAWALS")}
+                          className="text-[10px] bg-purple-200 hover:bg-purple-300 text-purple-900 px-2 py-0.5 rounded font-bold"
+                        >
+                          تعديل ({withdrawalsList.length}) ✏️
+                        </button>
+                      </div>
+                      <div className="text-sky-600 font-black text-lg">←</div>
+                      <div className="flex-1 max-w-[170px]">
+                        <div
+                          onClick={() => setActiveClosingSubTab("WITHDRAWALS")}
+                          className="w-full text-center font-mono font-black text-base py-1 px-2 border-2 border-slate-700 rounded-lg bg-white cursor-pointer hover:border-purple-500 text-purple-900"
+                        >
+                          {withTotal.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 9. End of Day Net Cash Balance */}
+                    <div className="flex items-center justify-between gap-3 bg-emerald-100 border-2 border-emerald-400 p-2.5 rounded-xl">
+                      <div className="w-36 font-black text-emerald-950 text-sm">
+                        رصيد أخر اليوم (الصافي)
+                      </div>
+                      <div className="text-emerald-700 font-black text-lg">←</div>
+                      <div className="flex-1 max-w-[170px]">
+                        <div className="w-full text-center font-mono font-black text-lg py-1 px-2 border-2 border-emerald-800 rounded-lg bg-white text-emerald-900 shadow-sm">
+                          {liveExpectedClosing.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Receiver */}
+                    <div className="flex items-center justify-between gap-3 pt-2">
+                      <label className="w-36 font-black text-slate-800 text-xs">
+                        المستلم /
+                      </label>
+                      <input
+                        type="text"
+                        value={closingReceivedBy}
+                        onChange={(e) => setClosingReceivedBy(e.target.value)}
+                        placeholder="اسم المستلم / المشرف..."
+                        className="flex-1 py-1.5 px-3 border border-slate-300 rounded-xl bg-white text-xs font-bold outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: EXPENSES BREAKDOWN */}
+              {activeClosingSubTab === "EXPENSES" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <h4 className="font-black text-sm text-slate-800">
+                      🛒 تسجيل بنود المصاريف المنصرفة من الدرج
+                    </h4>
+                    <span className="font-mono font-black text-sm text-rose-700">
+                      إجمالي المصاريف: {expTotal.toFixed(2)} ج.م
+                    </span>
+                  </div>
+
+                  {/* Add Expense Form */}
+                  <form onSubmit={handleAddExpenseItem} className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        required
+                        value={newExpenseItem}
+                        onChange={(e) => setNewExpenseItem(e.target.value)}
+                        placeholder="بيان المصروف (خضار، فحم، غاز، نظافة...)"
+                        className="px-3 py-2 border rounded-xl text-xs bg-white outline-none focus:ring-1 focus:ring-sky-500"
+                      />
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        required
+                        value={newExpenseAmount}
+                        onChange={(e) => setNewExpenseAmount(e.target.value)}
+                        placeholder="المبلغ (ج.م)..."
+                        className="px-3 py-2 border rounded-xl text-xs bg-white outline-none font-mono focus:ring-1 focus:ring-sky-500"
+                      />
+                      <input
+                        type="text"
+                        value={newExpenseNotes}
+                        onChange={(e) => setNewExpenseNotes(e.target.value)}
+                        placeholder="ملاحظات (اختياري)..."
+                        className="px-3 py-2 border rounded-xl text-xs bg-white outline-none focus:ring-1 focus:ring-sky-500"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2 bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs rounded-xl shadow transition"
+                    >
+                      ➕ إضافة بند مصروف
+                    </button>
+                  </form>
+
+                  {/* Expenses List */}
+                  <div className="max-h-56 overflow-y-auto space-y-1.5">
+                    {expensesList.length === 0 ? (
+                      <p className="text-center text-xs text-slate-400 py-6">
+                        لم يتم تسجيل أي مصاريف حتى الآن
+                      </p>
+                    ) : (
+                      expensesList.map((exp) => (
+                        <div
+                          key={exp.id}
+                          className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white text-xs"
+                        >
+                          <div>
+                            <span className="font-black text-slate-800">{exp.item}</span>
+                            {exp.notes && <span className="text-[11px] text-slate-400 mr-2">({exp.notes})</span>}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono font-black text-rose-700">
+                              {exp.amount.toFixed(2)} ج.م
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExpenseItem(exp.id)}
+                              className="text-slate-400 hover:text-rose-600 font-bold p-1"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: MANAGEMENT WITHDRAWALS */}
+              {activeClosingSubTab === "WITHDRAWALS" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <h4 className="font-black text-sm text-slate-800">
+                      💼 تسجيل مسحوبات الإدارة من الدرج
+                    </h4>
+                    <span className="font-mono font-black text-sm text-purple-800">
+                      إجمالي المسحوبات: {withTotal.toFixed(2)} ج.م
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleAddWithdrawalItem} className="bg-purple-50/50 p-3 rounded-2xl border border-purple-200 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        required
+                        value={newWithdrawalReceiver}
+                        onChange={(e) => setNewWithdrawalReceiver(e.target.value)}
+                        placeholder="اسم المستلم (الحاج بدوي، المدير...)"
+                        className="px-3 py-2 border rounded-xl text-xs bg-white outline-none focus:ring-1 focus:ring-purple-500"
+                      />
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        required
+                        value={newWithdrawalAmount}
+                        onChange={(e) => setNewWithdrawalAmount(e.target.value)}
+                        placeholder="المبلغ (ج.م)..."
+                        className="px-3 py-2 border rounded-xl text-xs bg-white outline-none font-mono focus:ring-1 focus:ring-purple-500"
+                      />
+                      <input
+                        type="text"
+                        value={newWithdrawalNotes}
+                        onChange={(e) => setNewWithdrawalNotes(e.target.value)}
+                        placeholder="السبب / بيان السحب..."
+                        className="px-3 py-2 border rounded-xl text-xs bg-white outline-none focus:ring-1 focus:ring-purple-500"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow transition"
+                    >
+                      ➕ إضافة مسحوب إدارة
+                    </button>
+                  </form>
+
+                  <div className="max-h-56 overflow-y-auto space-y-1.5">
+                    {withdrawalsList.length === 0 ? (
+                      <p className="text-center text-xs text-slate-400 py-6">
+                        لا توجد مسحوبات إدارة مسجلة
+                      </p>
+                    ) : (
+                      withdrawalsList.map((w) => (
+                        <div
+                          key={w.id}
+                          className="flex items-center justify-between p-2.5 rounded-xl border border-purple-100 bg-white text-xs"
+                        >
+                          <div>
+                            <span className="font-black text-slate-800">{w.receiver}</span>
+                            {w.notes && <span className="text-[11px] text-slate-400 mr-2">({w.notes})</span>}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono font-black text-purple-900">
+                              {w.amount.toFixed(2)} ج.م
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveWithdrawalItem(w.id)}
+                              className="text-slate-400 hover:text-rose-600 font-bold p-1"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: STAFF WASTE */}
+              {activeClosingSubTab === "WASTE" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <h4 className="font-black text-sm text-slate-800">
+                      ⚠️ تسجيل توالف الإستاف والتشغيل
+                    </h4>
+                    <span className="font-mono font-black text-sm text-rose-700">
+                      إجمالي التوالف: {wasteTotal.toFixed(2)} ج.م
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleAddWasteItem} className="bg-rose-50/50 p-3 rounded-2xl border border-rose-200 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        required
+                        value={newWasteItem}
+                        onChange={(e) => setNewWasteItem(e.target.value)}
+                        placeholder="الصنف أو سبب التالف (طبق محروق، كسر...)"
+                        className="px-3 py-2 border rounded-xl text-xs bg-white outline-none focus:ring-1 focus:ring-rose-500"
+                      />
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        required
+                        value={newWasteAmount}
+                        onChange={(e) => setNewWasteAmount(e.target.value)}
+                        placeholder="القيمة التقديرية (ج.م)..."
+                        className="px-3 py-2 border rounded-xl text-xs bg-white outline-none font-mono focus:ring-1 focus:ring-rose-500"
+                      />
+                      <input
+                        type="text"
+                        value={newWasteResponsible}
+                        onChange={(e) => setNewWasteResponsible(e.target.value)}
+                        placeholder="المسؤول / القسم..."
+                        className="px-3 py-2 border rounded-xl text-xs bg-white outline-none focus:ring-1 focus:ring-rose-500"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2 bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs rounded-xl shadow transition"
+                    >
+                      ➕ إضافة تالف إستاف
+                    </button>
+                  </form>
+
+                  <div className="max-h-56 overflow-y-auto space-y-1.5">
+                    {staffWasteList.length === 0 ? (
+                      <p className="text-center text-xs text-slate-400 py-6">
+                        لا توجد توالف مسجلة
+                      </p>
+                    ) : (
+                      staffWasteList.map((s) => (
+                        <div
+                          key={s.id}
+                          className="flex items-center justify-between p-2.5 rounded-xl border border-rose-100 bg-white text-xs"
+                        >
+                          <div>
+                            <span className="font-black text-slate-800">{s.item}</span>
+                            {s.responsible && <span className="text-[11px] text-slate-400 mr-2">({s.responsible})</span>}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono font-black text-rose-700">
+                              {s.amount.toFixed(2)} ج.م
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveWasteItem(s.id)}
+                              className="text-slate-400 hover:text-rose-600 font-bold p-1"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Cashier Counted Cash & Submit */}
+              <form onSubmit={handleEndShiftSubmit} className="space-y-4 pt-2 border-t">
+                <div>
+                  <label className="text-xs font-black text-slate-800 block mb-1">
+                    أدخل النقدية الفعلية بعد الجرد بالدرج (Actual Cash Counted):
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    required
+                    value={countedCash}
+                    onChange={(e) => setCountedCash(e.target.value)}
+                    placeholder="قم بعد النقود بالدرج وأدخل المبلغ هنا..."
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-sky-500 text-lg font-mono font-black outline-none focus:ring-4 focus:ring-sky-200"
+                  />
+                </div>
+
+                {/* Live Shortage / Overage Indicator */}
+                {countedCash !== "" && (
+                  <div
+                    className={`p-3.5 rounded-2xl border text-xs font-black flex items-center justify-between ${
+                      diff === 0
+                        ? "bg-emerald-50 border-emerald-300 text-emerald-900"
+                        : diff < 0
+                        ? "bg-rose-50 border-rose-300 text-rose-900"
+                        : "bg-blue-50 border-blue-300 text-blue-900"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">
+                        {diff === 0 ? "✅" : diff < 0 ? "⚠️" : "ℹ️"}
+                      </span>
+                      <span>
+                        {diff === 0
+                          ? "الدرج متطابق تماماً بدون أي عجز أو زيادة!"
+                          : diff < 0
+                          ? `يوجد عجز نقدي بقيمة: ${Math.abs(diff).toFixed(2)} ج.م`
+                          : `يوجد زيادة نقدية بقيمة: ${diff.toFixed(2)} ج.م`}
+                      </span>
+                    </div>
+                    <span className="font-mono text-sm font-black">
+                      {diff > 0 ? "+" : ""}
+                      {diff.toFixed(2)} ج.م
+                    </span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    ملاحظات تسليم الوردية:
+                  </label>
+                  <input
+                    type="text"
+                    value={shiftNotes}
+                    onChange={(e) => setShiftNotes(e.target.value)}
+                    placeholder="أي ملاحظات حول الجرد أو التسليم..."
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isPending || countedCash === ""}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-sky-700 to-primary-900 hover:from-sky-800 hover:to-primary-950 text-white font-black text-sm shadow-md transition disabled:opacity-50"
+                >
+                  {isPending ? "جاري الحفظ والتقفيل..." : "تأكيد تقفيل الوردية وحفظ ورقة التقفيل الرسمية 📋"}
+                </button>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* SPRINT 5 & REQ: Z-Report & Bedouin Grill Printable Closing Voucher Modal */}
       {zReportData && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl text-center space-y-4 max-h-[92vh] overflow-y-auto">
             <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-700 text-2xl font-bold">
               ✓
             </div>
             <div>
-              <h3 className="font-black text-slate-900 text-base">
-                تقرير إغلاق الوردية (Z-REPORT)
+              <h3 className="font-black text-slate-900 text-lg">
+                تم تقفيل الوردية وحفظ ورقة التقفيل الرسمية
               </h3>
-              <p className="text-xs text-slate-500">تم حفظ الوردية في السجل المالي</p>
+              <p className="text-xs text-slate-500">تم تسجيل كافة البيانات في السجل المالي</p>
             </div>
 
-            {/* Thermal Ticket Paper Look */}
-            <div className="bg-slate-50 border-2 border-dashed border-slate-300 p-4 rounded-2xl text-right font-mono text-xs space-y-2">
-              <div className="text-center border-b pb-1 font-black text-slate-800">
-                واحة بدوي - تقرير Z-REPORT
+            {/* Official Bedouin Grill Closing Sheet Representation */}
+            <div id="printable-closing-sheet" className="bg-white border-2 border-slate-800 p-4 rounded-2xl text-right font-sans text-xs space-y-3 shadow-inner">
+              
+              {/* Header Box */}
+              <div className="bg-sky-200 border-2 border-slate-800 rounded-xl p-2.5 text-center">
+                <h2 className="text-xl font-black text-slate-900">واحة بدوي</h2>
+                <p className="text-xs font-black text-slate-800">للمشويات</p>
+                <div className="flex items-center justify-between text-xs font-bold text-slate-900 pt-1 border-t border-slate-400 mt-1">
+                  <span>إيراد يوم : <strong>{new Date().toLocaleDateString("ar-EG", { weekday: "long" })}</strong></span>
+                  <span>الموافق: <strong className="font-mono">{new Date().toLocaleDateString("ar-EG")}</strong></span>
+                </div>
               </div>
-              <div className="flex justify-between text-slate-600">
-                <span>رقم الوردية:</span>
-                <span>#{zReportData.shift.shiftNumber}</span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>الكاشير:</span>
-                <span className="font-sans font-bold">{userName}</span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>العهدة الافتتاحية:</span>
-                <span>{zReportData.stats.initialCash.toFixed(2)} ج.م</span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>المبيعات النقدية:</span>
-                <span className="text-emerald-700 font-bold">
-                  +{zReportData.stats.salesTotal.toFixed(2)} ج.م
-                </span>
-              </div>
-              <div className="flex justify-between font-bold text-slate-800 border-t pt-1">
-                <span>النقدية المتوقعة:</span>
-                <span>{zReportData.stats.expectedCash.toFixed(2)} ج.م</span>
-              </div>
-              <div className="flex justify-between font-bold text-slate-800">
-                <span>المبلغ بعد الجرد (الفعلي):</span>
-                <span>{zReportData.stats.actualCash.toFixed(2)} ج.م</span>
-              </div>
-              <div className="flex justify-between font-black text-sm border-t pt-1">
-                <span>الفارق (العجز/الزيادة):</span>
-                <span
-                  className={
-                    zReportData.stats.shortageOverage < 0
-                      ? "text-rose-600"
-                      : "text-emerald-600"
-                  }
-                >
-                  {zReportData.stats.shortageOverage > 0 ? "+" : ""}
-                  {zReportData.stats.shortageOverage.toFixed(2)} ج.م
-                </span>
+
+              {/* 9 Voucher Boxes with Arrows */}
+              <div className="space-y-1.5 font-bold">
+                <div className="flex items-center justify-between border-b pb-1">
+                  <span className="w-32">إجمالى المبيعات</span>
+                  <span className="text-sky-700 font-black text-sm">←</span>
+                  <span className="font-mono font-black text-sm px-3 py-0.5 border border-slate-800 rounded bg-slate-50 min-w-[100px] text-center">
+                    {(zReportData.stats?.grossSales || zReportData.stats?.salesTotal || 0).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between border-b pb-1">
+                  <span className="w-32">خصومات</span>
+                  <span className="text-sky-700 font-black text-sm">←</span>
+                  <span className="font-mono font-black text-sm px-3 py-0.5 border border-slate-800 rounded bg-slate-50 min-w-[100px] text-center text-rose-700">
+                    {(zReportData.stats?.discounts || 0).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between border-b pb-1">
+                  <span className="w-32">فيزا</span>
+                  <span className="text-sky-700 font-black text-sm">←</span>
+                  <span className="font-mono font-black text-sm px-3 py-0.5 border border-slate-800 rounded bg-slate-50 min-w-[100px] text-center">
+                    {(zReportData.stats?.visaAmount || 0).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between border-b pb-1">
+                  <span className="w-32">رصيد أخر</span>
+                  <span className="text-sky-700 font-black text-sm">←</span>
+                  <span className="font-mono font-black text-sm px-3 py-0.5 border border-slate-800 rounded bg-slate-50 min-w-[100px] text-center">
+                    {(zReportData.stats?.otherBalance || 0).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between border-b pb-1">
+                  <span className="w-32">مصاريف</span>
+                  <span className="text-sky-700 font-black text-sm">←</span>
+                  <span className="font-mono font-black text-sm px-3 py-0.5 border border-slate-800 rounded bg-slate-50 min-w-[100px] text-center text-rose-800">
+                    {(zReportData.stats?.expensesTotal || 0).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between border-b pb-1">
+                  <span className="w-32">شيكات إداره</span>
+                  <span className="text-sky-700 font-black text-sm">←</span>
+                  <span className="font-mono font-black text-sm px-3 py-0.5 border border-slate-800 rounded bg-slate-50 min-w-[100px] text-center">
+                    {(zReportData.stats?.managementChecks || 0).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between border-b pb-1">
+                  <span className="w-32">توالف إصطاف</span>
+                  <span className="text-sky-700 font-black text-sm">←</span>
+                  <span className="font-mono font-black text-sm px-3 py-0.5 border border-slate-800 rounded bg-slate-50 min-w-[100px] text-center text-rose-700">
+                    {(zReportData.stats?.staffWasteTotal || 0).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between border-b pb-1">
+                  <span className="w-32">مسحوبات اداره</span>
+                  <span className="text-sky-700 font-black text-sm">←</span>
+                  <span className="font-mono font-black text-sm px-3 py-0.5 border border-slate-800 rounded bg-slate-50 min-w-[100px] text-center text-purple-900">
+                    {(zReportData.stats?.managementWithdrawalsTotal || 0).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 font-black bg-slate-100 p-1.5 rounded-lg border border-slate-300">
+                  <span className="w-32 text-slate-900">رصيد أخر اليوم</span>
+                  <span className="text-emerald-700 font-black text-sm">←</span>
+                  <span className="font-mono font-black text-base px-3 py-0.5 border-2 border-slate-900 rounded bg-white min-w-[100px] text-center text-emerald-950">
+                    {(zReportData.stats?.endOfDayBalance || zReportData.stats?.expectedCash || 0).toFixed(2)}
+                  </span>
+                </div>
+
+                {/* Receiver */}
+                <div className="flex items-center justify-between pt-2 border-t text-xs">
+                  <span>المستلم / <strong className="text-slate-900 mr-2">{zReportData.stats?.receivedBy || "—"}</strong></span>
+                  <span className="text-slate-500 font-mono">الكاشير: {userName}</span>
+                </div>
+
+                {/* Actual & Shortage */}
+                <div className="flex items-center justify-between pt-1 text-[11px] font-mono text-slate-600 bg-slate-50 p-1.5 rounded">
+                  <span>الفعلي بعد الجرد: {(zReportData.stats?.actualCash || 0).toFixed(2)} ج.م</span>
+                  <span className={zReportData.stats?.shortageOverage < 0 ? "text-rose-600 font-bold" : "text-emerald-700 font-bold"}>
+                    الفارق: {zReportData.stats?.shortageOverage > 0 ? "+" : ""}{(zReportData.stats?.shortageOverage || 0).toFixed(2)} ج.م
+                  </span>
+                </div>
               </div>
             </div>
 
-            <button
-              onClick={() => setZReportData(null)}
-              className="w-full py-3 bg-primary-800 hover:bg-primary-900 text-white font-bold rounded-xl text-xs transition shadow"
-            >
-              تم وإغلاق
-            </button>
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                onClick={() => window.print()}
+                className="py-3 bg-sky-700 hover:bg-sky-800 text-white font-bold rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5"
+              >
+                <span>🖨️</span>
+                <span>طباعة ورقة التقفيل</span>
+              </button>
+              <button
+                onClick={() => setZReportData(null)}
+                className="py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition shadow"
+              >
+                تم وإغلاق
+              </button>
+            </div>
           </div>
         </div>
       )}

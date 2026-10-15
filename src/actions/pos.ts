@@ -102,7 +102,7 @@ async function deductInventoryForItems(items: CartItemInput[]) {
 
 // Helper to resolve virtual table for Delivery / Takeaway if none provided
 async function resolveTableId(tableId?: string, orderType?: string) {
-  if (tableId) return tableId;
+  if (tableId && tableId !== "DIRECT_TAKEAWAY" && tableId !== "NONE" && tableId !== "FAST_TAKEAWAY") return tableId;
   if (orderType === "DELIVERY") {
     const deliveryTable = await prisma.diningTable.findFirst({
       where: { name: { contains: "دليفري" } },
@@ -110,6 +110,10 @@ async function resolveTableId(tableId?: string, orderType?: string) {
     return deliveryTable?.id || null;
   }
   if (orderType === "TAKEAWAY") {
+    const fastTakeawayTable = await prisma.diningTable.findFirst({
+      where: { name: { contains: "مباشر" } },
+    });
+    if (fastTakeawayTable) return fastTakeawayTable.id;
     const takeawayTable = await prisma.diningTable.findFirst({
       where: { name: { contains: "تيك أواي" } },
     });

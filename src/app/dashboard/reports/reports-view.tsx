@@ -26,6 +26,16 @@ interface ReportsViewProps {
   rawMaterials: any[];
 }
 
+function parseJsonArray(val: any): any[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try {
+    return JSON.parse(val);
+  } catch {
+    return [];
+  }
+}
+
 export default function ReportsView({
   shifts,
   allOrders = [],
@@ -36,7 +46,7 @@ export default function ReportsView({
 }: ReportsViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
-    "INVOICES" | "SHIFTS" | "SALES" | "INVENTORY" | "COMPLIMENTARY"
+    "INVOICES" | "SHIFTS" | "CLOSING_SHEETS" | "SALES" | "INVENTORY" | "COMPLIMENTARY"
   >("INVOICES");
 
   const [shiftFilter, setShiftFilter] = useState<"ALL" | "OPEN" | "CLOSED">("ALL");
@@ -48,6 +58,10 @@ export default function ReportsView({
 
   // Re-print modal state
   const [printableOrder, setPrintableOrder] = useState<any | null>(null);
+
+  // Bedouin Closing Sheet modal states
+  const [closingVoucherShift, setClosingVoucherShift] = useState<any | null>(null);
+  const [closingDetailsShift, setClosingDetailsShift] = useState<any | null>(null);
 
   // Refund / Delete modal state
   const [refundingOrder, setRefundingOrder] = useState<any | null>(null);
@@ -248,6 +262,18 @@ export default function ReportsView({
         >
           <span>⏱️</span>
           <span>سجل الورديات والتسليم ({shifts.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("CLOSING_SHEETS")}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition flex items-center gap-2 shrink-0 ${
+            activeTab === "CLOSING_SHEETS"
+              ? "bg-sky-800 text-white shadow-sm ring-2 ring-sky-400"
+              : "bg-white text-sky-900 hover:bg-sky-50 border border-sky-300"
+          }`}
+        >
+          <span>📑</span>
+          <span>أوراق التقفيل اليومية (واحة بدوي) ({shifts.filter((s) => s.status === ShiftStatus.CLOSED).length})</span>
         </button>
 
         <button
@@ -749,6 +775,381 @@ export default function ReportsView({
       )}
 
       {/* ======================================================== */}
+      {/* OFFICIAL BEDOUIN GRILL PRINTABLE CLOSING VOUCHER MODAL */}
+      {/* ======================================================== */}
+      {closingVoucherShift && (() => {
+        const expItems = parseJsonArray(closingVoucherShift.expensesDetails);
+        const withItems = parseJsonArray(closingVoucherShift.managementWithdrawalsDetails);
+        const wasteItems = parseJsonArray(closingVoucherShift.staffWasteDetails);
+        const shiftDate = new Date(closingVoucherShift.startTime);
+        const gross = closingVoucherShift.grossSales ?? closingVoucherShift.orders?.reduce((s: number, o: any) => s + (o.totalAmount || 0), 0) ?? 0;
+        const disc = closingVoucherShift.discounts ?? 0;
+        const visa = closingVoucherShift.visaAmount ?? 0;
+        const otherBal = closingVoucherShift.otherBalance ?? 0;
+        const exp = closingVoucherShift.expensesTotal ?? 0;
+        const checks = closingVoucherShift.managementChecks ?? 0;
+        const waste = closingVoucherShift.staffWasteTotal ?? 0;
+        const withTotal = closingVoucherShift.managementWithdrawalsTotal ?? 0;
+        const endBal = closingVoucherShift.endOfDayBalance ?? closingVoucherShift.expectedCash ?? 0;
+        const shortage = closingVoucherShift.shortageOverage ?? 0;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white w-full max-w-xl rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto print:p-0 print:max-w-none print:shadow-none print:rounded-none">
+              
+              {/* Header controls (hidden on print) */}
+              <div className="flex items-center justify-between border-b pb-3 print:hidden">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">📋</span>
+                  <h3 className="font-black text-slate-800 text-sm">
+                    ورقة تقفيل واحة بدوي للمشويات • وردية #{closingVoucherShift.shiftNumber}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setClosingVoucherShift(null)}
+                  className="text-slate-400 hover:text-slate-600 font-bold p-1 text-base"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Exact Paper Sheet Replica */}
+              <div
+                id="bedouin-closing-sheet-print"
+                className="bg-white border-2 border-slate-800 p-4 sm:p-5 rounded-2xl text-right font-sans text-xs space-y-3 shadow-sm print:border-2 print:border-black print:p-3"
+              >
+                {/* Sky-Blue Header */}
+                <div className="bg-sky-200 border-2 border-slate-800 rounded-xl p-3 text-center print:bg-sky-100">
+                  <h2 className="text-2xl font-black text-slate-900 tracking-wide">
+                    واحة بدوي
+                  </h2>
+                  <p className="text-sm font-black text-slate-800 tracking-widest mt-0.5">
+                    للمشويات
+                  </p>
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-900 pt-1.5 border-t border-slate-400 mt-2">
+                    <span>
+                      إيراد يوم : <strong>{shiftDate.toLocaleDateString("ar-EG", { weekday: "long" })}</strong>
+                    </span>
+                    <span>
+                      الموافق: <strong className="font-mono">{shiftDate.toLocaleDateString("ar-EG")}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* The 9 Official Voucher Rows with Directional Arrows */}
+                <div className="space-y-1.5 font-bold text-xs sm:text-sm">
+                  {/* 1. Gross Sales */}
+                  <div className="flex items-center justify-between border-b border-slate-300 pb-1.5">
+                    <span className="w-36 text-slate-900 font-black">إجمالى المبيعات</span>
+                    <span className="text-sky-700 font-black text-base">←</span>
+                    <span className="font-mono font-black text-base px-3 py-1 border border-slate-800 rounded-lg bg-slate-50 min-w-[120px] text-center">
+                      {gross.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* 2. Discounts */}
+                  <div className="flex items-center justify-between border-b border-slate-300 pb-1.5">
+                    <span className="w-36 text-slate-900 font-black">خصومات</span>
+                    <span className="text-sky-700 font-black text-base">←</span>
+                    <span className="font-mono font-black text-base px-3 py-1 border border-slate-800 rounded-lg bg-slate-50 min-w-[120px] text-center text-rose-700">
+                      {disc.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* 3. Visa */}
+                  <div className="flex items-center justify-between border-b border-slate-300 pb-1.5">
+                    <span className="w-36 text-slate-900 font-black">فيزا</span>
+                    <span className="text-sky-700 font-black text-base">←</span>
+                    <span className="font-mono font-black text-base px-3 py-1 border border-slate-800 rounded-lg bg-slate-50 min-w-[120px] text-center text-blue-800">
+                      {visa.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* 4. Other Balance */}
+                  <div className="flex items-center justify-between border-b border-slate-300 pb-1.5">
+                    <span className="w-36 text-slate-900 font-black">رصيد أخر</span>
+                    <span className="text-sky-700 font-black text-base">←</span>
+                    <span className="font-mono font-black text-base px-3 py-1 border border-slate-800 rounded-lg bg-slate-50 min-w-[120px] text-center">
+                      {otherBal.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* 5. Expenses */}
+                  <div className="flex items-center justify-between border-b border-slate-300 pb-1.5">
+                    <span className="w-36 text-slate-900 font-black">مصاريف</span>
+                    <span className="text-sky-700 font-black text-base">←</span>
+                    <span className="font-mono font-black text-base px-3 py-1 border border-slate-800 rounded-lg bg-slate-50 min-w-[120px] text-center text-rose-800">
+                      {exp.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* 6. Management Checks */}
+                  <div className="flex items-center justify-between border-b border-slate-300 pb-1.5">
+                    <span className="w-36 text-slate-900 font-black">شيكات إداره</span>
+                    <span className="text-sky-700 font-black text-base">←</span>
+                    <span className="font-mono font-black text-base px-3 py-1 border border-slate-800 rounded-lg bg-slate-50 min-w-[120px] text-center">
+                      {checks.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* 7. Staff Waste */}
+                  <div className="flex items-center justify-between border-b border-slate-300 pb-1.5">
+                    <span className="w-36 text-slate-900 font-black">توالف إصطاف</span>
+                    <span className="text-sky-700 font-black text-base">←</span>
+                    <span className="font-mono font-black text-base px-3 py-1 border border-slate-800 rounded-lg bg-slate-50 min-w-[120px] text-center text-rose-700">
+                      {waste.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* 8. Management Withdrawals */}
+                  <div className="flex items-center justify-between border-b border-slate-300 pb-1.5">
+                    <span className="w-36 text-slate-900 font-black">مسحوبات اداره</span>
+                    <span className="text-sky-700 font-black text-base">←</span>
+                    <span className="font-mono font-black text-base px-3 py-1 border border-slate-800 rounded-lg bg-slate-50 min-w-[120px] text-center text-purple-900">
+                      {withTotal.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* 9. End of Day Cash Balance */}
+                  <div className="flex items-center justify-between pt-1.5 font-black bg-emerald-50 p-2 rounded-xl border-2 border-emerald-500">
+                    <span className="w-36 text-emerald-950 font-black">رصيد أخر اليوم</span>
+                    <span className="text-emerald-700 font-black text-base">←</span>
+                    <span className="font-mono font-black text-lg px-3 py-1 border-2 border-emerald-900 rounded-lg bg-white min-w-[120px] text-center text-emerald-950">
+                      {endBal.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Receiver and Cashier Signatures */}
+                <div className="flex items-center justify-between pt-2 border-t-2 border-slate-800 text-xs">
+                  <div>
+                    المستلم / <strong className="text-slate-900 mr-1 text-sm">{closingVoucherShift.receivedBy || "—"}</strong>
+                  </div>
+                  <div className="text-slate-600 font-bold">
+                    الكاشير: <strong className="text-slate-900">{closingVoucherShift.user?.name || "كاشير"}</strong>
+                  </div>
+                </div>
+
+                {/* Actual Counted & Shortage */}
+                <div className="flex items-center justify-between pt-1.5 text-[11px] font-mono text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                  <span>الفعلي بعد الجرد: {(closingVoucherShift.actualCash ?? 0).toFixed(2)} ج.م</span>
+                  <span className={shortage < 0 ? "text-rose-600 font-black" : "text-emerald-700 font-black"}>
+                    الفارق: {shortage > 0 ? "+" : ""}{shortage.toFixed(2)} ج.م
+                  </span>
+                </div>
+
+                {/* Attached Details Tables on Print */}
+                {(expItems.length > 0 || withItems.length > 0 || wasteItems.length > 0) && (
+                  <div className="space-y-2 pt-2 border-t border-dashed border-slate-400 text-[11px]">
+                    {expItems.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="font-black text-slate-800">🛒 بيان بنود المصاريف المنصرفة:</p>
+                        <div className="space-y-0.5">
+                          {expItems.map((e: any, idx: number) => (
+                            <div key={idx} className="flex justify-between bg-slate-50 p-1 rounded font-mono">
+                              <span>• {e.item} {e.notes ? `(${e.notes})` : ""}</span>
+                              <span className="font-black text-rose-700">{Number(e.amount).toFixed(2)} ج.م</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {withItems.length > 0 && (
+                      <div className="space-y-1 pt-1 border-t border-slate-200">
+                        <p className="font-black text-purple-900">💼 بيان مسحوبات الإدارة:</p>
+                        <div className="space-y-0.5">
+                          {withItems.map((w: any, idx: number) => (
+                            <div key={idx} className="flex justify-between bg-purple-50/50 p-1 rounded font-mono">
+                              <span>• {w.receiver} {w.notes ? `(${w.notes})` : ""}</span>
+                              <span className="font-black text-purple-900">{Number(w.amount).toFixed(2)} ج.م</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {wasteItems.length > 0 && (
+                      <div className="space-y-1 pt-1 border-t border-slate-200">
+                        <p className="font-black text-rose-800">⚠️ بيان توالف الإصطاف:</p>
+                        <div className="space-y-0.5">
+                          {wasteItems.map((s: any, idx: number) => (
+                            <div key={idx} className="flex justify-between bg-rose-50/50 p-1 rounded font-mono">
+                              <span>• {s.item} {s.responsible ? `(المسؤول: ${s.responsible})` : ""}</span>
+                              <span className="font-black text-rose-800">{Number(s.amount).toFixed(2)} ج.م</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons (hidden on print) */}
+              <div className="flex items-center gap-2 pt-2 print:hidden">
+                <button
+                  onClick={handlePrint}
+                  className="flex-1 bg-sky-700 hover:bg-sky-800 text-white font-black py-2.5 rounded-2xl text-xs transition shadow-sm flex items-center justify-center gap-2"
+                >
+                  <span>🖨️</span>
+                  <span>طباعة ورقة التقفيل الرسمية</span>
+                </button>
+                <button
+                  onClick={() => setClosingVoucherShift(null)}
+                  className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs"
+                >
+                  إغلاق
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ======================================================== */}
+      {/* ITEMIZED DETAILS MODAL (تفاصيل المصاريف والمسحوبات والتوالف) */}
+      {/* ======================================================== */}
+      {closingDetailsShift && (() => {
+        const expItems = parseJsonArray(closingDetailsShift.expensesDetails);
+        const withItems = parseJsonArray(closingDetailsShift.managementWithdrawalsDetails);
+        const wasteItems = parseJsonArray(closingDetailsShift.staffWasteDetails);
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white w-full max-w-lg rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-800 flex items-center justify-center text-lg">
+                    🔍
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 text-sm">
+                      تفاصيل بنود ورقة تقفيل وردية #{closingDetailsShift.shiftNumber}
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      الكاشير: {closingDetailsShift.user?.name || "كاشير"} • التاريخ: {new Date(closingDetailsShift.startTime).toLocaleDateString("ar-EG")}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setClosingDetailsShift(null)}
+                  className="text-slate-400 hover:text-slate-600 font-bold p-1 text-base"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 1. Expenses Section */}
+              <div className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                  <span className="font-black text-slate-800 text-xs flex items-center gap-1.5">
+                    <span>🛒</span>
+                    <span>بنود المصاريف المنصرفة ({expItems.length})</span>
+                  </span>
+                  <span className="font-mono font-black text-rose-700 text-xs">
+                    {(closingDetailsShift.expensesTotal || 0).toFixed(2)} ج.م
+                  </span>
+                </div>
+                {expItems.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 text-center py-2">لا توجد مصاريف مسجلة</p>
+                ) : (
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {expItems.map((e: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center text-xs bg-white p-2 rounded-xl border border-slate-100">
+                        <div>
+                          <span className="font-bold text-slate-800">{e.item}</span>
+                          {e.notes && <span className="text-[10px] text-slate-400 mr-2 font-normal">({e.notes})</span>}
+                        </div>
+                        <span className="font-mono font-black text-rose-700">{Number(e.amount).toFixed(2)} ج.م</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Management Withdrawals */}
+              <div className="space-y-2 bg-purple-50/50 p-3.5 rounded-2xl border border-purple-200">
+                <div className="flex items-center justify-between border-b border-purple-200 pb-1.5">
+                  <span className="font-black text-purple-900 text-xs flex items-center gap-1.5">
+                    <span>💼</span>
+                    <span>مسحوبات الإدارة ({withItems.length})</span>
+                  </span>
+                  <span className="font-mono font-black text-purple-900 text-xs">
+                    {(closingDetailsShift.managementWithdrawalsTotal || 0).toFixed(2)} ج.م
+                  </span>
+                </div>
+                {withItems.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 text-center py-2">لا توجد مسحوبات إدارة مسجلة</p>
+                ) : (
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {withItems.map((w: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center text-xs bg-white p-2 rounded-xl border border-purple-100">
+                        <div>
+                          <span className="font-bold text-slate-800">{w.receiver}</span>
+                          {w.notes && <span className="text-[10px] text-slate-400 mr-2 font-normal">({w.notes})</span>}
+                        </div>
+                        <span className="font-mono font-black text-purple-900">{Number(w.amount).toFixed(2)} ج.م</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Staff Waste */}
+              <div className="space-y-2 bg-rose-50/40 p-3.5 rounded-2xl border border-rose-200">
+                <div className="flex items-center justify-between border-b border-rose-200 pb-1.5">
+                  <span className="font-black text-rose-900 text-xs flex items-center gap-1.5">
+                    <span>⚠️</span>
+                    <span>توالف الإصطاف ({wasteItems.length})</span>
+                  </span>
+                  <span className="font-mono font-black text-rose-700 text-xs">
+                    {(closingDetailsShift.staffWasteTotal || 0).toFixed(2)} ج.م
+                  </span>
+                </div>
+                {wasteItems.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 text-center py-2">لا توجد توالف مسجلة</p>
+                ) : (
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {wasteItems.map((s: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center text-xs bg-white p-2 rounded-xl border border-rose-100">
+                        <div>
+                          <span className="font-bold text-slate-800">{s.item}</span>
+                          {s.responsible && <span className="text-[10px] text-slate-400 mr-2 font-normal">(المسؤول: {s.responsible})</span>}
+                        </div>
+                        <span className="font-mono font-black text-rose-700">{Number(s.amount).toFixed(2)} ج.م</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    const s = closingDetailsShift;
+                    setClosingDetailsShift(null);
+                    setClosingVoucherShift(s);
+                  }}
+                  className="flex-1 py-2.5 rounded-2xl bg-sky-700 hover:bg-sky-800 text-white font-black text-xs transition shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <span>🖨️</span>
+                  <span>معاينة وطباعة ورقة التقفيل الرسمية</span>
+                </button>
+                <button
+                  onClick={() => setClosingDetailsShift(null)}
+                  className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs"
+                >
+                  إغلاق
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ======================================================== */}
       {/* TAB 2: Shifts Management & Handover Log */}
       {/* ======================================================== */}
       {activeTab === "SHIFTS" && (
@@ -806,12 +1207,13 @@ export default function ReportsView({
                   <th className="py-3 px-3">النقدية الفعلية (المعدودة)</th>
                   <th className="py-3 px-3">الفارق (عجز / زيادة)</th>
                   <th className="py-3 px-3">الحالة</th>
+                  <th className="py-3 px-3 text-center">ورقة التقفيل</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredShifts.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-8 text-center text-slate-400">
+                    <td colSpan={11} className="py-8 text-center text-slate-400">
                       لا توجد ورديات مطابقة للتصفية
                     </td>
                   </tr>
@@ -881,9 +1283,221 @@ export default function ReportsView({
                             </span>
                           )}
                         </td>
+                        <td className="py-3 px-3 text-center">
+                          {shift.status === ShiftStatus.CLOSED ? (
+                            <button
+                              onClick={() => setClosingVoucherShift(shift)}
+                              className="px-2.5 py-1 bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-300 rounded-xl text-[11px] font-black transition flex items-center justify-center gap-1 mx-auto shadow-sm"
+                              title="عرض وطباعة ورقة تقفيل واحة بدوي الرسمية"
+                            >
+                              <span>📋</span>
+                              <span>ورقة التقفيل</span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 text-[10px]">—</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB: Official Bedouin Closing Sheets (أوراق التقفيل اليومية) */}
+      {/* ======================================================== */}
+      {activeTab === "CLOSING_SHEETS" && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6 print:hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📋</span>
+                <h3 className="font-black text-slate-800 text-base sm:text-lg">
+                  أوراق التقفيل اليومية الرسمية (واحة بدوي للمشويات)
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                سجل أوراق التقفيل المطابقة للورقة الورقية المعتمدة مع البنود الـ 9، تفاصيل المصاريف، مسحوبات الإدارة، وتوالف الإصطاف.
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="px-3.5 py-1.5 rounded-xl bg-sky-50 text-sky-900 border border-sky-200 text-xs font-black">
+                {shifts.filter((s) => s.status === ShiftStatus.CLOSED).length} وردية مقفلة
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Aggregate Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-4 rounded-2xl border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-500 block mb-1">إجمالي المبيعات المؤرشفة</span>
+              <p className="text-xl font-black font-mono text-slate-900">
+                {shifts
+                  .filter((s) => s.status === ShiftStatus.CLOSED)
+                  .reduce((sum, s) => sum + (s.grossSales || s.expectedCash || 0), 0)
+                  .toFixed(2)} ج.م
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-rose-50 to-rose-100/50 p-4 rounded-2xl border border-rose-200">
+              <span className="text-[11px] font-bold text-rose-700 block mb-1">إجمالي المصاريف المنصرفة</span>
+              <p className="text-xl font-black font-mono text-rose-900">
+                {shifts
+                  .filter((s) => s.status === ShiftStatus.CLOSED)
+                  .reduce((sum, s) => sum + (s.expensesTotal || 0), 0)
+                  .toFixed(2)} ج.م
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 p-4 rounded-2xl border border-purple-200">
+              <span className="text-[11px] font-bold text-purple-700 block mb-1">إجمالي مسحوبات الإدارة</span>
+              <p className="text-xl font-black font-mono text-purple-900">
+                {shifts
+                  .filter((s) => s.status === ShiftStatus.CLOSED)
+                  .reduce((sum, s) => sum + (s.managementWithdrawalsTotal || 0), 0)
+                  .toFixed(2)} ج.م
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 p-4 rounded-2xl border border-amber-200">
+              <span className="text-[11px] font-bold text-amber-700 block mb-1">إجمالي توالف الإصطاف</span>
+              <p className="text-xl font-black font-mono text-amber-900">
+                {shifts
+                  .filter((s) => s.status === ShiftStatus.CLOSED)
+                  .reduce((sum, s) => sum + (s.staffWasteTotal || 0), 0)
+                  .toFixed(2)} ج.م
+              </p>
+            </div>
+          </div>
+
+          {/* Table of Closing Sheets */}
+          <div className="overflow-x-auto rounded-2xl border border-slate-100">
+            <table className="w-full text-right text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-black">
+                  <th className="py-3 px-3">الوردية والتاريخ</th>
+                  <th className="py-3 px-3">الكاشير / المستلم</th>
+                  <th className="py-3 px-3">إجمالي المبيعات</th>
+                  <th className="py-3 px-3">الخصومات / فيزا</th>
+                  <th className="py-3 px-3">المصاريف</th>
+                  <th className="py-3 px-3">مسحوبات إدارة</th>
+                  <th className="py-3 px-3">توالف إصطاف</th>
+                  <th className="py-3 px-3">رصيد أخر اليوم</th>
+                  <th className="py-3 px-3">الفارق بالدرج</th>
+                  <th className="py-3 px-3 text-center">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {shifts.filter((s) => s.status === ShiftStatus.CLOSED).length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400">
+                      لا توجد أوراق تقفيل مغلقة حتى الآن
+                    </td>
+                  </tr>
+                ) : (
+                  shifts
+                    .filter((s) => s.status === ShiftStatus.CLOSED)
+                    .map((shift) => {
+                      const gross = shift.grossSales ?? shift.expectedCash ?? 0;
+                      const disc = shift.discounts ?? 0;
+                      const visa = shift.visaAmount ?? 0;
+                      const exp = shift.expensesTotal ?? 0;
+                      const withTotal = shift.managementWithdrawalsTotal ?? 0;
+                      const waste = shift.staffWasteTotal ?? 0;
+                      const endBal = shift.endOfDayBalance ?? shift.expectedCash ?? 0;
+                      const shortage = shift.shortageOverage ?? 0;
+
+                      return (
+                        <tr key={shift.id} className="hover:bg-sky-50/30 transition">
+                          <td className="py-3 px-3">
+                            <span className="font-mono font-black text-slate-900 block">
+                              وردية #{shift.shiftNumber}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {new Date(shift.startTime).toLocaleDateString("ar-EG")}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-slate-800 block">
+                              {shift.user?.name || "كاشير"}
+                            </span>
+                            <span className="text-[10px] text-slate-500">
+                              المستلم: <strong className="text-slate-700">{shift.receivedBy || "—"}</strong>
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 font-mono font-black text-slate-900 text-sm">
+                            {gross.toFixed(2)} ج.م
+                          </td>
+
+                          <td className="py-3 px-3 font-mono text-[11px] space-y-0.5">
+                            {disc > 0 && <span className="block text-rose-600">خصم: {disc.toFixed(2)}</span>}
+                            {visa > 0 && <span className="block text-blue-600">فيزا: {visa.toFixed(2)}</span>}
+                            {disc === 0 && visa === 0 && <span className="text-slate-400">—</span>}
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <span className="font-mono font-bold text-rose-700 block">
+                              {exp.toFixed(2)} ج.م
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <span className="font-mono font-bold text-purple-800 block">
+                              {withTotal.toFixed(2)} ج.م
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <span className="font-mono font-bold text-amber-700 block">
+                              {waste.toFixed(2)} ج.م
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 font-mono font-black text-emerald-800 text-sm">
+                            {endBal.toFixed(2)} ج.م
+                          </td>
+
+                          <td className="py-3 px-3 font-mono font-bold">
+                            {shift.actualCash === null ? (
+                              <span className="text-slate-400">—</span>
+                            ) : shortage === 0 ? (
+                              <span className="text-emerald-600">مطابق (0.00)</span>
+                            ) : shortage > 0 ? (
+                              <span className="text-blue-600">+{shortage.toFixed(2)}</span>
+                            ) : (
+                              <span className="text-rose-600">{shortage.toFixed(2)}</span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => setClosingVoucherShift(shift)}
+                                className="px-3 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-black text-xs transition shadow-sm flex items-center gap-1"
+                              >
+                                <span>🖨️</span>
+                                <span>طباعة الورقة</span>
+                              </button>
+                              <button
+                                onClick={() => setClosingDetailsShift(shift)}
+                                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition flex items-center gap-1"
+                                title="عرض تفاصيل المصاريف والمسحوبات والتوالف"
+                              >
+                                <span>🔍</span>
+                                <span>البنود</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                 )}
               </tbody>
             </table>

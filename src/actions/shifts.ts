@@ -146,23 +146,62 @@ export async function startShift({
   }
 }
 
-/**
- * 3. End shift (تقفيل وتسليم الوردية)
- * CRITICAL REQUIREMENTS:
- * - Cashier inputs counted actual cash.
- * - Orders from "Owner Table" and "Manager Table" (Complimentary) MUST be excluded from ExpectedCash.
- * - Compares Actual vs Expected cash and logs shortage/overage.
- */
-export async function endShift({
-  shiftId,
-  actualCash,
-  notes,
-}: {
+export interface ClosingItem {
+  id?: string;
+  item: string;
+  amount: number;
+  notes?: string;
+  receiver?: string;
+  responsible?: string;
+}
+
+export interface EndShiftPayload {
   shiftId: string;
   actualCash: number;
   notes?: string;
-}) {
+  grossSales?: number;
+  discounts?: number;
+  visaAmount?: number;
+  otherBalance?: number;
+  expensesTotal?: number;
+  expensesDetails?: ClosingItem[];
+  managementChecks?: number;
+  staffWasteTotal?: number;
+  staffWasteDetails?: ClosingItem[];
+  managementWithdrawalsTotal?: number;
+  managementWithdrawalsDetails?: ClosingItem[];
+  endOfDayBalance?: number;
+  receivedBy?: string;
+}
+
+/**
+ * 3. End shift (تقفيل وتسليم الوردية - ورقة تقفيل واحة بدوي الرسمية)
+ * CRITICAL REQUIREMENTS:
+ * - Cashier inputs counted actual cash.
+ * - Complete 9-item closing reconciliation (المبيعات، الخصومات، فيزا، رصيد أخر، مصاريف مفصلة، شيكات، توالف سطاف مفصلة، مسحوبات إدارة مفصلة، رصيد أخر اليوم، المستلم).
+ * - Excludes complimentary orders.
+ * - Compares Actual vs Expected cash and logs shortage/overage.
+ */
+export async function endShift(payload: EndShiftPayload) {
   try {
+    const {
+      shiftId,
+      actualCash,
+      notes,
+      grossSales: customGrossSales,
+      discounts: customDiscounts,
+      visaAmount = 0,
+      otherBalance = 0,
+      expensesTotal: customExpensesTotal,
+      expensesDetails = [],
+      managementChecks = 0,
+      staffWasteTotal: customStaffWasteTotal,
+      staffWasteDetails = [],
+      managementWithdrawalsTotal: customWithdrawalsTotal,
+      managementWithdrawalsDetails = [],
+      receivedBy,
+    } = payload;
+
     const shift = await prisma.shift.findUnique({
       where: { id: shiftId },
       include: {
@@ -208,12 +247,62 @@ export async function endShift({
         o.table?.type === TableType.MANAGER
     );
 
-    const salesTotal = regularPaidOrders.reduce(
+    const computedGrossSales = regularPaidOrders.reduce(
+      (sum, o) => sum + (o.subtotal || o.totalAmount),
+      0
+    );
+    const computedDiscounts = regularPaidOrders.reduce(
+      (sum, o) => sum + (o.discount || 0),
+      0
+    );
+    const regularSalesNet = regularPaidOrders.reduce(
       (sum, o) => sum + o.totalAmount,
       0
     );
-    const expectedCash = shift.initialCash + salesTotal;
+
+    const finalGrossSales =
+      typeof customGrossSales === "number" && !isNaN(customGrossSales)
+        ? customGrossSales
+        : computedGrossSales;
+
+    const finalDiscounts =
+      typeof customDiscounts === "number" && !isNaN(customDiscounts)
+        ? customDiscounts
+        : computedDiscounts;
+
+    // Calculate itemized totals if not explicitly given
+    const finalExpensesTotal =
+      typeof customExpensesTotal === "number" && !isNaN(customExpensesTotal)
+        ? customExpensesTotal
+        : expensesDetails.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+    const finalWithdrawalsTotal =
+      typeof customWithdrawalsTotal === "number" && !isNaN(customWithdrawalsTotal)
+        ? customWithdrawalsTotal
+        : managementWithdrawalsDetails.reduce(
+            (sum, w) => sum + (Number(w.amount) || 0),
+            0
+          );
+
+    const finalStaffWasteTotal =
+      typeof customStaffWasteTotal === "number" && !isNaN(customStaffWasteTotal)
+        ? customStaffWasteTotal
+        : staffWasteDetails.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+
+    // Bedouin Grill Closing Formula (رصيد أخر اليوم المتوقع بالدرج):
+    // الصافي المتوقع = العهدة الافتتاحية + إجمالي المبيعات - الخصومات - فيزا - رصيد أخر - المصاريف - شيكات إدارة - مسحوبات إدارة
+    const expectedCash =
+      shift.initialCash +
+      finalGrossSales -
+      finalDiscounts -
+      visaAmount -
+      otherBalance -
+      finalExpensesTotal -
+      managementChecks -
+      finalWithdrawalsTotal;
+
     const shortageOverage = actualCash - expectedCash;
+    const endOfDayBalance = expectedCash;
 
     // Link unlinked shift orders
     await prisma.order.updateMany({
@@ -235,6 +324,19 @@ export async function endShift({
         shortageOverage,
         status: ShiftStatus.CLOSED,
         notes: notes || shift.notes,
+        grossSales: finalGrossSales,
+        discounts: finalDiscounts,
+        visaAmount,
+        otherBalance,
+        expensesTotal: finalExpensesTotal,
+        expensesDetails: expensesDetails as any,
+        managementChecks,
+        staffWasteTotal: finalStaffWasteTotal,
+        staffWasteDetails: staffWasteDetails as any,
+        managementWithdrawalsTotal: finalWithdrawalsTotal,
+        managementWithdrawalsDetails: managementWithdrawalsDetails as any,
+        endOfDayBalance,
+        receivedBy: receivedBy || null,
       },
       include: {
         user: true,
@@ -249,10 +351,24 @@ export async function endShift({
       shift: updatedShift,
       stats: {
         initialCash: shift.initialCash,
-        salesTotal,
+        grossSales: finalGrossSales,
+        discounts: finalDiscounts,
+        netSales: finalGrossSales - finalDiscounts,
+        salesTotal: regularSalesNet,
+        visaAmount,
+        otherBalance,
+        expensesTotal: finalExpensesTotal,
+        expensesDetails,
+        managementChecks,
+        staffWasteTotal: finalStaffWasteTotal,
+        staffWasteDetails,
+        managementWithdrawalsTotal: finalWithdrawalsTotal,
+        managementWithdrawalsDetails,
+        endOfDayBalance,
         expectedCash,
         actualCash,
         shortageOverage,
+        receivedBy: receivedBy || "—",
         paidOrdersCount: regularPaidOrders.length,
         complimentaryOrdersCount: complimentaryOrders.length,
         complimentaryWaivedTotal: complimentaryOrders.reduce(
@@ -260,7 +376,7 @@ export async function endShift({
           0
         ),
       },
-      message: `تم تقفيل الوردية رقم #${shift.shiftNumber} بنجاح. ${
+      message: `تم تقفيل الوردية وحفظ ورقة التقفيل الرسمية (#${shift.shiftNumber}) بنجاح. ${
         shortageOverage === 0
           ? "الدرج مطابق تماماً بدون عجز أو زيادة ✓"
           : shortageOverage < 0
