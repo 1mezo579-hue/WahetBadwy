@@ -41,10 +41,10 @@ export default function TablesManager({ initialTables }: { initialTables: TableI
 
   const filteredTables = initialTables.filter((table) => {
     if (filter === "ALL") return true;
-    if (filter === "TAKEAWAY") return table.name.includes("تيك أواي") || table.name.includes("تليفون");
+    if (filter === "TAKEAWAY_PHONE") return table.name.includes("تليفون");
     if (filter === "FAMILY") return table.type === TableType.FAMILY_BOOTH;
     if (filter === "VIP") return table.type === TableType.VIP;
-    if (filter === "REGULAR") return table.type === TableType.REGULAR && !table.name.includes("تيك أواي") && !table.name.includes("تليفون");
+    if (filter === "REGULAR") return table.type === TableType.REGULAR && !table.name.includes("تليفون");
     if (filter === "SPECIAL") return table.type === TableType.OWNER || table.type === TableType.MANAGER;
     return true;
   });
@@ -83,8 +83,8 @@ export default function TablesManager({ initialTables }: { initialTables: TableI
   // Counts for summary pills
   const familyCount = initialTables.filter((t) => t.type === TableType.FAMILY_BOOTH).length;
   const vipCount = initialTables.filter((t) => t.type === TableType.VIP).length;
-  const takeawayCount = initialTables.filter((t) => (t.name.includes("تيك أواي") || t.name.includes("تليفون")) && t.number !== 998 && t.number !== 997).length;
-  const regularCount = initialTables.filter((t) => t.type === TableType.REGULAR && !t.name.includes("تيك أواي") && !t.name.includes("تليفون")).length;
+  const takeawayPhoneCount = initialTables.filter((t) => t.name.includes("تليفون")).length;
+  const regularCount = initialTables.filter((t) => t.type === TableType.REGULAR && !t.name.includes("تليفون")).length;
   const specialCount = initialTables.filter((t) => t.type === TableType.OWNER || t.type === TableType.MANAGER).length;
 
   return (
@@ -104,15 +104,14 @@ export default function TablesManager({ initialTables }: { initialTables: TableI
             الكل ({initialTables.length})
           </button>
           <button
-            onClick={() => setFilter("TAKEAWAY")}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 ${
-              filter === "TAKEAWAY"
+            onClick={() => setFilter("TAKEAWAY_PHONE")}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition ${
+              filter === "TAKEAWAY_PHONE"
                 ? "bg-amber-600 text-white shadow-sm"
-                : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+                : "bg-amber-50 text-amber-800 hover:bg-amber-100"
             }`}
           >
-            <span>🥡</span>
-            <span>طاولات تيك أواي ({takeawayCount})</span>
+            📞 تيك أواي تليفون ({takeawayPhoneCount})
           </button>
           <button
             onClick={() => setFilter("FAMILY")}

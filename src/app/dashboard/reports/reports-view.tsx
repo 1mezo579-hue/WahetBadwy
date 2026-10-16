@@ -1025,11 +1025,38 @@ export default function ReportsView({
               {/* Action buttons (hidden on print) */}
               <div className="flex items-center gap-2 pt-2 print:hidden">
                 <button
-                  onClick={handlePrint}
+                  onClick={() => {
+                    silentPrintHtml(
+                      buildZReportHtml(
+                        {
+                          stats: {
+                            receivedBy: closingVoucherShift.receivedBy,
+                            initialCash: closingVoucherShift.initialCash,
+                            paidOrdersTotal:
+                              closingVoucherShift.grossSales ??
+                              closingVoucherShift.paidOrdersTotal ??
+                              0,
+                            paidOrdersCount: closingVoucherShift.paidOrdersCount ?? 0,
+                            expensesTotal: closingVoucherShift.expensesTotal ?? 0,
+                            managementWithdrawalsTotal:
+                              closingVoucherShift.managementWithdrawalsTotal ?? 0,
+                            endOfDayBalance:
+                              closingVoucherShift.endOfDayBalance ??
+                              closingVoucherShift.expectedCash ??
+                              0,
+                            expectedCash: closingVoucherShift.expectedCash ?? 0,
+                            actualCash: closingVoucherShift.actualCash ?? 0,
+                            shortageOverage: closingVoucherShift.shortageOverage ?? 0,
+                          },
+                        },
+                        closingVoucherShift.user?.name || "كاشير واحة بدوي"
+                      )
+                    );
+                  }}
                   className="flex-1 bg-sky-700 hover:bg-sky-800 text-white font-black py-2.5 rounded-2xl text-xs transition shadow-sm flex items-center justify-center gap-2"
                 >
                   <span>🖨️</span>
-                  <span>طباعة ورقة التقفيل الرسمية</span>
+                  <span>طباعة ورقة التقفيل الرسمية (80mm)</span>
                 </button>
                 <button
                   onClick={() => setClosingVoucherShift(null)}

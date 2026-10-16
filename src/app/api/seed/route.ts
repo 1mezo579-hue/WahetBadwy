@@ -279,24 +279,6 @@ export async function GET() {
       });
     }
 
-    // 10 Dedicated Takeaway Tables (طاولات التيك أواي 1 إلى 10)
-    for (let i = 1; i <= 10; i++) {
-      await prisma.diningTable.upsert({
-        where: { name: `تيك أواي ${i}` },
-        update: {
-          number: 510 + i,
-          capacity: 1,
-        },
-        create: {
-          name: `تيك أواي ${i}`,
-          number: 510 + i,
-          type: TableType.REGULAR,
-          status: TableStatus.AVAILABLE,
-          capacity: 1,
-        },
-      });
-    }
-
     for (let i = 1; i <= 6; i++) {
       await prisma.diningTable.upsert({
         where: { name: `باكية عائلية ${i}` },

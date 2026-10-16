@@ -15,8 +15,9 @@ import {
 } from "@/utils/printer/order-router";
 import {
   triggerSilentThermalPrint,
-  silentPrintHtml,
   buildZReportHtml,
+  silentPrintHtml,
+  triggerTestPrint,
 } from "@/utils/printer/silent-print";
 
 interface PosTable {
@@ -33,7 +34,6 @@ interface PosTable {
     totalAmount: number;
     subtotal: number;
     isComplimentary: boolean;
-    customerName?: string | null;
     items: Array<{
       id: string;
       menuItemId: string;
@@ -369,19 +369,17 @@ export default function PosInterface({
     setActiveTab("ORDER");
   };
 
-  // Takeaway Tables (20 Tables: Phone & Counter): Find first available slot
+  // 10 Takeaway Phone Tables: Find first available slot
   const handleStartPhoneTakeaway = () => {
-    const freeTakeawayTable =
+    const freePhoneTable =
       tables.find(
         (t) =>
-          (t.name.includes("تليفون") || t.name.includes("تيك أواي")) &&
-          (t.number ?? 0) < 900 &&
+          t.name.includes("تليفون") &&
           (t.status === TableStatus.AVAILABLE || !t.orders || t.orders.length === 0)
-      ) ||
-      tables.find((t) => (t.name.includes("تليفون") || t.name.includes("تيك أواي")) && (t.number ?? 0) < 900);
+      ) || tables.find((t) => t.name.includes("تليفون"));
 
-    if (freeTakeawayTable) {
-      handleSelectTable(freeTakeawayTable, "TAKEAWAY");
+    if (freePhoneTable) {
+      handleSelectTable(freePhoneTable, "TAKEAWAY");
     } else {
       const fallback = tables.find((t) => t.name.includes("تيك أواي")) || tables[0];
       if (fallback) handleSelectTable(fallback, "TAKEAWAY");
@@ -424,10 +422,7 @@ export default function PosInterface({
         staffWasteTotal: wasteTotal,
         staffWasteDetails: staffWasteList,
         managementWithdrawalsTotal: withTotal,
-        managementWithdrawalsDetails: withdrawalsList.map((w) => ({
-          ...w,
-          item: w.receiver,
-        })),
+        managementWithdrawalsDetails: withdrawalsList,
         receivedBy: closingReceivedBy,
       });
 
@@ -643,10 +638,42 @@ export default function PosInterface({
         cashierName: userName,
       });
 
+      // طباعة بون التحضير / الشيك تلقائياً على طابعة Xprinter 80mm
+      await triggerSilentThermalPrint({
+        title:
+          orderType === "DELIVERY"
+            ? "بون دليفري (توصيل)"
+            : orderType === "TAKEAWAY"
+            ? "بون تيك أواي (سفري)"
+            : "بون تحضير الصالة (KITCHEN/BAR)",
+        receiptType: "PREP",
+        tableName: selectedTable.name,
+        orderNumber: res.order?.orderNumber,
+        orderType,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
+        deliveryAddress: deliveryAddress || undefined,
+        deliveryFee: deliveryFeeNumber || undefined,
+        items: cart.map((i) => ({
+          nameAr: i.nameAr,
+          quantity: i.quantity,
+          price: i.price,
+          notes: i.notes || null,
+        })),
+        subtotal,
+        discount: discount || undefined,
+        totalAmount,
+        isComplimentary,
+        notes: orderNotes || undefined,
+        cashierName: userName,
+        isPaid: false,
+        timestamp: new Date(),
+      });
+
       // Display multi-ticket preparation modal (drawerKicked: false)
       setRoutedModal({
-        title: "تم حفظ وتوجيه بونات التحضير بنجاح",
-        subtitle: `${selectedTable.name} • (تم توجيه ${routeRes.tickets.length} بونات للأقسام - درج النقدية مغلق)`,
+        title: "تم حفظ وتوجيه بونات التحضير والطباعة بنجاح ✓",
+        subtitle: `${selectedTable.name} • (تمت الطباعة تلقائياً على Xprinter 80mm - درج النقدية مغلق)`,
         isPayment: false,
         drawerKicked: false,
         tickets: routeRes.tickets,
@@ -718,26 +745,9 @@ export default function PosInterface({
         }
       }
 
-      // طباعة فاتورة / شيك العميل عبر الطابعة الحرارية (درج النقدية مغلق)
-      const checkRes = await printCustomerCheckOnly({
-        tableName: selectedTable.name,
-        orderNumber: orderNum,
-        orderType,
-        customerName: customerName || undefined,
-        customerPhone: customerPhone || undefined,
-        deliveryAddress: deliveryAddress || undefined,
-        deliveryFee: deliveryFeeNumber,
-        items: cart,
-        subtotal,
-        discount,
-        totalAmount,
-        isComplimentary,
-        notes: orderNotes,
-        cashierName: userName,
-      });
-
-      // الطباعة الصامتة المباشرة على طابعة الويندوز الافتراضية
-      triggerSilentThermalPrint({
+      // طباعة شيك العميل الفعلي عبر المتصفح → Xprinter 80mm (HTML + window.print)
+      // مع --kiosk-printing: تطبع صامتة. بدونه: تفتح print preview.
+      await triggerSilentThermalPrint({
         title: "شيك حساب العميل (CUSTOMER CHECK)",
         receiptType: "CHECK",
         tableName: selectedTable.name,
@@ -746,27 +756,33 @@ export default function PosInterface({
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
         deliveryAddress: deliveryAddress || undefined,
-        deliveryFee: deliveryFeeNumber,
-        items: cart,
+        deliveryFee: deliveryFeeNumber || undefined,
+        items: cart.map((i) => ({
+          nameAr: i.nameAr,
+          quantity: i.quantity,
+          price: i.price,
+          notes: i.notes || null,
+        })),
         subtotal,
-        discount,
+        discount: discount || undefined,
         totalAmount,
         isComplimentary,
-        notes: orderNotes,
+        notes: orderNotes || undefined,
         cashierName: userName,
         isPaid: false,
-      }).catch((e) => console.error("Silent Print Error:", e));
+        timestamp: new Date(),
+      });
 
       // تم تقفيل الشيك -> تفعيل حالة طباعة الشيك ليتحول الزر لفتح الدرج بالتحصيل
       setIsCheckPrinted(true);
 
-      // عرض إشعار نجاح الطباعة التلقائية
+      // عرض تأكيد تقفيل الشيك (الطباعة تمت فعلياً عبر window.print)
       setRoutedModal({
-        title: "🧾 تم إرسال الشيك لطابعة Xprinter 80mm",
-        subtitle: `${selectedTable.name} • تمت الطباعة تلقائياً على طابعة الإيصالات (جاهز للتحصيل وفتح الدرج)`,
+        title: "🧾 تم تقفيل وطباعة شيك العميل",
+        subtitle: `${selectedTable.name} • تم إرسال الشيك للطابعة (جاهز للتحصيل وفتح الدرج)`,
         isPayment: false,
         drawerKicked: false,
-        tickets: [checkRes.checkTicket],
+        tickets: [],
         activeTicketIndex: 0,
       });
     });
@@ -800,26 +816,10 @@ export default function PosInterface({
         return;
       }
 
-      // CRITICAL: Execute payment receipt & KICK OPEN CASH DRAWER
-      const paymentRes = await executePaymentAndOpenDrawer({
-        tableName: selectedTable.name,
-        orderNumber: activeOrderId ? parseInt(activeOrderId.slice(-4)) : undefined,
-        orderType,
-        customerName: customerName || undefined,
-        customerPhone: customerPhone || undefined,
-        deliveryAddress: deliveryAddress || undefined,
-        deliveryFee: deliveryFeeNumber,
-        items: cart,
-        subtotal,
-        discount,
-        totalAmount,
-        isComplimentary,
-        notes: orderNotes,
-        cashierName: userName,
-      });
 
-      // الطباعة الصامتة المباشرة لفاتورة السداد على الطابعة الافتراضية
-      triggerSilentThermalPrint({
+      // طباعة فاتورة الدفع الفعلية عبر المتصفح → Xprinter 80mm (HTML + window.print)
+      // مع --kiosk-printing: تطبع صامتة فوراً. درج النقدية يفتح عبر Windows printer driver.
+      await triggerSilentThermalPrint({
         title: "فاتورة سداد نقدي (PAID RECEIPT)",
         receiptType: "RECEIPT",
         tableName: selectedTable.name,
@@ -828,24 +828,30 @@ export default function PosInterface({
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
         deliveryAddress: deliveryAddress || undefined,
-        deliveryFee: deliveryFeeNumber,
-        items: cart,
+        deliveryFee: deliveryFeeNumber || undefined,
+        items: cart.map((i) => ({
+          nameAr: i.nameAr,
+          quantity: i.quantity,
+          price: i.price,
+          notes: i.notes || null,
+        })),
         subtotal,
-        discount,
+        discount: discount || undefined,
         totalAmount,
         isComplimentary,
-        notes: orderNotes,
+        notes: orderNotes || undefined,
         cashierName: userName,
         isPaid: true,
-      }).catch((e) => console.error("Silent Print Error:", e));
+        timestamp: new Date(),
+      });
 
-      // Display final paid receipt modal with CASH DRAWER OPENED confirmation
+      // Display final paid receipt confirmation modal
       setRoutedModal({
         title: "تم التحصيل وسداد الحساب بنجاح ✓",
-        subtitle: `${selectedTable.name} • 🚪 تم فتح الدرج وإرسال الفاتورة لطابعة Xprinter 80mm تلقائياً`,
+        subtitle: `${selectedTable.name} • ✅ تمت الطباعة على Xprinter 80mm`,
         isPayment: true,
-        drawerKicked: true,
-        tickets: [paymentRes.receiptTicket],
+        drawerKicked: false,
+        tickets: [],
         activeTicketIndex: 0,
       });
 
@@ -994,13 +1000,24 @@ export default function PosInterface({
             </button>
           )}
 
-          {/* Xprinter 80mm Automatic Thermal Printing Indicator */}
-          <div
-            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 flex items-center gap-2 select-none shadow-sm"
-            title="طابعة الفواتير Xprinter 80mm متصلة وتطبع تلقائياً عند طلب الشيك أو السداد"
-          >
+          {/* Automatic Xprinter 80mm Thermal Printing Badge */}
+          <div className="flex items-center gap-1.5 bg-emerald-950/80 border border-emerald-500/60 rounded-xl px-2.5 py-1 text-emerald-300 text-xs font-bold shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>🖨️ Xprinter 80mm تلقائي</span>
+            <button
+              onClick={() => triggerTestPrint(userName)}
+              className="mr-1 px-2 py-0.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-white text-[10px] font-bold transition shadow-sm active:scale-95"
+              title="تجربة طباعة فاتورة اختبار فورية على طابعة Xprinter"
+            >
+              طباعة تجربة
+            </button>
+            <button
+              onClick={() => setShowPrinterSettings(true)}
+              className="px-1.5 py-0.5 rounded-lg hover:bg-emerald-900/60 text-emerald-300 text-[10px] transition"
+              title="إعدادات الطابعة ودرج النقدية"
+            >
+              ⚙️
+            </button>
           </div>
 
           <Link
@@ -1064,18 +1081,18 @@ export default function PosInterface({
                 </span>
               </button>
 
-              {/* Takeaway Tables for Pickup Orders */}
+              {/* 10 Phone Takeaway Tables for Phone Pickup Orders */}
               <button
                 onClick={handleStartPhoneTakeaway}
                 className="bg-gradient-to-r from-amber-600 via-amber-700 to-orange-800 hover:from-amber-700 hover:to-orange-900 text-white p-4 rounded-2xl shadow-md flex items-center justify-between text-right active:scale-[0.99] transition group border border-amber-500/40"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">🥡</span>
-                    <h3 className="font-black text-base">طاولات التيك أواي ({tables.filter(t => (t.name.includes("تيك أواي") || t.name.includes("تليفون")) && (t.number ?? 0) < 900).length})</h3>
+                    <span className="text-2xl">📞</span>
+                    <h3 className="font-black text-base">أوردر تليفون تيك أواي (10)</h3>
                   </div>
                   <p className="text-xs text-amber-100 mt-1">
-                    حجز خانة تيك أواي بالاسم ورقم الهاتف للاستلام عند وصول العميل
+                    حجز خانة تيك أواي هاتف للاستلام عند وصول العميل
                   </p>
                 </div>
                 <span className="w-8 h-8 rounded-xl bg-white/20 text-white font-black flex items-center justify-center text-sm group-hover:bg-white group-hover:text-amber-800 transition">
@@ -1145,8 +1162,8 @@ export default function PosInterface({
                     tableFilter === "PHONE_TAKEAWAY" ? "bg-amber-600 text-white shadow-sm" : "bg-amber-50 text-amber-800 hover:bg-amber-100"
                   }`}
                 >
-                  <span>🥡</span>
-                  <span>طاولات التيك أواي ({tables.filter(t => (t.name.includes("تيك أواي") || t.name.includes("تليفون")) && (t.number ?? 0) < 900).length})</span>
+                  <span>📞</span>
+                  <span>تيك أواي تليفون ({tables.filter(t => t.name.includes("تليفون")).length})</span>
                 </button>
                 <button
                   onClick={() => setTableFilter("REGULAR")}
@@ -1194,7 +1211,7 @@ export default function PosInterface({
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-full bg-amber-500"></span>
-                  <span>تيك أواي</span>
+                  <span>تيك أواي هاتف</span>
                 </span>
               </div>
             </div>
@@ -1204,7 +1221,7 @@ export default function PosInterface({
               {tables
                 .filter((table) => {
                   if (tableFilter === "ALL") return true;
-                  if (tableFilter === "PHONE_TAKEAWAY") return (table.name.includes("تليفون") || table.name.includes("تيك أواي")) && (table.number ?? 0) < 900;
+                  if (tableFilter === "PHONE_TAKEAWAY") return table.name.includes("تليفون");
                   if (tableFilter === "FAMILY") return table.type === TableType.FAMILY_BOOTH;
                   if (tableFilter === "VIP") return table.type === TableType.VIP;
                   if (tableFilter === "REGULAR")
@@ -1226,7 +1243,7 @@ export default function PosInterface({
                 const isSpecial =
                   table.type === TableType.OWNER ||
                   table.type === TableType.MANAGER;
-                const isTakeaway = (table.name.includes("تليفون") || table.name.includes("تيك أواي")) && (table.number ?? 0) < 900;
+                const isPhoneTakeaway = table.name.includes("تليفون");
 
                 let cardBg = "bg-white border-slate-200 hover:border-primary-400";
                 let statusBadge =
@@ -1234,14 +1251,14 @@ export default function PosInterface({
                 let statusLabel = "متاحة";
 
                 if (hasOpenOrder || table.status === TableStatus.OCCUPIED) {
-                  cardBg = isTakeaway
+                  cardBg = isPhoneTakeaway
                     ? "bg-amber-50/90 border-amber-400 ring-2 ring-amber-300"
                     : "bg-rose-50/70 border-rose-300 ring-2 ring-rose-200";
-                  statusBadge = isTakeaway
+                  statusBadge = isPhoneTakeaway
                     ? "bg-amber-500 text-white border-amber-600"
                     : "bg-rose-500 text-white border-rose-600";
-                  statusLabel = isTakeaway ? "قيد الاستلام" : "مشغولة";
-                } else if (isTakeaway) {
+                  statusLabel = isPhoneTakeaway ? "قيد الاستلام" : "مشغولة";
+                } else if (isPhoneTakeaway) {
                   cardBg = "bg-amber-50/40 border-amber-200 hover:border-amber-400";
                   statusBadge = "bg-amber-100 text-amber-900 border-amber-300";
                   statusLabel = "جاهزة للحجز";
@@ -1273,9 +1290,9 @@ export default function PosInterface({
                             👑 ضيافة
                           </span>
                         )}
-                        {isTakeaway && (
+                        {isPhoneTakeaway && (
                           <span className="text-[11px] font-black text-amber-700">
-                            {table.name.includes("تليفون") ? "📞 هاتف" : "🥡 سفري"}
+                            📞 هاتف
                           </span>
                         )}
                       </div>
@@ -1289,17 +1306,17 @@ export default function PosInterface({
                       </p>
                     </div>
 
-                    {hasOpenOrder && table.orders && table.orders.length > 0 && table.orders[0] ? (
-                      <div className={`${isTakeaway ? "bg-amber-100/90 border border-amber-300" : "bg-rose-100"} p-1.5 rounded-lg text-center`}>
-                        {isTakeaway && table.orders[0]?.customerName && (
+                    {hasOpenOrder ? (
+                      <div className={`${isPhoneTakeaway ? "bg-amber-100/90 border border-amber-300" : "bg-rose-100"} p-1.5 rounded-lg text-center`}>
+                        {isPhoneTakeaway && table.orders[0].customerName && (
                           <p className="text-[10px] font-black text-amber-950 truncate">
                             👤 {table.orders[0].customerName}
                           </p>
                         )}
-                        <p className={`text-[10px] font-bold ${isTakeaway ? "text-amber-900" : "text-rose-800"}`}>
+                        <p className={`text-[10px] font-bold ${isPhoneTakeaway ? "text-amber-900" : "text-rose-800"}`}>
                           أوردر #{table.orders[0].orderNumber}
                         </p>
-                        <p className={`text-xs font-mono font-black ${isTakeaway ? "text-amber-950" : "text-rose-900"}`}>
+                        <p className={`text-xs font-mono font-black ${isPhoneTakeaway ? "text-amber-950" : "text-rose-900"}`}>
                           {table.orders[0].isComplimentary
                             ? "ضيافة (0 ج.م)"
                             : `${table.orders[0].totalAmount.toFixed(2)} ج.م`}
@@ -2688,14 +2705,13 @@ export default function PosInterface({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-2">
               <button
                 onClick={() => silentPrintHtml(buildZReportHtml(zReportData, userName))}
-                className="py-3 bg-sky-700 hover:bg-sky-800 text-white font-black rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5"
-                title="طباعة صامتة مباشرة على الطابعة الافتراضية"
+                className="py-3 bg-sky-700 hover:bg-sky-800 text-white font-bold rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5"
+                title="طباعة تقرير تقفيل الوردية على طابعة Xprinter 80mm"
               >
                 <span>🖨️</span>
-                <span>طباعة صامتة للتقفيل</span>
+                <span>طباعة ورقة التقفيل (80mm)</span>
               </button>
               <button
                 onClick={() => setZReportData(null)}
@@ -2817,45 +2833,28 @@ export default function PosInterface({
               </button>
             </div>
 
-            {/* Silent Printing to Windows Default Printer Section */}
+            {/* Silent Printing to Windows Default Printer (Xprinter 80mm) */}
             <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-300 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
                   <span>⚡</span>
-                  <span>الطباعة الصامتة على طابعة الويندوز الافتراضية</span>
+                  <span>الطباعة التلقائية (Xprinter 80mm)</span>
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
                   ● نشطة وتعمل تلقائياً
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                يتم إرسال كافة الشيكات وفواتير السداد تلقائياً عبر الإطار المخفي للطباعة مباشرة على طابعة الويندوز الافتراضية.
+                يتم إرسال كافة الشيكات، فواتير السداد، وبونات التحضير مباشرة إلى طابعة الويندوز الافتراضية (Xprinter).
               </p>
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    triggerSilentThermalPrint({
-                      title: "اختبار طباعة صامتة (TEST PRINT)",
-                      receiptType: "CHECK",
-                      tableName: "طاولة تجربة #1",
-                      orderNumber: 101,
-                      orderType: "DINE_IN",
-                      items: [
-                        { nameAr: "شاي بدوي زرد بالنعناع", quantity: 2, price: 20 },
-                        { nameAr: "مندي لحم بلدي واحة بدوي", quantity: 1, price: 350 },
-                      ],
-                      subtotal: 390,
-                      totalAmount: 390,
-                      cashierName: userName,
-                      isPaid: true,
-                      notes: "تجربة الطباعة الصامتة على الطابعة الافتراضية",
-                    });
-                  }}
+                  onClick={() => triggerTestPrint(userName)}
                   className="py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5"
                 >
                   <span>🖨️</span>
-                  <span>اختبار طباعة صامتة</span>
+                  <span>طباعة فاتورة تجربة</span>
                 </button>
 
                 <a
@@ -3035,7 +3034,7 @@ export default function PosInterface({
             )}
 
             {/* Modal Controls */}
-            <div className="pt-2 border-t flex items-center gap-2">
+            <div className="pt-2 border-t flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setRoutedModal(null)}
                 className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition shadow-sm"
@@ -3045,29 +3044,36 @@ export default function PosInterface({
 
               <button
                 onClick={() => {
-                  const activeT = routedModal.tickets[routedModal.activeTicketIndex];
-                  if (activeT) {
-                    triggerSilentThermalPrint({
-                      title: activeT.title,
-                      receiptType: routedModal.isPayment ? "RECEIPT" : "CHECK",
-                      tableName: activeT.tableName,
-                      orderNumber: activeT.orderNumber,
-                      items: activeT.items,
-                      subtotal,
-                      discount,
-                      totalAmount,
-                      isComplimentary,
-                      notes: orderNotes,
-                      cashierName: userName,
-                      isPaid: routedModal.isPayment,
-                    });
-                  }
+                  triggerSilentThermalPrint({
+                    title: routedModal.isPayment ? "فاتورة سداد نقدي (PAID RECEIPT)" : "إيصال طلب (ORDER TICKET)",
+                    receiptType: routedModal.isPayment ? "RECEIPT" : "PREP",
+                    tableName: selectedTable?.name || "واحة بدوي",
+                    orderNumber: activeOrderId ? parseInt(activeOrderId.slice(-4)) : undefined,
+                    orderType,
+                    customerName: customerName || undefined,
+                    customerPhone: customerPhone || undefined,
+                    deliveryAddress: deliveryAddress || undefined,
+                    deliveryFee: deliveryFeeNumber || undefined,
+                    items: cart.map((i) => ({
+                      nameAr: i.nameAr,
+                      quantity: i.quantity,
+                      price: i.price,
+                      notes: i.notes || null,
+                    })),
+                    subtotal,
+                    discount: discount || undefined,
+                    totalAmount,
+                    isComplimentary,
+                    notes: orderNotes || undefined,
+                    cashierName: userName,
+                    isPaid: routedModal.isPayment,
+                  });
                 }}
                 className="py-3 px-4 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5"
-                title="إعادة طباعة الإيصال مباشرة على طابعة Xprinter 80mm"
+                title="إعادة طباعة الإيصال فوراً على طابعة Xprinter 80mm"
               >
                 <span>🖨️</span>
-                <span>طباعة على Xprinter (80mm)</span>
+                <span>إعادة طباعة على Xprinter (80mm)</span>
               </button>
 
               {/* إذا كان المعروض شيك العميل: إتاحة زر فتح الدرج والتحصيل الفوري مباشرة */}

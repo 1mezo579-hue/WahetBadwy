@@ -141,25 +141,7 @@ async function main() {
     });
   }
 
-  // - 10 Dedicated Takeaway Tables (طاولات تيك أواي 1 إلى 10)
-  for (let i = 1; i <= 10; i++) {
-    await prisma.diningTable.upsert({
-      where: { name: `تيك أواي ${i}` },
-      update: {
-        number: 510 + i,
-        capacity: 1,
-      },
-      create: {
-        name: `تيك أواي ${i}`,
-        number: 510 + i,
-        type: TableType.REGULAR,
-        status: TableStatus.AVAILABLE,
-        capacity: 1,
-      },
-    });
-  }
-
-  console.log("✅ All dining tables and 20 takeaway tables seeded successfully");
+  console.log("✅ All dining tables and 10 takeaway phone tables seeded successfully");
 
   // 3. Seed Equipment (Kitchen & Barista)
   console.log("🍳 Seeding Equipment...");

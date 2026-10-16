@@ -448,18 +448,20 @@ export function silentPrintHtml(htmlContent: string): Promise<boolean> {
         document.body.appendChild(container);
       }
 
-      // Extract body content or use full htmlContent
-      let bodyContent = htmlContent;
+      // Extract style and body content from htmlContent
+      const styleMatches = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || [];
+      const extractedStyles = styleMatches.join("\n");
       const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-      if (bodyMatch && bodyMatch[1]) {
-        bodyContent = bodyMatch[1];
-      }
+      const bodyContent = bodyMatch && bodyMatch[1] ? bodyMatch[1] : htmlContent;
 
-      container.innerHTML = bodyContent;
+      container.innerHTML = `${extractedStyles}\n<div class="xprinter-receipt-root">${bodyContent}</div>`;
       document.body.classList.add("xprinter-printing");
 
       // 3. Setup cleanup after print
+      let cleanedUp = false;
       const cleanup = () => {
+        if (cleanedUp) return;
+        cleanedUp = true;
         document.body.classList.remove("xprinter-printing");
         if (container) {
           container.innerHTML = "";
@@ -467,6 +469,8 @@ export function silentPrintHtml(htmlContent: string): Promise<boolean> {
         window.removeEventListener("afterprint", cleanup);
       };
       window.addEventListener("afterprint", cleanup);
+      // Fallback cleanup in case afterprint does not fire
+      setTimeout(cleanup, 4000);
 
       // 4. Trigger Print
       setTimeout(() => {
@@ -478,7 +482,7 @@ export function silentPrintHtml(htmlContent: string): Promise<boolean> {
           cleanup();
           resolve(false);
         }
-      }, 80);
+      }, 100);
 
     } catch (err) {
       console.error("Xprinter Print Setup Error:", err);
@@ -493,4 +497,27 @@ export function silentPrintHtml(htmlContent: string): Promise<boolean> {
 export async function triggerSilentThermalPrint(options: ThermalReceiptOptions): Promise<boolean> {
   const html = buildThermalReceiptHtml(options);
   return silentPrintHtml(html);
+}
+
+/**
+ * Trigger quick test receipt to verify Xprinter 80mm communication
+ */
+export async function triggerTestPrint(cashierName: string = "كاشير واحة بدوي"): Promise<boolean> {
+  return triggerSilentThermalPrint({
+    title: "اختبار طابعة الإيصالات (TEST PRINT)",
+    receiptType: "RECEIPT",
+    tableName: "طاولة تجربة #1",
+    orderNumber: 101,
+    orderType: "DINE_IN",
+    items: [
+      { nameAr: "شاي بدوي زرد بالنعناع", quantity: 2, price: 20 },
+      { nameAr: "مندي لحم بلدي واحة بدوي", quantity: 1, price: 350 },
+      { nameAr: "مياه معدنية صغيرة", quantity: 1, price: 10 },
+    ],
+    subtotal: 380,
+    totalAmount: 380,
+    cashierName,
+    isPaid: true,
+    notes: "تجربة الطباعة التلقائية على طابعة Xprinter 80mm",
+  });
 }
