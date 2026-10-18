@@ -10,8 +10,8 @@ import {
   deleteEquipment,
   clearSectionEquipment,
   syncHeroInvoiceEquipment,
-  heroInvoiceEquipmentData,
 } from "@/actions/equipment";
+import { heroInvoiceEquipmentData } from "@/data/hero-invoice-data";
 
 interface EquipmentItem {
   id: string;
