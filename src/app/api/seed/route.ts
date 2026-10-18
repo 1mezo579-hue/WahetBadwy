@@ -63,6 +63,26 @@ export async function GET() {
 
     try {
       await prisma.$executeRawUnsafe(`
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "gross_sales" DOUBLE PRECISION DEFAULT 0;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "discounts" DOUBLE PRECISION DEFAULT 0;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "visa_amount" DOUBLE PRECISION DEFAULT 0;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "other_balance" DOUBLE PRECISION DEFAULT 0;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "expenses_total" DOUBLE PRECISION DEFAULT 0;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "expenses_details" JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "management_checks" DOUBLE PRECISION DEFAULT 0;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "staff_waste_total" DOUBLE PRECISION DEFAULT 0;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "staff_waste_details" JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "management_withdrawals_total" DOUBLE PRECISION DEFAULT 0;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "management_withdrawals_details" JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "end_of_day_balance" DOUBLE PRECISION DEFAULT 0;
+        ALTER TABLE "shifts" ADD COLUMN IF NOT EXISTS "received_by" TEXT;
+      `);
+    } catch (e) {
+      console.warn("shifts columns alteration note:", e);
+    }
+
+    try {
+      await prisma.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "customers" (
           "id" TEXT NOT NULL PRIMARY KEY,
           "name" TEXT NOT NULL,
