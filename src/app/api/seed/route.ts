@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import {
@@ -12,11 +12,47 @@ import { EquipmentType } from "@/types/equipment";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
-  return GET();
+export async function GET() {
+  return NextResponse.json(
+    { error: "طريقة الطلب غير مسموحة (Method Not Allowed). يجب استخدام POST مع ترويسة X-Seed-Secret حصراً." },
+    { status: 405 }
+  );
 }
 
-export async function GET() {
+export async function POST(req: NextRequest) {
+  return handleSeed(req);
+}
+
+async function handleSeed(req: NextRequest) {
+  // 1. Strict Security Gate: Require valid SEED_SECRET from header ONLY (never from URL query params)
+  const providedSecret = req.headers.get("x-seed-secret") || req.headers.get("authorization")?.replace("Bearer ", "");
+  const configuredSecret = process.env.SEED_SECRET;
+
+  if (!configuredSecret || !providedSecret || providedSecret !== configuredSecret) {
+    return NextResponse.json(
+      { error: "غير مصرح بالوصول: مفتاح التهيئة مفقود أو غير صحيح." },
+      { status: 401 }
+    );
+  }
+
+  // 2. Strict Lockout & Safety Check: Halt immediately if check fails or if users exist
+  let existingUsersCount = 0;
+  try {
+    existingUsersCount = await prisma.user.count();
+  } catch (dbCheckErr: any) {
+    return NextResponse.json(
+      { error: "فشل التحقق من أمان قاعدة البيانات أو تعذر الاتصال بها. تم إيقاف عملية التهيئة فوراً لحماية البيانات." },
+      { status: 500 }
+    );
+  }
+
+  if (existingUsersCount > 0) {
+    return NextResponse.json(
+      { error: "قاعدة البيانات مهيأة بالفعل مسبقاً وبها مستخدمون. تم قفل هذه النقطة نهائياً لحماية الحسابات القديمة." },
+      { status: 403 }
+    );
+  }
+
   try {
     // 0. Database Migrations (Sprint 5 & Delivery/Takeaway/Customers)
     try {
@@ -193,12 +229,18 @@ export async function GET() {
     }
 
     // 1. Seed Users (Admin, Manager, Cashier 1, Cashier 2)
-    const defaultPass = await bcrypt.hash("WahetBadawy@2026", 12);
-    const cashierPass = await bcrypt.hash("123456", 12);
+    const adminSecret = process.env.INITIAL_ADMIN_PASSWORD;
+    if (!adminSecret) {
+      return NextResponse.json(
+        { error: "خطأ أمني: لم يتم تمرير متغير INITIAL_ADMIN_PASSWORD في بيئة التشغيل." },
+        { status: 500 }
+      );
+    }
+    const defaultPass = await bcrypt.hash(adminSecret, 12);
 
     const admin = await prisma.user.upsert({
       where: { username: "admin" },
-      update: { password: defaultPass, role: Role.ADMIN },
+      update: {},
       create: {
         username: "admin",
         password: defaultPass,
@@ -206,45 +248,7 @@ export async function GET() {
         role: Role.ADMIN,
         active: true,
       },
-    });
-
-    await prisma.user.upsert({
-      where: { username: "manager" },
-      update: { password: defaultPass, role: Role.MANAGER },
-      create: {
-        username: "manager",
-        password: defaultPass,
-        name: "مدير الصالة والتشغيل",
-        role: Role.MANAGER,
-        active: true,
-      },
-    });
-
-    await prisma.user.upsert({
-      where: { username: "cashier1" },
-      update: { password: cashierPass, role: Role.CASHIER },
-      create: {
-        username: "cashier1",
-        password: cashierPass,
-        name: "كاشير وردية الصباح",
-        role: Role.CASHIER,
-        active: true,
-      },
-    });
-
-    await prisma.user.upsert({
-      where: { username: "cashier2" },
-      update: { password: cashierPass, role: Role.CASHIER },
-      create: {
-        username: "cashier2",
-        password: cashierPass,
-        name: "كاشير وردية المساء",
-        role: Role.CASHIER,
-        active: true,
-      },
-    });
-
-    // 2. Seed 28 Dining Tables + Dedicated Delivery & Takeaway Virtual Tables
+    });// 2. Seed 28 Dining Tables + Dedicated Delivery & Takeaway Virtual Tables
     await prisma.diningTable.upsert({
       where: { name: "طلبات الدليفري (توصيل)" },
       update: {},
@@ -500,7 +504,7 @@ export async function GET() {
       }
     }
 
-    // 4. Seed Categories matching the exact official Menu of "مشويات اولاد بسيوني"
+    // 4. Seed Categories matching the exact official Menu of "مشويات بسوني"
     const categoriesSeed = [
       {
         id: "cat_grills_01",
@@ -682,7 +686,7 @@ export async function GET() {
       { name: "Qass Shisha", nameAr: "شيشة قص", price: 15, categoryId: "cat_shisha_10", desc: "معسل قص أصلي على الحجر" },
       { name: "Fruit Shisha", nameAr: "شيشة فواكه (تفاحتين/عنب)", price: 30, categoryId: "cat_shisha_10", desc: "معسل فواكه نخلة فاخر" },
       { name: "Mixed Fruit Shisha", nameAr: "شيشة فواكه ميكس", price: 35, categoryId: "cat_shisha_10", desc: "خلطة فواكه ميكس مع نعناع ولبان" },
-      { name: "Luxury Shisha", nameAr: "شيشة فاخر ممتازة", price: 60, categoryId: "cat_shisha_10", desc: "شيشة فاخر خلطة خاصة مشويات اولاد بسيوني" },
+      { name: "Luxury Shisha", nameAr: "شيشة فاخر ممتازة", price: 60, categoryId: "cat_shisha_10", desc: "شيشة فاخر خلطة خاصة مشويات بسوني" },
     ];
 
     for (const item of menuItemsSeed) {
@@ -731,7 +735,7 @@ export async function GET() {
         name: "كابتن أحمد عبد الله",
         phone: "01558962994",
         address: "منطقة عبد القادر - طريق الإسكندرية الصحراوي",
-        notes: "هاتف مشويات اولاد بسيوني المعتمد",
+        notes: "هاتف مشويات بسوني المعتمد",
       },
     ];
 

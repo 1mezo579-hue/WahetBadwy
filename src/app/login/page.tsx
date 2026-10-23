@@ -51,7 +51,7 @@ export default function LoginPage() {
             </span>
           </div>
           <h1 className="text-3xl font-black text-amber-400 mb-1">
-            مشويات اولاد بسيوني
+            مشويات بسوني
           </h1>
           <p className="text-amber-200/90 text-sm font-semibold">
             طعم زمان على أصوله
@@ -138,7 +138,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-[10px] text-stone-500 mt-6">
-          مشويات اولاد بسيوني - جميع الحقوق محفوظة © {new Date().getFullYear()}
+          مشويات بسوني - جميع الحقوق محفوظة © {new Date().getFullYear()}
         </p>
       </div>
     </div>

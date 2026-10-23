@@ -676,7 +676,7 @@ export default function EquipmentManager({
 
             <div className="pt-4 border-t mt-4 flex items-center justify-between">
               <span className="text-xs text-slate-500">
-                مطعم وكافيه مشويات اولاد بسيوني • فرع عبد القادر
+                مطعم وكافيه مشويات بسوني • فرع عبد القادر
               </span>
               <button
                 type="button"

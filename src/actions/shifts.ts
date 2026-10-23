@@ -175,7 +175,7 @@ export interface EndShiftPayload {
 }
 
 /**
- * 3. End shift (تقفيل وتسليم الوردية - ورقة تقفيل مشويات اولاد بسيوني الرسمية)
+ * 3. End shift (تقفيل وتسليم الوردية - ورقة تقفيل مشويات بسوني الرسمية)
  * CRITICAL REQUIREMENTS:
  * - Cashier inputs counted actual cash.
  * - Complete 9-item closing reconciliation (المبيعات، الخصومات، فيزا، رصيد أخر، مصاريف مفصلة، شيكات، توالف سطاف مفصلة، مسحوبات إدارة مفصلة، رصيد أخر اليوم، المستلم).

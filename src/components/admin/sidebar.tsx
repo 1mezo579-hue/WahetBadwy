@@ -132,7 +132,7 @@ export default function AdminSidebar({ user }: SidebarProps) {
           <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center font-bold text-white shadow">
             مب
           </div>
-          <span className="font-bold text-lg">مشويات اولاد بسيوني - لوحة الإدارة</span>
+          <span className="font-bold text-lg">مشويات بسوني - لوحة الإدارة</span>
         </div>
         <button
           onClick={() => setIsOpen(!isOpen)}
@@ -169,7 +169,7 @@ export default function AdminSidebar({ user }: SidebarProps) {
             مب
           </div>
           <div>
-            <h1 className="font-extrabold text-lg tracking-tight text-amber-400">مشويات اولاد بسيوني</h1>
+            <h1 className="font-extrabold text-lg tracking-tight text-amber-400">مشويات بسوني</h1>
             <p className="text-[11px] text-amber-200/80 font-medium">طعم زمان على أصوله</p>
             <p className="text-[10px] text-stone-400 font-mono mt-0.5">📞 01558962994</p>
           </div>

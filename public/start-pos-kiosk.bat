@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 >nul
-title تشغيل كاشير مشويات اولاد بسيوني - طبع تلقائي ومباشر بدون نوافذ
+title تشغيل كاشير مشويات بسوني - طبع تلقائي ومباشر بدون نوافذ
 color 0E
 
 echo ======================================================================
-echo          سيرفر كاشير مشويات اولاد بسيوني - MASHWEYAT AWLAD BASIONY POS CLOUD
+echo          سيرفر كاشير مشويات بسوني - MASHWEYAT BASIONY POS CLOUD
 echo      تشغيل وضع الطباعة التلقائية المباشرة بدون شاشات تأكيد نهائياً
 echo ======================================================================
 echo.
@@ -13,7 +13,7 @@ echo [2/2] تجهيز وضع الطباعة الصامتة (--kiosk-printing) ل
 echo.
 
 set POS_URL=https://wahetbadwy.vercel.app/pos
-set USER_DATA=%LOCALAPPDATA%\MashweyatAwladBasionyPOS
+set USER_DATA=%LOCALAPPDATA%\MashweyatBasionyPOS
 
 :: 1. الأولوية للتشغيل عبر Microsoft Edge (موجود في كل أجهزة ويندوز 10 و 11)
 start msedge.exe --kiosk-printing --user-data-dir="%USER_DATA%" --app="%POS_URL%"

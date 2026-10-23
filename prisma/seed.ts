@@ -22,7 +22,11 @@ async function main() {
   console.log("🌱 Starting Sprint 2 database seed...");
 
   // 1. Seed Default Admin
-  const hashedPassword = await bcrypt.hash("WahetBadawy@2026", 12);
+  const adminPass = process.env.INITIAL_ADMIN_PASSWORD;
+  if (!adminPass) {
+    throw new Error("SECURITY ERROR: INITIAL_ADMIN_PASSWORD environment variable is required.");
+  }
+  const hashedPassword = await bcrypt.hash(adminPass, 12);
   const admin = await prisma.user.upsert({
     where: { username: "admin" },
     update: {},

@@ -82,13 +82,13 @@ export default async function DashboardPage() {
       <div className="bg-gradient-to-l from-primary-900 via-primary-800 to-primary-950 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10 max-w-2xl">
           <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-400 text-primary-950 mb-3">
-            مشويات اولاد بسيوني • طعم زمان على أصوله
+            مشويات بسوني • طعم زمان على أصوله
           </span>
           <h1 className="text-2xl sm:text-3xl font-extrabold mb-2">
             لوحة الإدارة والتشغيل (Admin Dashboard)
           </h1>
           <p className="text-primary-200 text-sm leading-relaxed">
-            مرحباً بك في نظام إدارة وتجهيز العمليات لمطعم وكافيه مشويات اولاد بسيوني.
+            مرحباً بك في نظام إدارة وتجهيز العمليات لمطعم وكافيه مشويات بسوني.
           </p>
         </div>
         <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />

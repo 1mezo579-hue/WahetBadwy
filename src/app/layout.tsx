@@ -3,13 +3,13 @@ import "./globals.css";
 import Providers from "./providers";
 
 export const metadata: Metadata = {
-  title: "مشويات اولاد بسيوني - نظام نقاط البيع",
-  description: "نظام نقاط البيع لمطعم مشويات اولاد بسيوني",
+  title: "مشويات بسوني - نظام نقاط البيع",
+  description: "نظام نقاط البيع لمطعم مشويات بسوني",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "مشويات اولاد بسيوني",
+    title: "مشويات بسوني",
   },
 };
 
