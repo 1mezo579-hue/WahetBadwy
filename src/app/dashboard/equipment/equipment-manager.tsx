@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition, useMemo } from "react";
 import { EquipmentStatus } from "@prisma/client";
@@ -676,7 +676,7 @@ export default function EquipmentManager({
 
             <div className="pt-4 border-t mt-4 flex items-center justify-between">
               <span className="text-xs text-slate-500">
-                مطعم وكافيه واحة بدوي • فرع عبد القادر
+                مطعم وكافيه مشويات اولاد بسيوني • فرع عبد القادر
               </span>
               <button
                 type="button"

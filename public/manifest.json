@@ -1,7 +1,7 @@
 {
-  "name": "واحة بدوي - نظام نقاط البيع",
-  "short_name": "واحة بدوي",
-  "description": "نظام نقاط البيع لمطعم واحة بدوي - Wahet Badawy POS System",
+  "name": "مشويات اولاد بسيوني - نظام نقاط البيع",
+  "short_name": "مشويات اولاد بسيوني",
+  "description": "نظام نقاط البيع لمطعم مشويات اولاد بسيوني - Mashweyat Awlad Basiony POS System",
   "start_url": "/",
   "display": "fullscreen",
   "orientation": "any",

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
 import { CustomerInput, createCustomer, updateCustomer, deleteCustomer } from "@/actions/customers";
@@ -140,7 +140,7 @@ export default function CustomersView({
           </div>
           <p className="text-stone-300 text-sm">
             سجل العملاء، العناوين التفصيلية، وأرقام هواتف خدمة التوصيل السريع لـ{" "}
-            <span className="text-amber-300 font-semibold">واحة بدوي</span>
+            <span className="text-amber-300 font-semibold">مشويات اولاد بسيوني</span>
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -184,7 +184,7 @@ export default function CustomersView({
         <div className="bg-stone-900 border border-stone-800 p-5 rounded-2xl">
           <div className="text-stone-400 text-xs font-semibold mb-1">إجمالي العملاء المسجلين</div>
           <div className="text-3xl font-extrabold text-amber-400">{customers.length}</div>
-          <div className="text-xs text-stone-500 mt-1">قاعدة بيانات عملاء واحة بدوي</div>
+          <div className="text-xs text-stone-500 mt-1">قاعدة بيانات عملاء مشويات اولاد بسيوني</div>
         </div>
         <div className="bg-stone-900 border border-stone-800 p-5 rounded-2xl">
           <div className="text-stone-400 text-xs font-semibold mb-1">إجمالي الطلبات المنفذة</div>

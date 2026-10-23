@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import {
@@ -500,7 +500,7 @@ export async function GET() {
       }
     }
 
-    // 4. Seed Categories matching the exact official Menu of "واحة بدوي"
+    // 4. Seed Categories matching the exact official Menu of "مشويات اولاد بسيوني"
     const categoriesSeed = [
       {
         id: "cat_grills_01",
@@ -682,7 +682,7 @@ export async function GET() {
       { name: "Qass Shisha", nameAr: "شيشة قص", price: 15, categoryId: "cat_shisha_10", desc: "معسل قص أصلي على الحجر" },
       { name: "Fruit Shisha", nameAr: "شيشة فواكه (تفاحتين/عنب)", price: 30, categoryId: "cat_shisha_10", desc: "معسل فواكه نخلة فاخر" },
       { name: "Mixed Fruit Shisha", nameAr: "شيشة فواكه ميكس", price: 35, categoryId: "cat_shisha_10", desc: "خلطة فواكه ميكس مع نعناع ولبان" },
-      { name: "Luxury Shisha", nameAr: "شيشة فاخر ممتازة", price: 60, categoryId: "cat_shisha_10", desc: "شيشة فاخر خلطة خاصة واحة بدوي" },
+      { name: "Luxury Shisha", nameAr: "شيشة فاخر ممتازة", price: 60, categoryId: "cat_shisha_10", desc: "شيشة فاخر خلطة خاصة مشويات اولاد بسيوني" },
     ];
 
     for (const item of menuItemsSeed) {
@@ -731,7 +731,7 @@ export async function GET() {
         name: "كابتن أحمد عبد الله",
         phone: "01558962994",
         address: "منطقة عبد القادر - طريق الإسكندرية الصحراوي",
-        notes: "هاتف واحة بدوي المعتمد",
+        notes: "هاتف مشويات اولاد بسيوني المعتمد",
       },
     ];
 

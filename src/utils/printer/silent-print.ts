@@ -1,5 +1,5 @@
-/**
- * Silent Printing Engine for Wahet Badawy POS
+﻿/**
+ * Silent Printing Engine for Mashweyat Awlad Basiony POS
  * Prints directly to Windows Default Printer via hidden iframe without interrupting POS UI.
  * Compatible with Chrome / Edge Kiosk Printing (--kiosk-printing) for zero-dialog instant printing.
  */
@@ -184,7 +184,7 @@ export function buildThermalReceiptHtml(options: ThermalReceiptOptions): string 
 </head>
 <body>
   <div class="text-center">
-    <div class="brand-title">واحة بدوي - WAHET BADAWY</div>
+    <div class="brand-title">مشويات اولاد بسيوني - MASHWEYAT AWLAD BASIONY</div>
     <div class="brand-sub">كافيه ومطعم مشويات ومندي • طعم زمان على أصوله</div>
     <div class="brand-contact">عبد القادر - جامع السلام - المستعمرة • هاتف: 01558962994</div>
     
@@ -292,8 +292,8 @@ export function buildThermalReceiptHtml(options: ThermalReceiptOptions): string 
   ` : ""}
 
   <div class="footer-text">
-    <div>شكراً لزيارتكم واحة بدوي • نسعد دائماً بخدمتكم</div>
-    <div class="font-mono" style="font-size: 8px; margin-top: 2px;">نظام كاشير واحة بدوي السحابي v2.5</div>
+    <div>شكراً لزيارتكم مشويات اولاد بسيوني • نسعد دائماً بخدمتكم</div>
+    <div class="font-mono" style="font-size: 8px; margin-top: 2px;">نظام كاشير مشويات اولاد بسيوني السحابي v2.5</div>
   </div>
 </body>
 </html>`;
@@ -331,7 +331,7 @@ export function buildZReportHtml(reportData: any, cashierName: string): string {
   </style>
 </head>
 <body>
-  <div class="text-center font-bold" style="font-size: 15px;">واحة بدوي - تقفيل الوردية</div>
+  <div class="text-center font-bold" style="font-size: 15px;">مشويات اولاد بسيوني - تقفيل الوردية</div>
   <div class="text-center" style="font-size: 10px;">Z-Report • جرد وحساب الدرج</div>
   <div class="divider"></div>
   <div class="row"><span>التاريخ:</span><span class="font-mono">${dateStr}</span></div>
@@ -502,7 +502,7 @@ export async function triggerSilentThermalPrint(options: ThermalReceiptOptions):
 /**
  * Trigger quick test receipt to verify Xprinter 80mm communication
  */
-export async function triggerTestPrint(cashierName: string = "كاشير واحة بدوي"): Promise<boolean> {
+export async function triggerTestPrint(cashierName: string = "كاشير مشويات اولاد بسيوني"): Promise<boolean> {
   return triggerSilentThermalPrint({
     title: "اختبار طابعة الإيصالات (TEST PRINT)",
     receiptType: "RECEIPT",
@@ -511,7 +511,7 @@ export async function triggerTestPrint(cashierName: string = "كاشير واح�
     orderType: "DINE_IN",
     items: [
       { nameAr: "شاي بدوي زرد بالنعناع", quantity: 2, price: 20 },
-      { nameAr: "مندي لحم بلدي واحة بدوي", quantity: 1, price: 350 },
+      { nameAr: "مندي لحم بلدي مشويات اولاد بسيوني", quantity: 1, price: 350 },
       { nameAr: "مياه معدنية صغيرة", quantity: 1, price: 10 },
     ],
     subtotal: 380,

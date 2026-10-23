@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
@@ -47,11 +47,11 @@ export default function LoginPage() {
         <div className="text-center mb-6">
           <div className="mx-auto w-20 h-20 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-amber-500/20 ring-2 ring-amber-400/40">
             <span className="text-stone-950 font-black text-2xl tracking-tighter">
-              واحة
+              مب
             </span>
           </div>
           <h1 className="text-3xl font-black text-amber-400 mb-1">
-            واحة بدوي
+            مشويات اولاد بسيوني
           </h1>
           <p className="text-amber-200/90 text-sm font-semibold">
             طعم زمان على أصوله
@@ -138,7 +138,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-[10px] text-stone-500 mt-6">
-          واحة بدوي - جميع الحقوق محفوظة © {new Date().getFullYear()}
+          مشويات اولاد بسيوني - جميع الحقوق محفوظة © {new Date().getFullYear()}
         </p>
       </div>
     </div>

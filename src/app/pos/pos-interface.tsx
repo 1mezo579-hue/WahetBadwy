@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useTransition } from "react";
 import { TableType, TableStatus, OrderStatus } from "@prisma/client";
@@ -386,7 +386,7 @@ export default function PosInterface({
     }
   };
 
-  // SPRINT 5: Action - End Shift (تقفيل وتسليم الوردية - ورقة تقفيل واحة بدوي الرسمية)
+  // SPRINT 5: Action - End Shift (تقفيل وتسليم الوردية - ورقة تقفيل مشويات اولاد بسيوني الرسمية)
   const handleEndShiftSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeShift) return;
@@ -916,10 +916,10 @@ export default function PosInterface({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-amber-500 text-primary-950 font-black flex items-center justify-center text-sm shadow">
-              وب
+              مب
             </div>
             <span className="font-black text-base tracking-wide">
-              واحة بدوي POS
+              مشويات اولاد بسيوني POS
             </span>
           </div>
 
@@ -1952,7 +1952,7 @@ export default function PosInterface({
         </div>
       )}
 
-      {/* SPRINT 5 & REQ: End Shift & Handover Modal (ورقة تقفيل واحة بدوي الرسمية) */}
+      {/* SPRINT 5 & REQ: End Shift & Handover Modal (ورقة تقفيل مشويات اولاد بسيوني الرسمية) */}
       {showEndShiftModal && activeShift && (() => {
         const expTotal = expensesList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
         const withTotal = withdrawalsList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
@@ -1985,7 +1985,7 @@ export default function PosInterface({
                   </div>
                   <div>
                     <h3 className="font-black text-slate-800 text-base">
-                      ورقة التقفيل الرسمية - واحة بدوي للمشويات
+                      ورقة التقفيل الرسمية - مشويات اولاد بسيوني
                     </h3>
                     <p className="text-xs text-slate-500">
                       وردية #{activeShift.shiftNumber} • الكاشير: {userName}
@@ -2069,8 +2069,8 @@ export default function PosInterface({
                 <div className="space-y-3">
                   {/* Voucher Header Banner matching original paper */}
                   <div className="bg-sky-100/80 border-2 border-sky-300 rounded-2xl p-3 text-center space-y-1">
-                    <h2 className="text-xl font-black text-slate-800 tracking-wide">واحة بدوي</h2>
-                    <p className="text-xs font-bold text-slate-600">للمشويات</p>
+                    <h2 className="text-xl font-black text-slate-800 tracking-wide">مشويات اولاد بسيوني</h2>
+                    <p className="text-xs font-bold text-slate-600">مطعم وكافيه</p>
                     <div className="flex items-center justify-between text-xs font-bold text-slate-700 pt-1 border-t border-sky-200">
                       <span>إيراد يوم : <strong className="text-slate-900">{todayArabicDay}</strong></span>
                       <span>الموافق: <strong className="text-slate-900 font-mono">{todayArabicDate}</strong></span>
@@ -2607,8 +2607,8 @@ export default function PosInterface({
               
               {/* Header Box */}
               <div className="bg-sky-200 border-2 border-slate-800 rounded-xl p-2.5 text-center">
-                <h2 className="text-xl font-black text-slate-900">واحة بدوي</h2>
-                <p className="text-xs font-black text-slate-800">للمشويات</p>
+                <h2 className="text-xl font-black text-slate-900">مشويات اولاد بسيوني</h2>
+                <p className="text-xs font-black text-slate-800">مطعم وكافيه</p>
                 <div className="flex items-center justify-between text-xs font-bold text-slate-900 pt-1 border-t border-slate-400 mt-1">
                   <span>إيراد يوم : <strong>{new Date().toLocaleDateString("ar-EG", { weekday: "long" })}</strong></span>
                   <span>الموافق: <strong className="font-mono">{new Date().toLocaleDateString("ar-EG")}</strong></span>
@@ -2858,8 +2858,8 @@ export default function PosInterface({
                 </button>
 
                 <a
-                  href="/تشغيل_كاشير_واحة_بدوي_طباعة_صامتة.bat"
-                  download="تشغيل_كاشير_واحة_بدوي_طباعة_صامتة.bat"
+                  href="/تشغيل_كاشير_مشويات_اولاد_بسيوني_طباعة_صامتة.bat"
+                  download="تشغيل_كاشير_مشويات_اولاد_بسيوني_طباعة_صامتة.bat"
                   className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-black text-amber-300 font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5 text-center"
                   title="تحميل اختصار سطح المكتب للتشغيل الصامت بدون نوافذ"
                 >
@@ -2969,7 +2969,7 @@ export default function PosInterface({
                 <div className="bg-slate-50 border-2 border-dashed border-slate-300 p-5 rounded-2xl font-mono text-xs space-y-3 shadow-inner">
                   <div className="text-center border-b pb-2">
                     <p className="font-black text-sm tracking-wide text-slate-900">
-                      واحة بدوي - WAHET BADAWY
+                      مشويات اولاد بسيوني - MASHWEYAT AWLAD BASIONY
                     </p>
                     <p className="font-bold text-primary-800 text-xs mt-0.5">
                       {routedModal.tickets[routedModal.activeTicketIndex].title}
@@ -3047,7 +3047,7 @@ export default function PosInterface({
                   triggerSilentThermalPrint({
                     title: routedModal.isPayment ? "فاتورة سداد نقدي (PAID RECEIPT)" : "إيصال طلب (ORDER TICKET)",
                     receiptType: routedModal.isPayment ? "RECEIPT" : "PREP",
-                    tableName: selectedTable?.name || "واحة بدوي",
+                    tableName: selectedTable?.name || "مشويات اولاد بسيوني",
                     orderNumber: activeOrderId ? parseInt(activeOrderId.slice(-4)) : undefined,
                     orderType,
                     customerName: customerName || undefined,

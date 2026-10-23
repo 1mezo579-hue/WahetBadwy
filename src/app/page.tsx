@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
@@ -46,15 +46,15 @@ export default function HomePage() {
       <header className="max-w-6xl w-full mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-6 rounded-3xl bg-stone-900/60 border border-stone-800/80 backdrop-blur-md shadow-2xl">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 to-amber-400 text-stone-950 flex items-center justify-center font-black text-2xl shadow-lg shadow-amber-500/20 ring-2 ring-amber-400/40">
-            وب
+            مب
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                واحة بدوي
+                مشويات اولاد بسيوني
               </h1>
               <span className="text-[11px] font-mono tracking-wider text-amber-400/90 bg-amber-950/70 border border-amber-800/80 px-2 py-0.5 rounded-full font-bold">
-                WAHET BADAWY
+                MASHWEYAT AWLAD BASIONY
               </span>
             </div>
             <p className="text-xs text-stone-400 font-medium">
@@ -91,11 +91,11 @@ export default function HomePage() {
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
               أهلاً بكم في منظومة <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500">
-                واحة بدوي المتكاملة
+                مشويات اولاد بسيوني المتكاملة
               </span>
             </h2>
             <p className="text-sm sm:text-base text-stone-400 max-w-xl leading-relaxed">
-              منظومة متطورة مخصصة لإدارة الصالة، الطاولات، طلبات السفري والدليفري، المطبخ والمشروبات والشيشة، بالإضافة للتحكم الدقيق في التكاليف والمخزون وحسابات الوردية اليومية.
+              منظومة متطورة مخصصة لإدارة الصالة، الطاولات، طلبات السفري والدليفري، المطبخ والمشرمبات والشيشة، بالإضافة للتحكم الدقيق في التكاليف والمخزون وحسابات الوردية اليومية.
             </p>
           </div>
 
@@ -278,7 +278,7 @@ export default function HomePage() {
 
               <div className="mt-6 pt-5 border-t border-stone-800/80 text-center text-[11px] text-stone-500 flex items-center justify-center gap-2">
                 <span>🛡️</span>
-                <span>نظام مشفر ومخصص لطاقم إدارة وتشغيل واحة بدوي فقط</span>
+                <span>نظام مشفر ومخصص لطاقم إدارة وتشغيل مشويات اولاد بسيوني فقط</span>
               </div>
             </div>
           </div>
@@ -288,7 +288,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="max-w-6xl w-full mx-auto pt-6 border-t border-stone-800/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500">
         <p>
-          جميع الحقوق محفوظة © {new Date().getFullYear()} مطعم وكافيه واحة بدوي (Wahet Badawy)
+          جميع الحقوق محفوظة © {new Date().getFullYear()} مطعم وكافيه مشويات اولاد بسيوني (Mashweyat Awlad Basiony)
         </p>
         <p className="font-mono text-[11px]">
           الإصدار 2.5 • Dine-In & Takeaway POS Cloud Engine
@@ -297,3 +297,4 @@ export default function HomePage() {
     </div>
   );
 }
+
