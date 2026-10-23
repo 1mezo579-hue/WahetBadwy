@@ -1,6 +1,6 @@
-# واحة بدوي - Wahet Badawy POS System
+# مشويات بسوني - Mashweyat Basiony POS System
 
-نظام نقاط البيع لمطعم واحة بدوي - Dine-in Point of Sale System
+نظام نقاط البيع لمطعم مشويات بسوني - Dine-in Point of Sale System
 
 ## 🚀 Quick Start (Docker - Zero Config)
 
@@ -12,7 +12,7 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Default Login Credentials
 - **Username:** `admin`
-- **Password:** `WahetBadawy@2026`
+- **Password:** `[Defined in Environment]`
 
 ## 🛠️ Local Development (Without Docker)
 
