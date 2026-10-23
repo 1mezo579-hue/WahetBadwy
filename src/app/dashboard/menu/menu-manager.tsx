@@ -12,6 +12,7 @@ import {
   deleteMenuItem,
   addRecipeItem,
   removeRecipeItem,
+  importOfficialBasionyMenu,
 } from "@/actions/menu";
 
 interface CategoryItem {
@@ -236,6 +237,31 @@ export default function MenuManager({
 
   return (
     <div className="space-y-6">
+      {/* Empty Menu State & Quick Official Importer */}
+      {initialMenuItems.length === 0 && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/20 border-2 border-dashed border-amber-500/40 rounded-3xl p-6 text-center space-y-3">
+          <div className="text-3xl">🍖</div>
+          <h3 className="text-lg font-black text-amber-950">قائمة الطعام فارغة حالياً (جاهز للتشغيل من الصفر)</h3>
+          <p className="text-sm text-stone-600 max-w-xl mx-auto">
+            تم تصفير النظام بنجاح من كافة البيانات السابقة. يمكنك إضافة أقسامك وأصنافك يدويًا من الأزرار أدناه، أو استيراد القائمة الرسمية المعتمدة لمشويات بسيوني (45 صنفاً في 6 أقسام) بضغطة زر واحدة.
+          </p>
+          <button
+            onClick={() => {
+              if (confirm("هل تريد استيراد قائمة مشويات بسيوني الرسمية (45 صنف في المشويات، السندوتشات، الصواني، الوجبات، الإضافات، والحلويات)؟")) {
+                startTransition(async () => {
+                  const res = await importOfficialBasionyMenu();
+                  if (res?.error) alert(res.error);
+                });
+              }
+            }}
+            disabled={isPending}
+            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-sm shadow-lg shadow-orange-600/30 transition inline-flex items-center gap-2 cursor-pointer"
+          >
+            <span>📥</span>
+            <span>استيراد قائمة مشويات بسيوني الرسمية (45 صنف)</span>
+          </button>
+        </div>
+      )}
       {/* Action Header */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">

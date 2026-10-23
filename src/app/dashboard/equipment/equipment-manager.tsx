@@ -33,7 +33,7 @@ export default function EquipmentManager({
 }: {
   initialEquipment: EquipmentItem[];
 }) {
-  const [activeTab, setActiveTab] = useState<EquipmentType>(EquipmentType.SHISHA);
+  const [activeTab, setActiveTab] = useState<EquipmentType>(EquipmentType.KITCHEN);
   const [isPending, startTransition] = useTransition();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -43,7 +43,7 @@ export default function EquipmentManager({
   // Edit Equipment State
   const [editingItem, setEditingItem] = useState<EquipmentItem | null>(null);
   const [editName, setEditName] = useState("");
-  const [editType, setEditType] = useState<EquipmentType>(EquipmentType.SHISHA);
+  const [editType, setEditType] = useState<EquipmentType>(EquipmentType.KITCHEN);
   const [editQuantity, setEditQuantity] = useState(1);
   const [editUnit, setEditUnit] = useState("قطعة");
   const [editUnitPrice, setEditUnitPrice] = useState(0);
@@ -69,7 +69,7 @@ export default function EquipmentManager({
   };
 
   const sectionsConfig: Record<
-    EquipmentType,
+    string,
     {
       title: string;
       icon: string;
@@ -79,53 +79,37 @@ export default function EquipmentManager({
       placeholder: string;
     }
   > = {
-    SHISHA: {
-      title: "عدة الشيشة والمعسل",
-      icon: "💨",
-      color: "bg-purple-50 text-purple-900 hover:bg-purple-100",
-      activeColor: "bg-purple-800 text-white shadow-md shadow-purple-950/20",
-      desc: "شيش لوكس، قلوب منقوشة ونحاس، طاسات، كسوات، مباسم، فوارغ، أحجار، وفويل معتمد.",
-      placeholder: "مثال: شيشة لوكس HR-9013، قلب كورة منقوش، حجر سيراميك، طاسة دهب...",
-    },
-    BALADI_COFFEE: {
-      title: "عدة القهوة البلدي والبار",
-      icon: "☕",
-      color: "bg-amber-50 text-amber-900 hover:bg-amber-100",
-      activeColor: "bg-amber-700 text-white shadow-md shadow-amber-900/20",
-      desc: "الرمالة، برادات الشاي، الكنك، أطقم اللبانات، عمالات الفحم، السكريات، والطفايات.",
-      placeholder: "مثال: براد رقم 2، كنكة رقم 3، عمال رقم 1، طقم لبانة استانليس، سكرية...",
-    },
     KITCHEN: {
-      title: "معدات المطبخ الرئيسي",
-      icon: "🍳",
-      color: "bg-slate-100 text-slate-700 hover:bg-slate-200",
-      activeColor: "bg-primary-900 text-white shadow-md shadow-primary-950/20",
-      desc: "أفران المندي، الشوايات، القلايات، وأدوات الطهي والتحضير الساخن.",
-      placeholder: "مثال: فرن مندي برميلي، شواية فحم استانلس، قلاية مزدوجة...",
-    },
-    BARISTA: {
-      title: "ركن الباريستا والمشروبات",
-      icon: "🥤",
-      color: "bg-orange-50 text-orange-800 hover:bg-orange-100",
-      activeColor: "bg-orange-600 text-white shadow-md shadow-orange-700/20",
-      desc: "ماكينات الإسبريسو، المطاحن، خلاطات العصائر، وصانعات الثلج.",
-      placeholder: "مثال: ماكينة إسبريسو 2 جروب، مطحنة بن، خلاط فيتاميكس...",
+      title: "معدات المطبخ والشوايات",
+      icon: "🍖",
+      color: "bg-orange-50 text-orange-950 hover:bg-orange-100",
+      activeColor: "bg-orange-600 text-white shadow-md shadow-orange-950/20",
+      desc: "شوايات الفحم، جريلات، أفران المشويات، الثلاجات، ومعدات تحضير اللحوم والمشويات.",
+      placeholder: "مثال: شواية فحم صرداني، جريل استانلس، ثلاجة لحوم، مفرمة...",
     },
     HALL: {
-      title: "ركن الصالة والضيافة",
+      title: "تجهيزات الصالة والضيافة",
       icon: "🏛️",
-      color: "bg-blue-50 text-blue-800 hover:bg-blue-100",
+      color: "bg-blue-50 text-blue-900 hover:bg-blue-100",
       activeColor: "bg-blue-700 text-white shadow-md shadow-blue-900/20",
-      desc: "طاولات الزان، دومينو عمولة وقواشيط، شاشات العرض، التكييفات والساوند سيستم.",
-      placeholder: "مثال: طاولة زان، خشبة دومينو عمولة، شاشة 65 بوصة 4K...",
+      desc: "طاولات الصالة، المقاعد، شاشات العرض، أجهزة التكييف والساوند سيستم.",
+      placeholder: "مثال: طاولات طعام، كراسي خشب زان، شاشة سامسونج 65 بوصة، تكييف 5 حصان...",
+    },
+    BARISTA: {
+      title: "ركن التحضير السريع",
+      icon: "🥤",
+      color: "bg-amber-50 text-amber-900 hover:bg-amber-100",
+      activeColor: "bg-amber-600 text-white shadow-md shadow-amber-700/20",
+      desc: "خلاطات العصائر، صانعات الثلج، أدوات تحضير السلطات والمقبلات السريعة.",
+      placeholder: "مثال: خلاط عصير، عصارة فواكه، صانع ثلج، سخان مياه فوري...",
     },
     BATHROOM: {
-      title: "معدات دورات المياه (الحمام)",
+      title: "مرافق النظافة ودورات المياه",
       icon: "🧼",
-      color: "bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
+      color: "bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
       activeColor: "bg-emerald-700 text-white shadow-md shadow-emerald-900/20",
       desc: "مجففات الأيدي السريعة، موزعات الصابون السنسور، الشفاطات، والسخانات.",
-      placeholder: "مثال: مجفف يدين هوائي سريع، موزع صابون سنسور، شفاط توربيني...",
+      placeholder: "مثال: مجفف أيدي هوائي سريع، موزع صابون سنسور، شفاط توربيني...",
     },
   };
 
@@ -172,7 +156,7 @@ export default function EquipmentManager({
   };
 
   const handleClearSection = (type: EquipmentType) => {
-    const secName = sectionsConfig[type].title;
+    const secName = ((sectionsConfig[type] || sectionsConfig["KITCHEN"]).title);
     const count = getSectionCount(type);
     if (count === 0) {
       alert(`قسم ${secName} لا يحتوي على أي معدات لحذفها.`);
@@ -262,50 +246,39 @@ export default function EquipmentManager({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner with Invoice Shortcut and Quick Search */}
-      <div className="bg-gradient-to-r from-stone-900 via-stone-950 to-amber-950 text-white p-4 sm:p-5 rounded-3xl border border-stone-800 shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      {/* Top Banner: Asset Tracking for Mashweyat Basiony */}
+      <div className="bg-gradient-to-r from-stone-900 via-stone-950 to-orange-950 text-white p-5 rounded-3xl border border-stone-800 shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-2xl font-black shadow-inner">
-            📋
+          <div className="w-12 h-12 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center text-2xl font-black shadow-inner">
+            🥩
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-black text-white">
-                فاتورة شركة شيشة هيرو لتجارة المعسلات ومستلزمات المقاهي
+                سجل عهد وأصول مطعم مشويات بسيوني
               </h2>
-              <span className="text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono font-bold px-2 py-0.5 rounded-full">
-                حج بدري • 30 سبتمبر 2026
+              <span className="text-[11px] bg-orange-500/20 text-orange-300 border border-orange-500/30 font-bold px-2 py-0.5 rounded-full">
+                إدارة أ/ أحمد بسيوني
               </span>
             </div>
             <p className="text-xs text-stone-400 mt-0.5">
-              57 صنفاً موثقة بالكامل (شيشة من 1-29 و 49-57 • بار من 30-48) بالوحدة والكمية وسعر الوحدة.
+              حصر وتوثيق معدات الشواء، الصالة، ركن التحضير السريع، ومرافق النظافة لضمان الجاهزية التشغيلية الكاملة.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <button
-            type="button"
-            onClick={() => setShowInvoiceModal(true)}
-            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black transition flex items-center gap-1.5 shadow-md shadow-amber-500/20"
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-stone-950 text-xs font-black transition flex items-center gap-1.5 shadow-md shadow-orange-500/20"
           >
-            <span>📜</span>
-            <span>عرض كشف حساب الفاتورة الورقية (57 صنف)</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleSyncInvoice}
-            disabled={isPending}
-            className="px-3.5 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-bold transition flex items-center gap-1.5"
-            title="مزامنة بيانات الفاتورة الأصلية بالكامل"
-          >
-            <span>🔄</span>
-            <span>مزامنة الأصناف</span>
+            <span>➕</span>
+            <span>إضافة معدة / أصل جديد</span>
           </button>
         </div>
       </div>
 
-      {/* Navigation Tabs (6 sections) & Add Button */}
+      {/* Navigation Tabs (4 Sections) & Add Button */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
@@ -358,11 +331,11 @@ export default function EquipmentManager({
       {/* Active Section Description Banner */}
       <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
         <div className="flex items-center gap-3">
-          <span className="text-3xl">{sectionsConfig[activeTab].icon}</span>
+          <span className="text-3xl">{(sectionsConfig[activeTab] || sectionsConfig["KITCHEN"]).icon}</span>
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-black text-slate-800 text-sm sm:text-base">
-                {sectionsConfig[activeTab].title}
+                {(sectionsConfig[activeTab] || sectionsConfig["KITCHEN"]).title}
               </h2>
               <span className="text-[11px] bg-slate-200 text-slate-800 font-bold px-2.5 py-0.5 rounded-full">
                 {getSectionCount(activeTab)} أصناف مسجلة
@@ -374,7 +347,7 @@ export default function EquipmentManager({
                 القيمة: {getSectionTotalCost(activeTab).toLocaleString()} ج.م
               </span>
             </div>
-            <p className="text-slate-500 mt-1">{sectionsConfig[activeTab].desc}</p>
+            <p className="text-slate-500 mt-1">{(sectionsConfig[activeTab] || sectionsConfig["KITCHEN"]).desc}</p>
           </div>
         </div>
 
@@ -418,11 +391,11 @@ export default function EquipmentManager({
       {/* Equipment Cards Grid */}
       {filteredEquipment.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm">
-          <span className="text-5xl block mb-3">{sectionsConfig[activeTab].icon}</span>
+          <span className="text-5xl block mb-3">{(sectionsConfig[activeTab] || sectionsConfig["KITCHEN"]).icon}</span>
           <p className="text-slate-700 font-black text-base">
             {searchQuery
               ? `لا توجد نتائج مطابقة لبحثك: "${searchQuery}" في هذا القسم.`
-              : `لا توجد معدات مسجلة في ${sectionsConfig[activeTab].title} حالياً.`}
+              : `لا توجد معدات مسجلة في ${(sectionsConfig[activeTab] || sectionsConfig["KITCHEN"]).title} حالياً.`}
           </p>
           <p className="text-xs text-slate-400 mt-1">
             اضغط على زر &quot;إضافة أداة / معدة جديدة&quot; لتسجيل أول جهاز أو عدة في هذا القسم.
@@ -580,116 +553,6 @@ export default function EquipmentManager({
       )}
 
       {/* ======================================================== */}
-      {/* INVOICE BREAKDOWN MODAL (كشف حساب شركة شيشة هيرو - 57 صنف) */}
-      {/* ======================================================== */}
-      {showInvoiceModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 shadow-2xl max-h-[90vh] flex flex-col text-right">
-            <div className="flex items-center justify-between pb-3 border-b mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center text-2xl font-black shadow-md">
-                  📜
-                </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-black text-slate-900">
-                    كشف حساب عميل: حج بدري (شركة شيشة هيرو)
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium">
-                    تاريخ الكشف: 30 سبتمبر 2026 • تجارة المعسلات والشيشة ومستلزمات المقاهي
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowInvoiceModal(false)}
-                className="w-9 h-9 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Financial Summary Strip */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-              <div className="p-3.5 rounded-2xl bg-slate-900 text-white text-center border border-slate-800">
-                <span className="text-xs text-stone-400 block mb-0.5">إجمالي المبيعات (الفاتورة)</span>
-                <span className="text-lg font-black font-mono text-amber-400">
-                  EGP 68,390
-                </span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-emerald-950 text-white text-center border border-emerald-900">
-                <span className="text-xs text-emerald-300 block mb-0.5">تسديدات نقدية</span>
-                <span className="text-lg font-black font-mono text-emerald-400">
-                  EGP 20,000
-                </span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-amber-950 text-white text-center border border-amber-900">
-                <span className="text-xs text-amber-300 block mb-0.5">الرصيد الحالي المتبقي</span>
-                <span className="text-lg font-black font-mono text-amber-300">
-                  EGP 48,390
-                </span>
-              </div>
-            </div>
-
-            {/* Detailed Table */}
-            <div className="overflow-y-auto flex-1 border border-slate-200 rounded-2xl">
-              <table className="w-full text-xs text-right border-collapse">
-                <thead className="bg-slate-100 text-slate-700 sticky top-0 font-bold">
-                  <tr>
-                    <th className="p-2.5 border-b">#</th>
-                    <th className="p-2.5 border-b">اسم الصنف</th>
-                    <th className="p-2.5 border-b">القسم</th>
-                    <th className="p-2.5 border-b">الوحدة</th>
-                    <th className="p-2.5 border-b">الكمية</th>
-                    <th className="p-2.5 border-b">سعر الوحدة</th>
-                    <th className="p-2.5 border-b">الإجمالي</th>
-                    <th className="p-2.5 border-b">التاريخ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {heroInvoiceEquipmentData.map((item) => (
-                    <tr key={item.itemNo} className="hover:bg-amber-50/40 transition">
-                      <td className="p-2.5 font-mono font-bold text-slate-500">{item.itemNo}</td>
-                      <td className="p-2.5 font-black text-slate-800">{item.name}</td>
-                      <td className="p-2.5">
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            item.type === EquipmentType.SHISHA
-                              ? "bg-purple-100 text-purple-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {item.type === EquipmentType.SHISHA ? "عدة شيشة" : "بار"}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-slate-600">{item.unit}</td>
-                      <td className="p-2.5 font-mono font-bold text-slate-900">{item.quantity}</td>
-                      <td className="p-2.5 font-mono text-slate-700">{item.unitPrice} ج.م</td>
-                      <td className="p-2.5 font-mono font-black text-emerald-800">
-                        {(item.quantity * item.unitPrice).toLocaleString()} ج.م
-                      </td>
-                      <td className="p-2.5 font-mono text-slate-500">2026-09-30</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="pt-4 border-t mt-4 flex items-center justify-between">
-              <span className="text-xs text-slate-500">
-                مطعم وكافيه مشويات بسوني • فرع عبد القادر
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowInvoiceModal(false)}
-                className="px-6 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
-              >
-                إغلاق
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ======================================================== */}
       {/* ADD EQUIPMENT MODAL */}
       {/* ======================================================== */}
@@ -698,8 +561,8 @@ export default function EquipmentManager({
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto text-right">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
               <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
-                <span>{sectionsConfig[activeTab].icon}</span>
-                <span>إضافة أداة / معدة إلى: {sectionsConfig[activeTab].title}</span>
+                <span>{(sectionsConfig[activeTab] || sectionsConfig["KITCHEN"]).icon}</span>
+                <span>إضافة أداة / معدة إلى: {(sectionsConfig[activeTab] || sectionsConfig["KITCHEN"]).title}</span>
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -738,7 +601,7 @@ export default function EquipmentManager({
                 <input
                   name="name"
                   required
-                  placeholder={sectionsConfig[activeTab].placeholder}
+                  placeholder={(sectionsConfig[activeTab] || sectionsConfig["KITCHEN"]).placeholder}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
                 />
               </div>

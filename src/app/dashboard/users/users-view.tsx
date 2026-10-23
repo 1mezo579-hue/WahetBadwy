@@ -148,7 +148,7 @@ export default function UsersView({ initialUsers }: { initialUsers: UserItem[] }
           </div>
           <p className="text-stone-300 text-sm">
             التحكم في حسابات الكاشيرات، المديرين، ومصفوفة الصلاحيات لـ{" "}
-            <span className="text-amber-300 font-semibold">مشويات بسوني</span>
+            <span className="text-amber-300 font-semibold">مشويات بسيوني</span>
           </p>
         </div>
 
@@ -321,7 +321,7 @@ export default function UsersView({ initialUsers }: { initialUsers: UserItem[] }
         <div className="space-y-6">
           <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl">
             <h3 className="text-lg font-bold text-amber-400 mb-2">
-              جدول الصلاحيات والأدوار التشغيلية في منظومة مشويات بسوني
+              جدول الصلاحيات والأدوار التشغيلية في منظومة مشويات بسيوني
             </h3>
             <p className="text-stone-400 text-sm mb-6">
               توزيع الأدوار يضمن سلامة الحسابات النقدية، حماية أسعار المنيو، وفصل صلاحيات التحضير عن التحصيل المالي.

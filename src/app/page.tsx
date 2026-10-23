@@ -51,14 +51,14 @@ export default function HomePage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                مشويات بسوني
+                مشويات بسيوني
               </h1>
               <span className="text-[11px] font-mono tracking-wider text-amber-400/90 bg-amber-950/70 border border-amber-800/80 px-2 py-0.5 rounded-full font-bold">
                 MASHWEYAT BASIONY
               </span>
             </div>
             <p className="text-xs text-stone-400 font-medium">
-              كافيه ومطعم مشويات ومندي • طعم زمان على أصوله
+              مطعم مشويات ومأكولات فاخرة • إدارة أ/ أحمد بسيوني
             </p>
           </div>
         </div>
@@ -66,11 +66,11 @@ export default function HomePage() {
         <div className="flex flex-wrap items-center gap-3 text-xs text-stone-300 font-medium">
           <div className="flex items-center gap-1.5 bg-stone-800/80 px-3 py-1.5 rounded-xl border border-stone-700/60">
             <span className="text-amber-400">📍</span>
-            <span>عبد القادر - جامع السلام - المستعمرة</span>
+            <span>عبدالقادر - شارع المستعمرة أمام شارع 10 مباشرة قبل مسجد السلام</span>
           </div>
           <div className="flex items-center gap-1.5 bg-stone-800/80 px-3 py-1.5 rounded-xl border border-stone-700/60 font-mono">
             <span className="text-amber-400">📞</span>
-            <span dir="ltr">01558962994</span>
+            <span dir="ltr">01038029714</span>
           </div>
           <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-800/80 text-emerald-400 px-3 py-1.5 rounded-xl font-bold">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -91,11 +91,11 @@ export default function HomePage() {
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
               أهلاً بكم في منظومة <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500">
-                مشويات بسوني المتكاملة
+                مشويات بسيوني المتكاملة
               </span>
             </h2>
             <p className="text-sm sm:text-base text-stone-400 max-w-xl leading-relaxed">
-              منظومة متطورة مخصصة لإدارة الصالة، الطاولات، طلبات السفري والدليفري، المطبخ والمشرمبات والشيشة، بالإضافة للتحكم الدقيق في التكاليف والمخزون وحسابات الوردية اليومية.
+              منظومة متطورة مخصصة لإدارة الصالة، الطاولات، طلبات السفري والدليفري، المطبخ وإعداد المشويات والأطعمة، بالإضافة للتحكم الدقيق في التكاليف والمخزون وحسابات الوردية اليومية.
             </p>
           </div>
 
@@ -278,7 +278,7 @@ export default function HomePage() {
 
               <div className="mt-6 pt-5 border-t border-stone-800/80 text-center text-[11px] text-stone-500 flex items-center justify-center gap-2">
                 <span>🛡️</span>
-                <span>نظام مشفر ومخصص لطاقم إدارة وتشغيل مشويات بسوني فقط</span>
+                <span>نظام مشفر ومخصص لطاقم إدارة وتشغيل مشويات بسيوني فقط</span>
               </div>
             </div>
           </div>
@@ -288,7 +288,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="max-w-6xl w-full mx-auto pt-6 border-t border-stone-800/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500">
         <p>
-          جميع الحقوق محفوظة © {new Date().getFullYear()} مطعم وكافيه مشويات بسوني (Mashweyat Basiony)
+          جميع الحقوق محفوظة © {new Date().getFullYear()} مطعم وكافيه مشويات بسيوني (Mashweyat Basiony)
         </p>
         <p className="font-mono text-[11px]">
           الإصدار 2.5 • Dine-In & Takeaway POS Cloud Engine

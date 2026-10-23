@@ -1,4 +1,6 @@
 "use server";
+import { getSystemLockState } from "@/lib/system-lock";
+import { OFFICIAL_CATEGORIES, OFFICIAL_MENU_ITEMS } from "@/data/official-menu";
 
 import { prisma } from "@/lib/prisma";
 import { UnitType } from "@prisma/client";
@@ -24,6 +26,9 @@ export async function getCategories() {
 
 export async function createCategory(formData: FormData) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     const name = formData.get("name") as string;
     const nameAr = formData.get("nameAr") as string;
     const description = formData.get("description") as string;
@@ -50,6 +55,9 @@ export async function createCategory(formData: FormData) {
 
 export async function updateCategory(formData: FormData) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     const id = formData.get("id") as string;
     const nameAr = formData.get("nameAr") as string;
     const name = (formData.get("name") as string) || nameAr;
@@ -80,6 +88,9 @@ export async function updateCategory(formData: FormData) {
 
 export async function deleteCategory(id: string) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     if (!id) return { error: "معرف القسم غير محدد" };
 
     // Check items in this category
@@ -163,6 +174,9 @@ export async function getMenuItems(categoryId?: string) {
 
 export async function createMenuItem(formData: FormData) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     const name = formData.get("name") as string;
     const nameAr = formData.get("nameAr") as string;
     const description = formData.get("description") as string;
@@ -195,6 +209,9 @@ export async function createMenuItem(formData: FormData) {
 
 export async function updateMenuItem(formData: FormData) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     const id = formData.get("id") as string;
     const name = formData.get("name") as string;
     const nameAr = formData.get("nameAr") as string;
@@ -245,6 +262,9 @@ export async function toggleMenuItemStatus(id: string, active: boolean) {
 
 export async function deleteMenuItem(id: string) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     // Check if item has order history
     const orderItemsCount = await prisma.orderItem.count({
       where: { menuItemId: id },
@@ -332,5 +352,65 @@ export async function removeRecipeItem(recipeItemId: string) {
   } catch (error: any) {
     console.error("Error removing recipe item:", error);
     return { error: "فشل حذف مكون الوصفة" };
+  }
+}
+
+
+export async function importOfficialBasionyMenu() {
+  try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) {
+      return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+    }
+
+    const catMap = new Map<string, string>();
+    for (const c of OFFICIAL_CATEGORIES) {
+      if (c.id === "ALL") continue;
+      const catId = `cat_${c.id.toLowerCase()}`;
+      const created = await prisma.category.upsert({
+        where: { id: catId },
+        update: { nameAr: c.nameAr, name: c.id },
+        create: {
+          id: catId,
+          name: c.id,
+          nameAr: c.nameAr,
+          order: 0,
+        },
+      });
+      catMap.set(c.id, created.id);
+    }
+
+    for (const item of OFFICIAL_MENU_ITEMS) {
+      const dbCatId = catMap.get(item.categoryId) || Array.from(catMap.values())[0];
+      await prisma.menuItem.upsert({
+        where: { id: item.id },
+        update: {
+          nameAr: item.nameAr,
+          name: item.nameAr,
+          price: item.price,
+          description: item.description || null,
+          imageUrl: item.image || null,
+          categoryId: dbCatId,
+          active: true,
+        },
+        create: {
+          id: item.id,
+          nameAr: item.nameAr,
+          name: item.nameAr,
+          price: item.price,
+          description: item.description || null,
+          imageUrl: item.image || null,
+          categoryId: dbCatId,
+          active: true,
+        },
+      });
+    }
+
+    revalidatePath("/dashboard/menu");
+    revalidatePath("/pos");
+    return { success: true, count: OFFICIAL_MENU_ITEMS.length };
+  } catch (err: any) {
+    console.error("Error importing official menu:", err);
+    return { error: err.message || "فشل استيراد قائمة الأصناف" };
   }
 }

@@ -1,4 +1,5 @@
 "use server";
+import { getSystemLockState } from "@/lib/system-lock";
 
 import { prisma } from "@/lib/prisma";
 import { OrderStatus, ShiftStatus, TableType } from "@prisma/client";
@@ -108,6 +109,9 @@ export async function startShift({
   notes?: string;
 }) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     // Check if user or system already has an open shift
     const existing = await prisma.shift.findFirst({
       where: { status: ShiftStatus.OPEN },
@@ -175,7 +179,7 @@ export interface EndShiftPayload {
 }
 
 /**
- * 3. End shift (تقفيل وتسليم الوردية - ورقة تقفيل مشويات بسوني الرسمية)
+ * 3. End shift (تقفيل وتسليم الوردية - ورقة تقفيل مشويات بسيوني الرسمية)
  * CRITICAL REQUIREMENTS:
  * - Cashier inputs counted actual cash.
  * - Complete 9-item closing reconciliation (المبيعات، الخصومات، فيزا، رصيد أخر، مصاريف مفصلة، شيكات، توالف سطاف مفصلة، مسحوبات إدارة مفصلة، رصيد أخر اليوم، المستلم).
@@ -184,6 +188,9 @@ export interface EndShiftPayload {
  */
 export async function endShift(payload: EndShiftPayload) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     const {
       shiftId,
       actualCash,

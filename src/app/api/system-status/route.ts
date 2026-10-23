@@ -7,14 +7,17 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
     const state = await getSystemLockState();
+    const isAdmin = (session?.user as any)?.role === "ADMIN";
+
     return NextResponse.json({
       success: true,
       isLocked: state.isLocked,
-      lockedBy: state.lockedBy,
-      lockedAt: state.lockedAt,
+      lockedBy: session ? state.lockedBy : null,
+      lockedAt: session ? state.lockedAt : null,
       sessionCutoff: state.sessionCutoff,
-      logs: state.logs.slice(0, 20),
+      logs: isAdmin ? state.logs.slice(0, 20) : [],
     });
   } catch (error: any) {
     return NextResponse.json(

@@ -125,7 +125,7 @@ export default function ReportsView({
         isComplimentary: printableOrder.isComplimentary,
         notes: printableOrder.notes,
         timestamp: new Date(printableOrder.createdAt),
-        cashierName: printableOrder.user?.name || "كاشير مشويات بسوني",
+        cashierName: printableOrder.user?.name || "كاشير مشويات بسيوني",
         isPaid: true,
       });
     } else {
@@ -172,7 +172,7 @@ export default function ReportsView({
 
         <div className="flex items-center gap-2">
           <span className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-black">
-            نظام نقاط البيع • مشويات بسوني
+            نظام نقاط البيع • مشويات بسيوني
           </span>
         </div>
       </div>
@@ -309,7 +309,7 @@ export default function ReportsView({
           }`}
         >
           <span>📑</span>
-          <span>أوراق التقفيل اليومية (مشويات بسوني) ({shifts.filter((s) => s.status === ShiftStatus.CLOSED).length})</span>
+          <span>أوراق التقفيل اليومية (مشويات بسيوني) ({shifts.filter((s) => s.status === ShiftStatus.CLOSED).length})</span>
         </button>
 
         <button
@@ -598,16 +598,16 @@ export default function ReportsView({
             >
               <div className="text-center space-y-1 border-b border-dashed border-slate-300 pb-3">
                 <p className="font-black text-base text-slate-900 tracking-wider">
-                  مشويات بسوني - MASHWEYAT BASIONY
+                  مشويات بسيوني - MASHWEYAT BASIONY
                 </p>
                 <p className="text-[11px] text-slate-600 font-bold">
-                  طعم زمان على أصوله • مطعم وكافيه مشويات بسوني
+                  مطعم مشويات ومأكولات فاخرة • إدارة أ/ أحمد بسيوني
                 </p>
                 <p className="text-[10px] text-slate-500">
-                  خدمة العملاء والتوصيل: 01558962994
+                  خدمة العملاء والتوصيل: 01038029714
                 </p>
                 <p className="text-[10px] text-slate-500">
-                  عبد القادر - جامع السلام - المستعمرة
+                  عبدالقادر - شارع المستعمرة أمام شارع 10 مباشرة قبل مسجد السلام
                 </p>
               </div>
 
@@ -655,7 +655,7 @@ export default function ReportsView({
                 <div className="flex justify-between pt-1">
                   <span className="text-[10px] text-slate-500">الكاشير:</span>
                   <span className="text-[10px] font-bold text-slate-600">
-                    {printableOrder.user?.name || "كاشير مشويات بسوني"}
+                    {printableOrder.user?.name || "كاشير مشويات بسيوني"}
                   </span>
                 </div>
               </div>
@@ -706,7 +706,7 @@ export default function ReportsView({
 
                 {printableOrder.isComplimentary && (
                   <div className="text-center font-bold text-purple-700 text-[10px] bg-purple-50 p-1 rounded">
-                    👑 معفى 100% (ضيافة إدارة مشويات بسوني)
+                    👑 معفى 100% (ضيافة إدارة مشويات بسيوني)
                   </div>
                 )}
               </div>
@@ -838,7 +838,7 @@ export default function ReportsView({
                 <div className="flex items-center gap-2">
                   <span className="text-xl">📋</span>
                   <h3 className="font-black text-slate-800 text-sm">
-                    ورقة تقفيل مشويات بسوني • وردية #{closingVoucherShift.shiftNumber}
+                    ورقة تقفيل مشويات بسيوني • وردية #{closingVoucherShift.shiftNumber}
                   </h3>
                 </div>
                 <button
@@ -857,7 +857,7 @@ export default function ReportsView({
                 {/* Sky-Blue Header */}
                 <div className="bg-sky-200 border-2 border-slate-800 rounded-xl p-3 text-center print:bg-sky-100">
                   <h2 className="text-2xl font-black text-slate-900 tracking-wide">
-                    مشويات بسوني
+                    مشويات بسيوني
                   </h2>
                   <p className="text-sm font-black text-slate-800 tracking-widest mt-0.5">
                     مطعم وكافيه
@@ -1049,7 +1049,7 @@ export default function ReportsView({
                             shortageOverage: closingVoucherShift.shortageOverage ?? 0,
                           },
                         },
-                        closingVoucherShift.user?.name || "كاشير مشويات بسوني"
+                        closingVoucherShift.user?.name || "كاشير مشويات بسيوني"
                       )
                     );
                   }}
@@ -1351,7 +1351,7 @@ export default function ReportsView({
                             <button
                               onClick={() => setClosingVoucherShift(shift)}
                               className="px-2.5 py-1 bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-300 rounded-xl text-[11px] font-black transition flex items-center justify-center gap-1 mx-auto shadow-sm"
-                              title="عرض وطباعة ورقة تقفيل مشويات بسوني الرسمية"
+                              title="عرض وطباعة ورقة تقفيل مشويات بسيوني الرسمية"
                             >
                               <span>📋</span>
                               <span>ورقة التقفيل</span>
@@ -1380,7 +1380,7 @@ export default function ReportsView({
               <div className="flex items-center gap-2">
                 <span className="text-2xl">📋</span>
                 <h3 className="font-black text-slate-800 text-base sm:text-lg">
-                  أوراق التقفيل اليومية الرسمية (مشويات بسوني مطعم وكافيه)
+                  أوراق التقفيل اليومية الرسمية (مشويات بسيوني مطعم وكافيه)
                 </h3>
               </div>
               <p className="text-xs text-slate-500 mt-1">

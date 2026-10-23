@@ -504,7 +504,7 @@ async function handleSeed(req: NextRequest) {
       }
     }
 
-    // 4. Seed Categories matching the exact official Menu of "مشويات بسوني"
+    // 4. Seed Categories matching the exact official Menu of "مشويات بسيوني"
     const categoriesSeed = [
       {
         id: "cat_grills_01",
@@ -686,7 +686,7 @@ async function handleSeed(req: NextRequest) {
       { name: "Qass Shisha", nameAr: "شيشة قص", price: 15, categoryId: "cat_shisha_10", desc: "معسل قص أصلي على الحجر" },
       { name: "Fruit Shisha", nameAr: "شيشة فواكه (تفاحتين/عنب)", price: 30, categoryId: "cat_shisha_10", desc: "معسل فواكه نخلة فاخر" },
       { name: "Mixed Fruit Shisha", nameAr: "شيشة فواكه ميكس", price: 35, categoryId: "cat_shisha_10", desc: "خلطة فواكه ميكس مع نعناع ولبان" },
-      { name: "Luxury Shisha", nameAr: "شيشة فاخر ممتازة", price: 60, categoryId: "cat_shisha_10", desc: "شيشة فاخر خلطة خاصة مشويات بسوني" },
+      { name: "Luxury Shisha", nameAr: "شيشة فاخر ممتازة", price: 60, categoryId: "cat_shisha_10", desc: "شيشة فاخر خلطة خاصة مشويات بسيوني" },
     ];
 
     for (const item of menuItemsSeed) {
@@ -722,7 +722,7 @@ async function handleSeed(req: NextRequest) {
       {
         name: "الحاج إبراهيم البدوي",
         phone: "01012345678",
-        address: "عبد القادر - خلف جامع السلام - فيلا البدوي",
+        address: "عبدالقادر - شارع المستعمرة أمام شارع 10 مباشرة قبل مسجد السلام",
         notes: "عميل دائم - يفضل اللحوم المشوية نصف سوا",
       },
       {
@@ -733,9 +733,9 @@ async function handleSeed(req: NextRequest) {
       },
       {
         name: "كابتن أحمد عبد الله",
-        phone: "01558962994",
+        phone: "01038029714",
         address: "منطقة عبد القادر - طريق الإسكندرية الصحراوي",
-        notes: "هاتف مشويات بسوني المعتمد",
+        notes: "هاتف مشويات بسيوني المعتمد",
       },
     ];
 

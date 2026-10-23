@@ -1,4 +1,5 @@
 "use server";
+import { getSystemLockState } from "@/lib/system-lock";
 
 import { prisma } from "@/lib/prisma";
 import { TableType, TableStatus } from "@prisma/client";
@@ -36,6 +37,9 @@ export async function updateTable(
   }
 ) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     await prisma.diningTable.update({
       where: { id },
       data,
@@ -51,6 +55,9 @@ export async function updateTable(
 
 export async function createTable(formData: FormData) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     const name = formData.get("name") as string;
     const numberStr = formData.get("number") as string;
     const type = formData.get("type") as TableType;
@@ -92,6 +99,9 @@ export async function updateTableStatus(id: string, status: TableStatus) {
 
 export async function deleteTable(id: string) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     await prisma.diningTable.delete({
       where: { id },
     });

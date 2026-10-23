@@ -1,4 +1,5 @@
 "use server";
+import { getSystemLockState } from "@/lib/system-lock";
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -59,6 +60,9 @@ export async function getCustomers(search?: string) {
 
 export async function createCustomer(data: CustomerInput) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { success: false, error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     if (!data.name || !data.phone) {
       return { success: false, error: "اسم العميل ورقم الهاتف مطلوبان" };
     }
@@ -91,6 +95,9 @@ export async function createCustomer(data: CustomerInput) {
 
 export async function updateCustomer(id: string, data: Partial<CustomerInput>) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { success: false, error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     const customer = await prisma.customer.update({
       where: { id },
       data: {
@@ -112,6 +119,9 @@ export async function updateCustomer(id: string, data: Partial<CustomerInput>) {
 
 export async function deleteCustomer(id: string) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) return { success: false, error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
+
     await prisma.customer.delete({
       where: { id },
     });

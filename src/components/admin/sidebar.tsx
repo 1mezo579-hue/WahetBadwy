@@ -167,7 +167,7 @@ export default function AdminSidebar({ user }: SidebarProps) {
           <div>
             <h1 className="font-extrabold text-lg tracking-tight text-amber-400">مشويات بسيوني</h1>
             <p className="text-[11px] text-amber-200/80 font-medium">طعم زمان على أصوله</p>
-            <p className="text-[10px] text-stone-400 font-mono mt-0.5">📞 01558962994</p>
+            <p className="text-[10px] text-stone-400 font-mono mt-0.5">📞 01038029714</p>
           </div>
         </div>
 

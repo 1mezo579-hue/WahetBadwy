@@ -140,7 +140,7 @@ export default function CustomersView({
           </div>
           <p className="text-stone-300 text-sm">
             سجل العملاء، العناوين التفصيلية، وأرقام هواتف خدمة التوصيل السريع لـ{" "}
-            <span className="text-amber-300 font-semibold">مشويات بسوني</span>
+            <span className="text-amber-300 font-semibold">مشويات بسيوني</span>
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -184,7 +184,7 @@ export default function CustomersView({
         <div className="bg-stone-900 border border-stone-800 p-5 rounded-2xl">
           <div className="text-stone-400 text-xs font-semibold mb-1">إجمالي العملاء المسجلين</div>
           <div className="text-3xl font-extrabold text-amber-400">{customers.length}</div>
-          <div className="text-xs text-stone-500 mt-1">قاعدة بيانات عملاء مشويات بسوني</div>
+          <div className="text-xs text-stone-500 mt-1">قاعدة بيانات عملاء مشويات بسيوني</div>
         </div>
         <div className="bg-stone-900 border border-stone-800 p-5 rounded-2xl">
           <div className="text-stone-400 text-xs font-semibold mb-1">إجمالي الطلبات المنفذة</div>
@@ -200,8 +200,8 @@ export default function CustomersView({
         </div>
         <div className="bg-stone-900 border border-stone-800 p-5 rounded-2xl">
           <div className="text-stone-400 text-xs font-semibold mb-1">خدمة الدليفري المعتمدة</div>
-          <div className="text-2xl font-bold text-amber-400 font-mono">01558962994</div>
-          <div className="text-xs text-stone-500 mt-1">عبد القادر - جامع السلام - المستعمرة</div>
+          <div className="text-2xl font-bold text-amber-400 font-mono">01038029714</div>
+          <div className="text-xs text-stone-500 mt-1">عبدالقادر - شارع المستعمرة أمام شارع 10 مباشرة قبل مسجد السلام</div>
         </div>
       </div>
 
@@ -376,7 +376,7 @@ export default function CustomersView({
                   required
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="مثال: 01558962994"
+                  placeholder="مثال: 01038029714"
                   className="w-full bg-stone-950 border border-stone-700 focus:border-amber-500 rounded-xl px-4 py-2 text-sm text-stone-100 font-mono outline-none"
                 />
               </div>
