@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useTransition } from "react";
 import { UserInput, createUser, updateUser, deleteUser, toggleUserStatus } from "@/actions/users";

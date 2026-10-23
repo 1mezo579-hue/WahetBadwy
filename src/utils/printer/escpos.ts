@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ESC/POS Command Generator for Thermal POS Printers (58mm & 80mm)
  * Implements hardware commands for text formatting, cutting, and cash drawer kick.
  */

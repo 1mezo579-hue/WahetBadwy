@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Order Routing Engine for Mashweyat Awlad Basiony POS
  * Routes items to Kitchen, Barista, and Shisha stations, and generates tickets.
  */

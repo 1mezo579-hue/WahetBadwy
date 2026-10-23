@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Silent Printing Engine for Mashweyat Awlad Basiony POS
  * Prints directly to Windows Default Printer via hidden iframe without interrupting POS UI.
  * Compatible with Chrome / Edge Kiosk Printing (--kiosk-printing) for zero-dialog instant printing.

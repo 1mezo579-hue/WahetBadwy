@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useTransition } from "react";
 import { CustomerInput, createCustomer, updateCustomer, deleteCustomer } from "@/actions/customers";

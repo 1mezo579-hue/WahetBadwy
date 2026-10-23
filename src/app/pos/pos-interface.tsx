@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useTransition } from "react";
 import { TableType, TableStatus, OrderStatus } from "@prisma/client";
@@ -2858,7 +2858,7 @@ export default function PosInterface({
                 </button>
 
                 <a
-                  href="/تشغيل_كاشير_مشويات_اولاد_بسيوني_طباعة_صامتة.bat"
+                  href="/start-pos-kiosk.bat"
                   download="تشغيل_كاشير_مشويات_اولاد_بسيوني_طباعة_صامتة.bat"
                   className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-black text-amber-300 font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5 text-center"
                   title="تحميل اختصار سطح المكتب للتشغيل الصامت بدون نوافذ"
