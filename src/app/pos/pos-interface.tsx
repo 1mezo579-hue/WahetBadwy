@@ -34,6 +34,8 @@ interface PosTable {
     totalAmount: number;
     subtotal: number;
     isComplimentary: boolean;
+    customerName?: string | null;
+    customerPhone?: string | null;
     items: Array<{
       id: string;
       menuItemId: string;
