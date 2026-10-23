@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
+import { getSystemLockState } from "./system-lock";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -56,6 +57,20 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
         (session.user as any).username = token.username;
+        (session.user as any).iat = token.iat;
+
+        // Check if session was revoked by global force logout
+        try {
+          const lockState = await getSystemLockState();
+          if (token.iat && lockState.sessionCutoff > 0) {
+            const tokenIssuedAtMs = (token.iat as number) * 1000;
+            if (tokenIssuedAtMs < lockState.sessionCutoff) {
+              (session.user as any).revoked = true;
+            }
+          }
+        } catch (e) {
+          // Fallback if db temporarily busy
+        }
       }
       return session;
     },

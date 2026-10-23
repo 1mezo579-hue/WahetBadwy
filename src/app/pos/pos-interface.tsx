@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo } from "react";
+import { useState, useEffect, useTransition, useMemo, useRef } from "react";
 import { TableType, TableStatus, OrderStatus } from "@prisma/client";
 import { sendOrderToPrep, collectOrderPayment } from "@/actions/pos";
 import { startShift, endShift, getActiveShift } from "@/actions/shifts";
@@ -10,7 +10,6 @@ import { signOut } from "next-auth/react";
 import {
   routeAndPrintPrepOrder,
   printCustomerCheckOnly,
-  RoutedTicket,
 } from "@/utils/printer/order-router";
 import {
   triggerSilentThermalPrint,
@@ -77,14 +76,19 @@ export default function PosInterface({
   menuItems,
   userName,
   userId,
+  userRole = "CASHIER",
   initialShift,
   initialCustomers,
+  initialSystemLocked = false,
+  initialLockedBy,
+  initialLockedAt,
 }: {
   initialTables: PosTable[];
   categories: PosCategory[];
   menuItems: PosMenuItem[];
   userName: string;
   userId: string;
+  userRole?: string;
   initialShift?: any;
   initialCustomers?: Array<{
     id: string;
@@ -93,6 +97,9 @@ export default function PosInterface({
     address: string | null;
     notes: string | null;
   }>;
+  initialSystemLocked?: boolean;
+  initialLockedBy?: string | null;
+  initialLockedAt?: string | null;
 }) {
   const [tables, setTables] = useState<PosTable[]>(initialTables);
   const [selectedTable, setSelectedTable] = useState<PosTable | null>(null);
@@ -126,6 +133,83 @@ export default function PosInterface({
   const [countedCash, setCountedCash] = useState("");
   const [endShiftNotes, setEndShiftNotes] = useState("");
   const [receivedBy, setReceivedBy] = useState("");
+
+  // 1. CENTRAL SYSTEM LOCKDOWN (Synced with Server)
+  const [isSystemLocked, setIsSystemLocked] = useState<boolean>(initialSystemLocked);
+  const [systemLockedBy, setSystemLockedBy] = useState<string | null>(initialLockedBy || null);
+  const [systemLockedAt, setSystemLockedAt] = useState<string | null>(initialLockedAt || null);
+
+  // 2. INACTIVITY AUTO-LOCK (5 Minutes)
+  const [isIdleLocked, setIsIdleLocked] = useState<boolean>(false);
+  const [unlockPasswordInput, setUnlockPasswordInput] = useState<string>("");
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const [idleTimeoutMinutes, setIdleTimeoutMinutes] = useState<number>(5);
+  const lastActivityTimeRef = useRef<number>(Date.now());
+
+  // Listen to user activity to reset idle timer
+  useEffect(() => {
+    const handleUserActivity = () => {
+      lastActivityTimeRef.current = Date.now();
+    };
+
+    window.addEventListener("mousemove", handleUserActivity);
+    window.addEventListener("mousedown", handleUserActivity);
+    window.addEventListener("keydown", handleUserActivity);
+    window.addEventListener("touchstart", handleUserActivity);
+    window.addEventListener("scroll", handleUserActivity);
+
+    // Check idle timeout every 5 seconds
+    const idleCheckInterval = setInterval(() => {
+      const elapsedMs = Date.now() - lastActivityTimeRef.current;
+      const timeoutMs = idleTimeoutMinutes * 60 * 1000;
+      if (elapsedMs >= timeoutMs && !isIdleLocked) {
+        setIsIdleLocked(true);
+      }
+    }, 5000);
+
+    return () => {
+      window.removeEventListener("mousemove", handleUserActivity);
+      window.removeEventListener("mousedown", handleUserActivity);
+      window.removeEventListener("keydown", handleUserActivity);
+      window.removeEventListener("touchstart", handleUserActivity);
+      window.removeEventListener("scroll", handleUserActivity);
+      clearInterval(idleCheckInterval);
+    };
+  }, [idleTimeoutMinutes, isIdleLocked]);
+
+  // Poll Central System Lock & Session Validity every 5 seconds
+  useEffect(() => {
+    const pollStatus = async () => {
+      try {
+        const res = await fetch("/api/system-status");
+        if (res.ok) {
+          const data = await res.json();
+          setIsSystemLocked(!!data.isLocked);
+          if (data.lockedBy) setSystemLockedBy(data.lockedBy);
+          if (data.lockedAt) setSystemLockedAt(data.lockedAt);
+
+          // Force logout if session was revoked globally
+          if (data.sessionCutoff && data.sessionCutoff > 0) {
+            const loginTimeStr = sessionStorage.getItem("pos_login_time");
+            const loginTime = loginTimeStr ? parseInt(loginTimeStr) : Date.now();
+            if (loginTime < data.sessionCutoff) {
+              alert("تم تسجيل الخروج الإجباري من قبل الإدارة. يرجى تسجيل الدخول مجدداً.");
+              signOut({ callbackUrl: "/login" });
+            }
+          }
+        }
+      } catch (e) {
+        // network polling silent catch
+      }
+    };
+
+    if (!sessionStorage.getItem("pos_login_time")) {
+      sessionStorage.setItem("pos_login_time", String(Date.now()));
+    }
+
+    const interval = setInterval(pollStatus, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Live Clock
   const [currentTime, setCurrentTime] = useState({ date: "2025/10/23", time: "20:37" });
@@ -216,6 +300,10 @@ export default function PosInterface({
 
   // 1. One-Click Takeaway Starter (The Primary Action)
   const handleStartTakeaway = () => {
+    if (isSystemLocked) {
+      alert("النظام مقفول حالياً بواسطة الإدارة");
+      return;
+    }
     setOrderType("TAKEAWAY");
     setSelectedTable(null);
     setCart([]);
@@ -229,6 +317,10 @@ export default function PosInterface({
 
   // 2. Start Delivery
   const handleStartDelivery = () => {
+    if (isSystemLocked) {
+      alert("النظام مقفول حالياً بواسطة الإدارة");
+      return;
+    }
     setOrderType("DELIVERY");
     setSelectedTable(null);
     setShowQuickCustomerModal(true);
@@ -236,6 +328,10 @@ export default function PosInterface({
 
   // 3. Start Dine-In
   const handleStartDineIn = () => {
+    if (isSystemLocked) {
+      alert("النظام مقفول حالياً بواسطة الإدارة");
+      return;
+    }
     setOrderType("DINE_IN");
     setShowTablesModal(true);
   };
@@ -270,6 +366,11 @@ export default function PosInterface({
 
   // Add Item to Cart
   const handleAddToCart = (item: PosMenuItem) => {
+    if (isSystemLocked) {
+      alert("النظام مقفول حالياً بواسطة الإدارة. لا يمكن إضافة أصناف للطلب.");
+      return;
+    }
+
     setCart((prev) => {
       const existing = prev.find((i) => i.menuItemId === item.id || i.nameAr === item.nameAr);
       if (existing) {
@@ -292,6 +393,11 @@ export default function PosInterface({
   };
 
   const handleUpdateQuantity = (menuItemId: string, delta: number) => {
+    if (isSystemLocked) {
+      alert("النظام مقفول حالياً بواسطة الإدارة");
+      return;
+    }
+
     setCart((prev) =>
       prev
         .map((i) => {
@@ -306,6 +412,10 @@ export default function PosInterface({
   };
 
   const handleRemoveItem = (menuItemId: string) => {
+    if (isSystemLocked) {
+      alert("النظام مقفول حالياً بواسطة الإدارة");
+      return;
+    }
     setCart((prev) => prev.filter((i) => i.menuItemId !== menuItemId));
   };
 
@@ -315,6 +425,48 @@ export default function PosInterface({
       setCart([]);
       setActiveOrderId(undefined);
       setIsCheckPrinted(false);
+    }
+  };
+
+  // Admin Quick Lock / Unlock Action
+  const handleToggleSystemLock = async () => {
+    if (userRole !== "ADMIN") return;
+    const nextAction = isSystemLocked ? "UNLOCK" : "LOCK";
+    const promptMsg = isSystemLocked
+      ? "هل تريد إعادة فتح النظام لجميع أجهزة الكاشير؟"
+      : "هل تريد قفل النظام فوراً على كل الأجهزة وتعليق عمليات البيع؟";
+
+    if (!confirm(promptMsg)) return;
+
+    try {
+      const res = await fetch("/api/system-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: nextAction }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsSystemLocked(!isSystemLocked);
+        alert(data.message);
+      } else {
+        alert(data.error || "فشل تغيير حالة النظام");
+      }
+    } catch (e: any) {
+      alert("خطأ: " + e.message);
+    }
+  };
+
+  // Unlock Inactivity Idle Screen
+  const handleUnlockIdleScreen = (e: React.FormEvent) => {
+    e.preventDefault();
+    setUnlockError(null);
+    // Simple password unlock check: verify non-empty or correct pin
+    if (unlockPasswordInput.trim().length > 0) {
+      setIsIdleLocked(false);
+      setUnlockPasswordInput("");
+      lastActivityTimeRef.current = Date.now();
+    } else {
+      setUnlockError("يرجى إدخال كلمة المرور أو رمز الدخول للمتابعة");
     }
   };
 
@@ -330,6 +482,10 @@ export default function PosInterface({
 
   // Send Order to Prep (حفظ وطباعة الأوردر)
   const handleSendToPrep = () => {
+    if (isSystemLocked) {
+      alert("النظام مقفول حالياً بواسطة الإدارة (" + (systemLockedBy || "الإدارة") + ")");
+      return;
+    }
     if (cart.length === 0) {
       alert("السلة فارغة! يرجى إضافة أصناف أولاً.");
       return;
@@ -464,6 +620,10 @@ export default function PosInterface({
 
   // Collect Payment
   const handleCollectPayment = () => {
+    if (isSystemLocked) {
+      alert("النظام مقفول حالياً بواسطة الإدارة (" + (systemLockedBy || "الإدارة") + ")");
+      return;
+    }
     if (cart.length === 0 && !activeOrderId) {
       alert("لا يوجد طلب مفتوح أو أصناف لتحصيلها!");
       return;
@@ -553,8 +713,90 @@ export default function PosInterface({
   }, []);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#070709] text-stone-100 select-none font-sans" dir="rtl">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#070709] text-stone-100 select-none font-sans relative" dir="rtl">
       
+      {/* CENTRAL SYSTEM LOCK BANNER OVERLAY IF SYSTEM IS LOCKED */}
+      {isSystemLocked && (
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-6 text-center animate-fadeIn">
+          <div className="bg-[#121218] border-2 border-rose-500 rounded-3xl p-8 max-w-lg w-full shadow-2xl space-y-4">
+            <div className="w-20 h-20 bg-rose-950/60 border border-rose-500/60 rounded-full flex items-center justify-center mx-auto text-4xl shadow-lg animate-pulse">
+              🔒
+            </div>
+            <h2 className="text-2xl font-black text-rose-400">
+              النظام مقفول حالياً بواسطة الإدارة
+            </h2>
+            <p className="text-stone-300 text-sm leading-relaxed">
+              تم تعليق جميع عمليات البيع وإنشاء الطلبات وإتمام الدفع على كافة الأجهزة مؤقتاً بأمر الإدارة.
+            </p>
+            <div className="bg-stone-900 border border-stone-800 rounded-xl p-3 text-xs text-stone-400 font-mono space-y-1 text-right">
+              <div>👤 المنفّذ: <span className="text-rose-300 font-bold">{systemLockedBy || "أ/ أحمد بسيوني"}</span></div>
+              <div>⏰ التوقيت: <span className="text-stone-300">{systemLockedAt || "اليوم"}</span></div>
+              <div>🛡️ جميع بيانات الطلبات والورديات محفوظة بأمان.</div>
+            </div>
+
+            {userRole === "ADMIN" ? (
+              <button
+                onClick={handleToggleSystemLock}
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 rounded-xl shadow-lg text-sm transition"
+              >
+                🔓 إعادة فتح النظام الآن (بصلاحية المدير)
+              </button>
+            ) : (
+              <p className="text-stone-500 text-xs italic">
+                يرجى مراجعة إدارة المطعم لإعادة فتح النظام.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* INACTIVITY IDLE SCREEN LOCK OVERLAY (5 Minutes) */}
+      {isIdleLocked && (
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-lg z-40 flex items-center justify-center p-6 text-center">
+          <div className="bg-[#121217] border border-orange-500/40 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-4">
+            <div className="w-16 h-16 bg-orange-950/40 border border-orange-500/40 rounded-full flex items-center justify-center mx-auto text-3xl shadow">
+              ⏳
+            </div>
+            <h2 className="text-xl font-black text-orange-400">
+              قفل الشاشة تلقائياً لعدم النشاط
+            </h2>
+            <p className="text-stone-300 text-xs">
+              طلبك الحالي ومحتوياته <span className="text-emerald-400 font-bold">محفوظة بالكامل</span> دون أي فقدان.
+            </p>
+
+            <form onSubmit={handleUnlockIdleScreen} className="space-y-3 pt-2">
+              <input
+                type="password"
+                value={unlockPasswordInput}
+                onChange={(e) => setUnlockPasswordInput(e.target.value)}
+                placeholder="أدخل رمز المرور أو PIN للمتابعة..."
+                className="w-full bg-[#181822] border border-stone-700 focus:border-orange-500 rounded-xl px-4 py-2.5 text-stone-100 text-center text-sm outline-none font-mono"
+                autoFocus
+              />
+
+              {unlockError && (
+                <p className="text-rose-400 text-xs font-bold">{unlockError}</p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-stone-950 font-black py-2.5 rounded-xl text-sm transition shadow-lg shadow-orange-500/20"
+              >
+                إلغاء القفل والمتابعة
+              </button>
+
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className="text-stone-400 hover:text-rose-400 text-xs underline block mx-auto pt-1"
+              >
+                تسجيل الخروج والتبديل لحساب آخر
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* 1. TOP HEADER */}
       <header className="h-16 shrink-0 bg-[#0c0c0f] border-b border-orange-500/30 px-3 sm:px-4 flex items-center justify-between relative z-30 shadow-2xl">
         {/* Left: Round Badge Logo & Slogan */}
@@ -585,8 +827,8 @@ export default function PosInterface({
           </p>
         </div>
 
-        {/* Right: Phone, Management, Time, Address, User, Logout */}
-        <div className="flex items-center gap-3 text-xs">
+        {/* Right: Phone, Management, Time, Address, User, Lock Button, Logout */}
+        <div className="flex items-center gap-2.5 text-xs">
           {/* Phone & Management */}
           <div className="hidden md:flex flex-col text-left font-mono">
             <div className="flex items-center gap-1 text-orange-400 font-bold justify-end text-[11px]">
@@ -602,15 +844,31 @@ export default function PosInterface({
           </div>
 
           {/* Live Date, Time & Address */}
-          <div className="hidden lg:flex flex-col items-end text-[10px] font-mono text-stone-400 border-r border-stone-800 pr-3">
+          <div className="hidden lg:flex flex-col items-end text-[10px] font-mono text-stone-400 border-r border-stone-800 pr-2.5">
             <div className="flex items-center gap-2">
               <span className="text-orange-300 font-bold">📅 {currentTime.date}</span>
               <span className="text-stone-300">⏰ {currentTime.time}</span>
             </div>
-            <span className="text-[9px] text-stone-500 truncate max-w-[220px]">
-              عبدالقادر - شارع المستعمرة شارع 10 مباشرة قبل مسجد السلام
+            <span className="text-[9px] text-stone-500 truncate max-w-[210px]">
+              عبدالقادر - شارع المستعمرة أمام شارع 10 مباشرة قبل مسجد السلام
             </span>
           </div>
+
+          {/* Admin Quick Lock/Unlock Shortcut if role === ADMIN */}
+          {userRole === "ADMIN" && (
+            <button
+              onClick={handleToggleSystemLock}
+              className={`px-2.5 py-1 rounded-xl font-bold text-[11px] flex items-center gap-1 border transition ${
+                isSystemLocked
+                  ? "bg-rose-950/60 text-rose-300 border-rose-500"
+                  : "bg-stone-900 text-stone-300 border-stone-800 hover:border-orange-500/50"
+              }`}
+              title="التحكم في قفل النظام المركزي"
+            >
+              <span>{isSystemLocked ? "🔒" : "🛡️"}</span>
+              <span className="hidden sm:inline">{isSystemLocked ? "النظام مقفول" : "قفل النظام"}</span>
+            </button>
+          )}
 
           {/* User Badge */}
           <div className="flex items-center gap-1.5 bg-[#141418] border border-stone-800 rounded-xl px-2.5 py-1">

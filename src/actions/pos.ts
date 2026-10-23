@@ -1,4 +1,5 @@
 "use server";
+import { getSystemLockState } from "@/lib/system-lock";
 
 import { prisma } from "@/lib/prisma";
 import { OrderStatus, TableStatus, TableType } from "@prisma/client";
@@ -164,6 +165,13 @@ async function resolveTableId(tableId?: string, orderType?: string) {
 // 2. Action A: Send to Prep (حفظ وطباعة الأوردر -> Saves order as OPEN)
 export async function sendOrderToPrep(payload: OrderPayload) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) {
+      return {
+        error: "النظام مقفول حالياً بواسطة الإدارة (" + (lockState.lockedBy || "المدير") + "). يرجى التواصل مع الإدارة لإعادة فتح النظام.",
+      };
+    }
+
     const {
       orderId,
       items,
@@ -321,6 +329,13 @@ export async function sendOrderToPrep(payload: OrderPayload) {
 // 3. Action B: Collect Payment (تحصيل -> Changes status to PAID)
 export async function collectOrderPayment(payload: OrderPayload) {
   try {
+    const lockState = await getSystemLockState();
+    if (lockState.isLocked) {
+      return {
+        error: "النظام مقفول حالياً بواسطة الإدارة (" + (lockState.lockedBy || "المدير") + "). يرجى التواصل مع الإدارة لإعادة فتح النظام.",
+      };
+    }
+
     const {
       orderId,
       items,

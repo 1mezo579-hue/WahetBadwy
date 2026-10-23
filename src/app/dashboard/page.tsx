@@ -1,10 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { TableStatus } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { getSystemLockState } from "@/lib/system-lock";
+import SystemSecurityControl from "@/components/admin/system-security-control";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+  const userName = session?.user?.name || "المدير";
+  const userRole = (session?.user as any)?.role || "CASHIER";
+
   // Fetch real counts from DB
   const [
     totalTables,
@@ -12,16 +20,14 @@ export default async function DashboardPage() {
     totalMenuItems,
     totalRawMaterials,
     lowStockMaterials,
-    kitchenEquipment,
-    baristaEquipment,
+    lockState,
   ] = await Promise.all([
     prisma.diningTable.count().catch(() => 28),
     prisma.diningTable.count({ where: { status: TableStatus.AVAILABLE } }).catch(() => 28),
     prisma.menuItem.count().catch(() => 0),
     prisma.rawMaterial.count().catch(() => 0),
     prisma.rawMaterial.count({ where: { currentStock: { lte: 10 } } }).catch(() => 0),
-    prisma.equipment.count({ where: { type: "KITCHEN" } }).catch(() => 0),
-    prisma.equipment.count({ where: { type: "BARISTA" } }).catch(() => 0),
+    getSystemLockState(),
   ]);
 
   const cards = [
@@ -40,7 +46,7 @@ export default async function DashboardPage() {
     {
       title: "قائمة الطعام والوصفات",
       value: `${totalMenuItems} صنف`,
-      subtext: "معيار المكونات والوصفات المربوطة",
+      subtext: "أصناف المشويات والصواني والوجبات",
       href: "/dashboard/menu",
       color: "from-amber-500 to-amber-600",
       icon: (
@@ -62,15 +68,14 @@ export default async function DashboardPage() {
       ),
     },
     {
-      title: "معدات المطبخ والباريستا",
-      value: `${kitchenEquipment + baristaEquipment} أجهزة`,
-      subtext: `${kitchenEquipment} مطبخ • ${baristaEquipment} كافيه وباريستا`,
-      href: "/dashboard/equipment",
+      title: "العملاء والدليفري",
+      value: "سجل العملاء",
+      subtext: "إدارة طلبات التوصيل والهواتف",
+      href: "/dashboard/customers",
       color: "from-violet-600 to-purple-600",
       icon: (
         <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
       ),
     },
@@ -79,20 +84,31 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-l from-primary-900 via-primary-800 to-primary-950 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-l from-stone-900 via-stone-950 to-black rounded-2xl p-6 sm:p-8 text-white shadow-xl border border-orange-500/30 relative overflow-hidden">
         <div className="relative z-10 max-w-2xl">
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-400 text-primary-950 mb-3">
-            مشويات بسوني • طعم زمان على أصوله
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-orange-500 text-stone-950 mb-3 shadow-md">
+            مشويات بسيوني • MASHWEYAT BASIONY
           </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold mb-2">
+          <h1 className="text-2xl sm:text-3xl font-black mb-2 text-stone-100">
             لوحة الإدارة والتشغيل (Admin Dashboard)
           </h1>
-          <p className="text-primary-200 text-sm leading-relaxed">
-            مرحباً بك في نظام إدارة وتجهيز العمليات لمطعم وكافيه مشويات بسوني.
+          <p className="text-stone-300 text-sm leading-relaxed">
+            مرحباً بك في نظام إدارة وتجهيز العمليات لمطعم مشويات بسيوني — إدارة: أ/ أحمد بسيوني.
           </p>
         </div>
-        <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-orange-500/15 rounded-full blur-2xl pointer-events-none" />
       </div>
+
+      {/* ADMIN CENTRAL SECURITY & SYSTEM LOCK COMPONENT */}
+      {userRole === "ADMIN" && (
+        <SystemSecurityControl
+          initialLocked={lockState.isLocked}
+          initialLockedBy={lockState.lockedBy}
+          initialLockedAt={lockState.lockedAt}
+          initialLogs={lockState.logs}
+          userName={userName}
+        />
+      )}
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -100,69 +116,70 @@ export default async function DashboardPage() {
           <Link
             key={idx}
             href={card.href}
-            className="group block bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+            className="group block bg-stone-900 rounded-2xl p-6 border border-stone-800 hover:border-orange-500/40 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
           >
             <div className="flex items-center justify-between mb-4">
               <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${card.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
                 {card.icon}
               </div>
-              <span className="text-slate-400 group-hover:text-primary-700 transition">
+              <span className="text-stone-500 group-hover:text-orange-400 transition">
                 <svg className="w-5 h-5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </span>
             </div>
-            <h3 className="text-slate-500 text-sm font-semibold mb-1">{card.title}</h3>
-            <p className="text-2xl font-black text-slate-800 tracking-tight">{card.value}</p>
+            <h3 className="text-stone-400 text-sm font-semibold mb-1">{card.title}</h3>
+            <p className="text-2xl font-black text-stone-100 tracking-tight">{card.value}</p>
+            <p className="text-xs text-stone-500 mt-1">{card.subtext}</p>
           </Link>
         ))}
       </div>
 
       {/* Quick Launchpad */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-        <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+      <div className="bg-stone-900 rounded-2xl p-6 border border-stone-800 shadow-sm">
+        <h2 className="text-base font-bold text-stone-100 mb-4 flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
           الوصول السريع للأقسام
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <Link
             href="/pos"
-            className="p-4 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-amber-950 text-xs shadow-sm"
+            className="p-4 rounded-xl border border-orange-500/30 bg-orange-950/20 hover:bg-orange-900/30 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-orange-400 text-xs shadow-sm"
           >
             <span className="text-2xl">💻</span>
             <span>نقطة البيع (POS)</span>
           </Link>
           <Link
             href="/dashboard/tables"
-            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-slate-800 text-xs shadow-sm"
+            className="p-4 rounded-xl border border-stone-800 bg-[#16161e] hover:bg-stone-800 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-stone-200 text-xs shadow-sm"
           >
             <span className="text-2xl">🪑</span>
             <span>إدارة الطاولات</span>
           </Link>
           <Link
             href="/dashboard/menu"
-            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-slate-800 text-xs shadow-sm"
+            className="p-4 rounded-xl border border-stone-800 bg-[#16161e] hover:bg-stone-800 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-stone-200 text-xs shadow-sm"
           >
             <span className="text-2xl">📖</span>
             <span>قائمة الطعام والوصفات</span>
           </Link>
           <Link
             href="/dashboard/customers"
-            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-slate-800 text-xs shadow-sm"
+            className="p-4 rounded-xl border border-stone-800 bg-[#16161e] hover:bg-stone-800 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-stone-200 text-xs shadow-sm"
           >
             <span className="text-2xl">🛵</span>
             <span>العملاء والدليفري</span>
           </Link>
           <Link
             href="/dashboard/staff"
-            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-slate-800 text-xs shadow-sm"
+            className="p-4 rounded-xl border border-stone-800 bg-[#16161e] hover:bg-stone-800 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-stone-200 text-xs shadow-sm"
           >
             <span className="text-2xl">👥</span>
             <span>الموظفين والورديات</span>
           </Link>
           <Link
             href="/dashboard/reports"
-            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-slate-800 text-xs shadow-sm"
+            className="p-4 rounded-xl border border-stone-800 bg-[#16161e] hover:bg-stone-800 transition flex flex-col items-center justify-center text-center gap-2 font-bold text-stone-200 text-xs shadow-sm"
           >
             <span className="text-2xl">📊</span>
             <span>التقارير المالية</span>
