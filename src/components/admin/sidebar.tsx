@@ -129,10 +129,8 @@ export default function AdminSidebar({ user }: SidebarProps) {
       {/* Mobile Top Header */}
       <div className="lg:hidden flex items-center justify-between bg-primary-900 text-white p-4 sticky top-0 z-40 shadow-md">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center font-bold text-white shadow">
-            مب
-          </div>
-          <span className="font-bold text-lg">مشويات بسوني - لوحة الإدارة</span>
+          <img src="/logo.png" alt="مشويات بسيوني" className="w-8 h-8 rounded-lg object-contain shadow bg-black" />
+          <span className="font-bold text-lg">مشويات بسيوني - لوحة الإدارة</span>
         </div>
         <button
           onClick={() => setIsOpen(!isOpen)}
@@ -165,11 +163,9 @@ export default function AdminSidebar({ user }: SidebarProps) {
       >
         {/* Brand Header */}
         <div className="p-5 border-b border-primary-800/60 flex items-center gap-3 bg-stone-950/60">
-          <div className="w-12 h-12 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 rounded-xl flex items-center justify-center font-black text-xl text-stone-950 shadow-lg ring-2 ring-amber-400/40">
-            مب
-          </div>
+          <img src="/logo.png" alt="مشويات بسيوني" className="w-12 h-12 rounded-xl object-contain shadow-lg ring-2 ring-orange-500/40 bg-black" />
           <div>
-            <h1 className="font-extrabold text-lg tracking-tight text-amber-400">مشويات بسوني</h1>
+            <h1 className="font-extrabold text-lg tracking-tight text-amber-400">مشويات بسيوني</h1>
             <p className="text-[11px] text-amber-200/80 font-medium">طعم زمان على أصوله</p>
             <p className="text-[10px] text-stone-400 font-mono mt-0.5">📞 01558962994</p>
           </div>

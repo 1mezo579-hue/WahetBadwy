@@ -67,6 +67,45 @@ export async function getPosData() {
 }
 
 // Helper to deduct raw materials based on recipes when an order is placed
+// Helper to ensure any ordered item exists in database without foreign key failure
+async function ensureMenuItemsExist(items: CartItemInput[]) {
+  try {
+    const defaultCategory = await prisma.category.findFirst({
+      orderBy: { order: "asc" },
+    });
+    const defaultCatId = defaultCategory?.id;
+
+    for (const item of items) {
+      if (!item.menuItemId) continue;
+      const existing = await prisma.menuItem.findUnique({
+        where: { id: item.menuItemId },
+      });
+      if (!existing) {
+        const byName = await prisma.menuItem.findFirst({
+          where: { nameAr: item.nameAr },
+        });
+        if (byName) {
+          item.menuItemId = byName.id;
+        } else if (defaultCatId) {
+          const created = await prisma.menuItem.create({
+            data: {
+              id: item.menuItemId,
+              name: item.nameAr,
+              nameAr: item.nameAr,
+              price: item.price,
+              categoryId: defaultCatId,
+              active: true,
+            },
+          });
+          item.menuItemId = created.id;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("ensureMenuItemsExist note:", e);
+  }
+}
+
 async function deductInventoryForItems(items: CartItemInput[]) {
   try {
     const itemIds = items.map((i) => i.menuItemId);
@@ -140,6 +179,8 @@ export async function sendOrderToPrep(payload: OrderPayload) {
     if (!items || items.length === 0) {
       return { error: "يرجى إضافة أصناف للطلب" };
     }
+
+    await ensureMenuItemsExist(items);
 
     const resolvedTableId = await resolveTableId(payload.tableId, orderType);
 
@@ -315,6 +356,7 @@ export async function collectOrderPayment(payload: OrderPayload) {
 
     // If order was not sent to prep yet, save it directly as PAID
     if (!targetOrderId && items && items.length > 0) {
+      await ensureMenuItemsExist(items);
       const subtotal = items.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0

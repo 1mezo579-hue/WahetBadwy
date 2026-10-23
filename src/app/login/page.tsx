@@ -45,29 +45,25 @@ export default function LoginPage() {
       <div className="bg-stone-900/90 border border-amber-500/30 rounded-3xl shadow-2xl p-8 sm:p-10 w-full max-w-md relative backdrop-blur-md">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-amber-500/20 ring-2 ring-amber-400/40">
-            <span className="text-stone-950 font-black text-2xl tracking-tighter">
-              مب
-            </span>
-          </div>
+          <div className="mx-auto w-24 h-24 mb-3 flex items-center justify-center"><img src="/logo.png" alt="مشويات بسيوني" className="w-24 h-24 rounded-full object-contain shadow-xl ring-2 ring-orange-500/50 bg-black" /></div>
           <h1 className="text-3xl font-black text-amber-400 mb-1">
-            مشويات بسوني
+            مشويات بسيوني
           </h1>
           <p className="text-amber-200/90 text-sm font-semibold">
-            طعم زمان على أصوله
+            طعم زمان على أصوله • MASHWEYAT BASIONY
           </p>
           <p className="text-stone-400 text-xs mt-1">
-            أكلنا يلم يجمع الصحاب • نظام الكاشير ونقاط البيع
+            إدارة: أ/ أحمد بسيوني (Ahmed Basiouny) • نظام الكاشير ونقاط البيع
           </p>
         </div>
 
         {/* Location & Hotline Badge */}
         <div className="bg-stone-950/80 border border-stone-800 rounded-xl p-2.5 mb-6 text-center text-xs space-y-1">
           <p className="text-amber-300 font-mono font-bold">
-            📞 خدمة التوصيل: 01558962994
+            📞 خدمة التوصيل: 01038029714
           </p>
           <p className="text-stone-400 text-[11px]">
-            📍 عبد القادر - جامع السلام - المستعمرة
+            📍 عبدالقادر - شارع المستعمرة أمام شارع 10 مباشرة قبل مسجد السلام
           </p>
         </div>
 
@@ -138,7 +134,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-[10px] text-stone-500 mt-6">
-          مشويات بسوني - جميع الحقوق محفوظة © {new Date().getFullYear()}
+          مشويات بسيوني - جميع الحقوق محفوظة © {new Date().getFullYear()}
         </p>
       </div>
     </div>
