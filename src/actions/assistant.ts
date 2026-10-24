@@ -36,6 +36,16 @@ export interface AssistantResponse {
 export async function askAmoBasiony(userQuery: string): Promise<AssistantResponse> {
   const query = (userQuery || "").trim().toLowerCase();
   
+  // 0. Security & Role Isolation: Verify session before accessing operational data
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return {
+      answer: "يا مرحب بيك في مشويات بسيوني! يرجى تسجيل الدخول أولاً في النظام عشان أقدر أعرضلك تفاصيل الوردية والمبيعات والمخزون الحية.",
+      category: "general",
+      quickSuggestions: ["تسجيل الدخول للنظام"],
+    };
+  }
+  
   // 1. Gather Real-Time Operational Context from Database safely
   let snapshot: AmoBasionySnapshot = {
     todaySales: 0,
@@ -130,12 +140,19 @@ export async function askAmoBasiony(userQuery: string): Promise<AssistantRespons
   let answer = "";
   let category: AssistantResponse["category"] = "general";
 
-  const isSalesQuery = query.includes("مبيع") || query.includes("فلوس") || query.includes("إيراد") || query.includes("حساب") || query.includes("درج") || query.includes("شيك");
+  const isShiftQuery = query.includes("وردية") || query.includes("قفل") || query.includes("جرد") || query.includes("عجز") || query.includes("زيادة");
   const isStockQuery = query.includes("مخزون") || query.includes("لحم") || query.includes("نواقص") || query.includes("خامات") || query.includes("بضاعة") || query.includes("تتبيل");
   const isMenuQuery = query.includes("منيو") || query.includes("صنف") || query.includes("كباب") || query.includes("كفتة") || query.includes("طلب") || query.includes("أكتر");
-  const isShiftQuery = query.includes("وردية") || query.includes("قفل") || query.includes("جرد") || query.includes("عجز") || query.includes("زيادة");
+  const isSalesQuery = query.includes("مبيع") || query.includes("فلوس") || query.includes("إيراد") || query.includes("حساب") || query.includes("درج") || query.includes("شيك");
 
-  if (isSalesQuery) {
+  if (isShiftQuery) {
+    category = "cashier";
+    answer = `بص يا فنان، قفلة الوردية دي أمانة وقانون:
+1. **عِد النقدية في الدرج بتركيز تام** قبل ما تدخل رقم الفعلي في السيستم.
+2. **شيكات الدليفري المعلقة** لازم تتقفل مع الطيارين ويتسجل تحصيلها.
+3. **أي مصروف طارئ** (شراء خضار، بيبسي، فحم، نظافة) لازم يتسجل فوري باسم المستلم عشان ميعملش عجز وهمي في الدرج.
+4. اطبع فوراً **تقرير الـ Z-Report** وخلي المستلم والكاشير يوقعوا عليه.`;
+  } else if (isSalesQuery) {
     category = "sales";
     const avgOrder = snapshot.todayOrdersCount > 0 ? (snapshot.todaySales / snapshot.todayOrdersCount).toFixed(1) : "0";
     answer = `يا هلا بيك يا معلم! مبيعات مشويات بسيوني النهاردة حتى اللحظة عاملة **${snapshot.todaySales.toLocaleString("ar-EG")} ج.م** من إجمالي **${snapshot.todayOrdersCount} طلب مسدد**.

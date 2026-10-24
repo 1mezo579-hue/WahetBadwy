@@ -522,7 +522,14 @@ export async function refundOrDeleteOrder(orderId: string, reason?: string) {
     }
 
     const session = await getServerSession(authOptions);
-    const userName = session?.user?.name || "المدير";
+    if (!session || !session.user) {
+      return { error: "غير مصرح: يجب تسجيل الدخول لتنفيذ هذا الإجراء." };
+    }
+    const userRole = (session.user as any).role;
+    if (userRole !== "ADMIN" && userRole !== "MANAGER") {
+      return { error: "عذراً، حذف الفواتير وتعديل المخزون مقصور على الإدارة (المدير العام أو مدير الصالة) فقط." };
+    }
+    const userName = session.user.name || "المدير";
 
     if (!orderId) return { error: "معرف الطلب غير محدد" };
 
