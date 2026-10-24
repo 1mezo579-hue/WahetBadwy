@@ -510,7 +510,7 @@ export async function triggerTestPrint(cashierName: string = "كاشير مشو�
     orderNumber: 101,
     orderType: "DINE_IN",
     items: [
-      { nameAr: "شاي بدوي زرد بالنعناع", quantity: 2, price: 20 },
+      { nameAr: "كباب وكفتة مشكل بسيوني", quantity: 2, price: 220 },
       { nameAr: "مندي لحم بلدي مشويات بسيوني", quantity: 1, price: 350 },
       { nameAr: "مياه معدنية صغيرة", quantity: 1, price: 10 },
     ],
