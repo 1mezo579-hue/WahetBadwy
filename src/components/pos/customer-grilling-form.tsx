@@ -457,26 +457,26 @@ export default function CustomerGrillingForm({
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Buttons with double-click guard */}
           <div className="grid grid-cols-2 gap-2.5 pt-2">
             <button
               type="button"
               disabled={isSubmitting}
               onClick={() => handleFormSubmit("PREP")}
-              className="py-3 bg-gradient-to-r from-stone-800 to-stone-900 hover:from-stone-700 hover:to-stone-800 text-white font-black rounded-2xl text-xs border border-orange-500/40 shadow transition flex items-center justify-center gap-1.5"
+              className="py-3 bg-gradient-to-r from-stone-800 to-stone-900 hover:from-stone-700 hover:to-stone-800 text-white font-black rounded-2xl text-xs border border-orange-500/40 shadow transition flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span>🔥</span>
-              <span>حفظ وتوجيه للشواية</span>
+              <span>{isSubmitting ? "جاري الإرسال..." : "حفظ وتوجيه للشواية"}</span>
             </button>
 
             <button
               type="button"
               disabled={isSubmitting}
               onClick={() => handleFormSubmit("PAY")}
-              className="py-3 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-500 hover:from-orange-600 hover:to-amber-600 text-stone-950 font-black rounded-2xl text-xs shadow-lg shadow-orange-500/30 transition flex items-center justify-center gap-1.5"
+              className="py-3 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-500 hover:from-orange-600 hover:to-amber-600 text-stone-950 font-black rounded-2xl text-xs shadow-lg shadow-orange-500/30 transition flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span>💵</span>
-              <span>تحصيل نقدي وتسليم</span>
+              <span>{isSubmitting ? "جاري التحصيل..." : "تحصيل نقدي وتسليم"}</span>
             </button>
           </div>
         </div>

@@ -11,6 +11,7 @@ export interface CartItemInput {
   price: number;
   quantity: number;
   notes?: string;
+  isCustomerMeat?: boolean;
 }
 
 export interface OrderPayload {
@@ -184,7 +185,7 @@ export async function sendOrderToPrep(payload: OrderPayload) {
 
     const {
       orderId,
-      items,
+      items = [],
       notes,
       orderType = "DINE_IN",
       customerId,
@@ -194,11 +195,18 @@ export async function sendOrderToPrep(payload: OrderPayload) {
       deliveryFee = 0,
     } = payload;
 
-    if (!items || items.length === 0) {
+    const isGrillOrder =
+      payload.orderKind === "CUSTOMER_GRILL" ||
+      (payload.grillingFee !== undefined && Number(payload.grillingFee) > 0);
+
+    // Regular orders require at least 1 item; customer grilling can have 0 add-ons
+    if (!isGrillOrder && (!items || items.length === 0)) {
       return { error: "يرجى إضافة أصناف للطلب" };
     }
 
-    await ensureMenuItemsExist(items);
+    if (items && items.length > 0) {
+      await ensureMenuItemsExist(items);
+    }
 
     const resolvedTableId = await resolveTableId(payload.tableId, orderType);
 
@@ -219,11 +227,13 @@ export async function sendOrderToPrep(payload: OrderPayload) {
     const isComplimentary =
       table?.type === TableType.OWNER || table?.type === TableType.MANAGER;
 
-    const subtotal = items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
+    const grillingFee = isGrillOrder ? (Number(payload.grillingFee) || 0) : 0;
+    const itemsTotal = (items || []).reduce(
+      (sum, item) => sum + (item.isCustomerMeat ? 0 : item.price * item.quantity),
       0
     );
     const finalDeliveryFee = orderType === "DELIVERY" ? (Number(deliveryFee) || 0) : 0;
+    const subtotal = grillingFee + itemsTotal;
     const discount = isComplimentary ? (subtotal + finalDeliveryFee) : 0;
     const totalAmount = isComplimentary ? 0 : (subtotal + finalDeliveryFee);
 
@@ -243,6 +253,14 @@ export async function sendOrderToPrep(payload: OrderPayload) {
           totalAmount,
           isComplimentary,
           orderType: orderType as any,
+          ...(payload.orderKind ? { orderKind: payload.orderKind } : {}),
+          ...(payload.customerMeatWeight !== undefined ? { customerMeatWeight: payload.customerMeatWeight } : {}),
+          ...(payload.cookedWeight !== undefined ? { cookedWeight: payload.cookedWeight } : {}),
+          ...(payload.grillingFee !== undefined ? { grillingFee: payload.grillingFee } : {}),
+          ...(payload.meatType ? { meatType: payload.meatType } : {}),
+          ...(payload.pricingMode ? { pricingMode: payload.pricingMode } : {}),
+          ...(payload.expectedPickupTime ? { expectedPickupTime: payload.expectedPickupTime } : {}),
+          ...(payload.workflowStatus ? { workflowStatus: payload.workflowStatus } : {}),
           customerId: customerId || null,
           customerName: customerName || null,
           customerPhone: customerPhone || null,
@@ -252,7 +270,7 @@ export async function sendOrderToPrep(payload: OrderPayload) {
           shiftId: activeShift?.id || null,
           status: OrderStatus.OPEN,
           items: {
-            create: items.map((i) => ({
+            create: (items || []).map((i) => ({
               menuItemId: i.menuItemId,
               quantity: i.quantity,
               unitPrice: i.price,
@@ -277,6 +295,27 @@ export async function sendOrderToPrep(payload: OrderPayload) {
           totalAmount,
           isComplimentary,
           orderType: orderType as any,
+          orderKind: payload.orderKind || (isGrillOrder ? "CUSTOMER_GRILL" : "NORMAL"),
+          customerMeatWeight: payload.customerMeatWeight || null,
+          cookedWeight: payload.cookedWeight || null,
+          grillingFee: isGrillOrder ? grillingFee : null,
+          meatType: payload.meatType || null,
+          pricingMode: payload.pricingMode || "PER_KG",
+          expectedPickupTime: payload.expectedPickupTime || null,
+          receivedBy: payload.receivedBy || null,
+          deliveredBy: payload.deliveredBy || null,
+          workflowStatus: payload.workflowStatus || (isGrillOrder ? "RECEIVED_CUSTOMER_MEAT" : "NEW"),
+          statusHistory: isGrillOrder
+            ? [
+                {
+                  from: "NEW",
+                  to: payload.workflowStatus || "RECEIVED_CUSTOMER_MEAT",
+                  user: payload.receivedBy || "كاشير",
+                  timestamp: new Date().toISOString(),
+                  note: "استلام خامات العميل وتوجيه للشواية",
+                },
+              ]
+            : [],
           customerId: customerId || null,
           customerName: customerName || null,
           customerPhone: customerPhone || null,
@@ -286,7 +325,7 @@ export async function sendOrderToPrep(payload: OrderPayload) {
           status: OrderStatus.OPEN,
           notes,
           items: {
-            create: items.map((i) => ({
+            create: (items || []).map((i) => ({
               menuItemId: i.menuItemId,
               quantity: i.quantity,
               unitPrice: i.price,
@@ -303,7 +342,9 @@ export async function sendOrderToPrep(payload: OrderPayload) {
       });
 
       // SPRINT 5 REQUIREMENT 4: Deduct RawMaterial stock based on recipes
-      await deductInventoryForItems(items);
+      if (items && items.length > 0) {
+        await deductInventoryForItems(items);
+      }
     }
 
     // Update table status to OCCUPIED if it's a real dining table (not delivery/takeaway)
@@ -328,6 +369,8 @@ export async function sendOrderToPrep(payload: OrderPayload) {
         ? "تم حفظ الطلب وإرساله للتحضير (ضيافة - Complimentary)"
         : orderType === "DELIVERY"
         ? `تم حفظ وتوجيه طلب الدليفري للتحضير (رسوم التوصيل: ${finalDeliveryFee} ج.م)`
+        : isGrillOrder
+        ? "تم تسجيل واستلام طلب الشوي وإرسال بون التشغيل للشواية بنجاح"
         : "تم حفظ الطلب وإرساله للتحضير والطباعة بنجاح",
     };
   } catch (error: any) {
@@ -348,7 +391,7 @@ export async function collectOrderPayment(payload: OrderPayload) {
 
     const {
       orderId,
-      items,
+      items = [],
       notes,
       orderType = "DINE_IN",
       customerId,
@@ -377,15 +420,23 @@ export async function collectOrderPayment(payload: OrderPayload) {
     });
 
     let targetOrderId = orderId;
+    let targetOrder = null;
     const finalDeliveryFee = orderType === "DELIVERY" ? (Number(deliveryFee) || 0) : 0;
+    const isGrillOrder =
+      payload.orderKind === "CUSTOMER_GRILL" ||
+      (payload.grillingFee !== undefined && Number(payload.grillingFee) > 0);
 
     // If order was not sent to prep yet, save it directly as PAID
-    if (!targetOrderId && items && items.length > 0) {
-      await ensureMenuItemsExist(items);
-      const subtotal = items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
+    if (!targetOrderId && ((items && items.length > 0) || isGrillOrder)) {
+      if (items && items.length > 0) {
+        await ensureMenuItemsExist(items);
+      }
+      const grillingFee = isGrillOrder ? (Number(payload.grillingFee) || 0) : 0;
+      const itemsTotal = (items || []).reduce(
+        (sum, item) => sum + (item.isCustomerMeat ? 0 : item.price * item.quantity),
         0
       );
+      const subtotal = grillingFee + itemsTotal;
       const discount = isComplimentary ? (subtotal + finalDeliveryFee) : 0;
       const totalAmount = isComplimentary ? 0 : (subtotal + finalDeliveryFee);
 
@@ -397,6 +448,27 @@ export async function collectOrderPayment(payload: OrderPayload) {
           totalAmount,
           isComplimentary,
           orderType: orderType as any,
+          orderKind: payload.orderKind || (isGrillOrder ? "CUSTOMER_GRILL" : "NORMAL"),
+          customerMeatWeight: payload.customerMeatWeight || null,
+          cookedWeight: payload.cookedWeight || null,
+          grillingFee: isGrillOrder ? grillingFee : null,
+          meatType: payload.meatType || null,
+          pricingMode: payload.pricingMode || "PER_KG",
+          expectedPickupTime: payload.expectedPickupTime || null,
+          receivedBy: payload.receivedBy || null,
+          deliveredBy: payload.deliveredBy || null,
+          workflowStatus: payload.workflowStatus || (isGrillOrder ? "DELIVERED" : "NEW"),
+          statusHistory: isGrillOrder
+            ? [
+                {
+                  from: "NEW",
+                  to: payload.workflowStatus || "DELIVERED",
+                  user: payload.receivedBy || "كاشير",
+                  timestamp: new Date().toISOString(),
+                  note: "تحصيل فوري وتسليم خدمة شوي للغير",
+                },
+              ]
+            : [],
           customerId: customerId || null,
           customerName: customerName || null,
           customerPhone: customerPhone || null,
@@ -406,7 +478,7 @@ export async function collectOrderPayment(payload: OrderPayload) {
           status: OrderStatus.PAID,
           notes,
           items: {
-            create: items.map((i) => ({
+            create: (items || []).map((i) => ({
               menuItemId: i.menuItemId,
               quantity: i.quantity,
               unitPrice: i.price,
@@ -415,21 +487,37 @@ export async function collectOrderPayment(payload: OrderPayload) {
             })),
           },
         },
+        include: {
+          items: { include: { menuItem: true } },
+          table: true,
+          customer: true,
+        },
       });
       targetOrderId = created.id;
+      targetOrder = created;
 
-      // SPRINT 5 REQUIREMENT 4: Deduct RawMaterial stock based on recipes
-      await deductInventoryForItems(items);
+      // Deduct raw material stock for add-ons (if any)
+      if (items && items.length > 0) {
+        await deductInventoryForItems(items);
+      }
     } else if (targetOrderId) {
       // Mark existing order as PAID and update delivery fee if provided
-      await prisma.order.update({
+      const updated = await prisma.order.update({
         where: { id: targetOrderId },
         data: {
           status: OrderStatus.PAID,
           ...(finalDeliveryFee > 0 ? { deliveryFee: finalDeliveryFee } : {}),
           ...(activeShift?.id ? { shiftId: activeShift.id } : {}),
+          ...(payload.workflowStatus ? { workflowStatus: payload.workflowStatus } : {}),
+          ...(payload.deliveredBy ? { deliveredBy: payload.deliveredBy } : {}),
+        },
+        include: {
+          items: { include: { menuItem: true } },
+          table: true,
+          customer: true,
         },
       });
+      targetOrder = updated;
     } else {
       return { error: "لا يوجد طلب مفتوح للتحصيل" };
     }
@@ -450,10 +538,13 @@ export async function collectOrderPayment(payload: OrderPayload) {
 
     return {
       success: true,
+      order: targetOrder,
       message: isComplimentary
         ? "تم إغلاق طلب الضيافة بنجاح (المبلغ: 0 ج.م - ضيافة)"
         : orderType === "DELIVERY"
         ? `تم تحصيل طلب الدليفري بنجاح مع رسوم التوصيل (${finalDeliveryFee} ج.م)`
+        : isGrillOrder
+        ? "تم تحصيل رسوم الشوي وتسجيل سداد الفاتورة بنجاح"
         : "تم تسجيل الدفع وتحصيل الحساب بنجاح وإخلاء الطاولة",
     };
   } catch (error: any) {
