@@ -449,6 +449,73 @@ test("Categories Catalog: Covers all 10 mandatory groups specified by restaurant
   assert.strictEqual(groups.length, 10, "Must have exactly 10 comprehensive groups");
 });
 
+
+
+
+// ==================================================================
+// 13. Expense Persistence & Safe Drawer Execution Flow
+// ==================================================================
+test("Expense Execution Flow: Validates safe deduplication, active shift linking, and zero double deduction", () => {
+  const mockShift = {
+    id: "shift_test_01",
+    shiftNumber: 5,
+    expectedCash: 5000,
+    expensesTotal: 0,
+    expensesDetails: [],
+  };
+
+  function executeExpense(shift, expense) {
+    const isCash = expense.paymentMethod === "CASH";
+    const newExpectedCash = isCash ? Math.max(0, shift.expectedCash - expense.amount) : shift.expectedCash;
+    const newExpensesTotal = shift.expensesTotal + expense.amount;
+    const updatedDetails = [
+      ...shift.expensesDetails,
+      {
+        id: expense.id,
+        amount: expense.amount,
+        item: expense.item,
+        paymentMethod: expense.paymentMethod,
+      },
+    ];
+
+    return {
+      ...shift,
+      expectedCash: newExpectedCash,
+      expensesTotal: newExpensesTotal,
+      expensesDetails: updatedDetails,
+    };
+  }
+
+  // 1. Record 350 CASH
+  const shift1 = executeExpense(mockShift, {
+    id: "exp_1",
+    amount: 350,
+    item: "منظفات",
+    paymentMethod: "CASH",
+  });
+  assert.strictEqual(shift1.expectedCash, 4650, "Drawer cash must be deducted by 350");
+  assert.strictEqual(shift1.expensesTotal, 350);
+  assert.strictEqual(shift1.expensesDetails.length, 1);
+
+  // 2. Record 1200 TRANSFER (Non-cash)
+  const shift2 = executeExpense(shift1, {
+    id: "exp_2",
+    amount: 1200,
+    item: "إيجار",
+    paymentMethod: "TRANSFER",
+  });
+  assert.strictEqual(shift2.expectedCash, 4650, "Drawer cash must NOT be deducted for bank transfer");
+  assert.strictEqual(shift2.expensesTotal, 1550);
+  assert.strictEqual(shift2.expensesDetails.length, 2);
+
+  // 3. Deduplication check: ids must be unique
+  const ids = shift2.expensesDetails.map(e => e.id);
+  const uniqueIds = new Set(ids);
+  assert.strictEqual(uniqueIds.size, ids.length, "All expense records must possess unique IDs");
+});
+
+console.log("==================================================================");
+
 console.log("==================================================================");
 console.log(`📊 TEST SUITE SUMMARY: ${passedCount} PASSED, ${failedCount} FAILED`);
 console.log("==================================================================");

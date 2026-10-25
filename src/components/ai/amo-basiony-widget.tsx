@@ -101,6 +101,20 @@ export default function AmoBasionyWidget() {
       const res = await confirmExpenseRegistration(pending);
       const confirmTime = new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
 
+      if (!res.success) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: "b-err-" + Date.now(),
+            sender: "basiony",
+            text: res.answer || "عذراً يا فندم، تعذر تسجيل المصروف في النظام حالياً.",
+            time: confirmTime,
+            category: "expenses",
+          },
+        ]);
+        return;
+      }
+
       // Mark the original pending message as confirmed
       setMessages((prev) =>
         prev.map((m) => (m.id === msgId ? { ...m, isConfirmed: true } : m))
