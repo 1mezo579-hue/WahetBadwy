@@ -18,22 +18,46 @@ import {
   buildThermalReceiptHtml,
   silentPrintHtml,
 } from "@/utils/printer/silent-print";
-// Real-time Database-driven catalog
+import WeightModal from "@/components/pos/weight-modal";
+import CustomerGrillingForm from "@/components/pos/customer-grilling-form";
+import GrillingTrackerModal from "@/components/pos/grilling-tracker-modal";
+import { getGrillingRates, getActiveGrillingOrders } from "@/actions/grilling-service";
+import { GrillingRates } from "@/lib/grilling-calculator";
+import { buildGrillingKitchenTicketHtml, buildGrillingHandoverTicketHtml } from "@/utils/printer/silent-print";
+
+// Real-time Database-driven catalog helpers
 function getMenuItemImage(nameAr: string, categoryId?: string): string {
   const n = nameAr.toLowerCase();
   if (n.includes("كفتة")) return "/items/kofta.jpg";
   if (n.includes("طرب")) return "/items/tarb.jpg";
   if (n.includes("سجق")) return "/items/sogok.jpg";
-  if (n.includes("شيش")) return "/items/shish.jpg";
-  if (n.includes("مشكل")) return "/items/meshakel.jpg";
-  if (n.includes("فرخة") || n.includes("فراخ") || n.includes("دجاج")) return "/items/chicken.jpg";
-  if (n.includes("صينية")) return "/items/tray.jpg";
-  if (n.includes("وجبة")) return "/items/meal.jpg";
-  if (n.includes("سوري")) return "/items/syrian.jpg";
-  if (n.includes("فرنساوي") || n.includes("ساندوتش")) return "/items/sandwich.jpg";
-  if (n.includes("ممبار") || n.includes("كرشة") || n.includes("فشة") || n.includes("سقط")) return "/items/offal.jpg";
-  if (n.includes("بيبسي") || n.includes("ميرندا") || n.includes("سفن") || n.includes("مياه") || n.includes("كانز")) return "/items/drink.jpg";
-  if (n.includes("طحينة") || n.includes("سلطة") || n.includes("أرز") || n.includes("ارز") || n.includes("عيش") || n.includes("مخلل")) return "/items/sides.jpg";
+  if (n.includes("شيش")) return "/items/shish_tawook.jpg";
+  if (n.includes("مشكل") || n.includes("مكس") || n.includes("ميكس")) return "/items/mix_mashweyat.jpg";
+  if (n.includes("فرخة") || n.includes("فراخ") || n.includes("دجاج")) return "/items/meal_rob_farkha.jpg";
+  if (n.includes("صينية")) return "/items/tray_fahma.jpg";
+  if (n.includes("وجبة")) return "/items/meal_shabaan.jpg";
+  if (n.includes("سوري")) return "/items/fr_sogok.jpg";
+  if (n.includes("فرنساوي")) return "/items/sandwich_fransawi.jpg";
+  if (n.includes("ساندوتش")) return "/items/sandwich_fahm.jpg";
+  if (n.includes("ممبار")) return "/items/mombar.jpg";
+  if (n.includes("حمام")) return "/items/hamam.jpg";
+  if (n.includes("كبدة")) return "/items/kebda.jpg";
+  if (n.includes("كرشة") || n.includes("فشة") || n.includes("سقط")) return "/items/kawaresh.jpg";
+  if (n.includes("بطاطس")) return "/items/roastbeef.jpg";
+  if (n.includes("بيبسي") || n.includes("كانز") || n.includes("مياه")) return "/items/pane.jpg";
+  return "/items/kofta.jpg";
+}
+
+function getCategoryThumbnail(nameAr: string): string {
+  const n = nameAr.toLowerCase();
+  if (n.includes("مشويات")) return "/items/mix_mashweyat.jpg";
+  if (n.includes("سوري")) return "/items/fr_sogok.jpg";
+  if (n.includes("فرنساوي")) return "/items/sandwich_fransawi.jpg";
+  if (n.includes("ساندوتش") || n.includes("فحم")) return "/items/sandwich_fahm.jpg";
+  if (n.includes("فراخ")) return "/items/meal_rob_farkha.jpg";
+  if (n.includes("صواني")) return "/items/tray_fahma.jpg";
+  if (n.includes("وجبات") || n.includes("عمالة")) return "/items/meal_shabaan.jpg";
+  if (n.includes("مشروبات") || n.includes("إضافات")) return "/items/sogok.jpg";
   return "/items/kofta.jpg";
 }
 
@@ -51,12 +75,6 @@ function getCategoryIcon(nameAr: string): string {
   if (n.includes("إضافات") || n.includes("مشروبات")) return "🥤";
   return "🍽️";
 }
-import WeightModal from "@/components/pos/weight-modal";
-import CustomerGrillingForm from "@/components/pos/customer-grilling-form";
-import GrillingTrackerModal from "@/components/pos/grilling-tracker-modal";
-import { getGrillingRates, getActiveGrillingOrders } from "@/actions/grilling-service";
-import { GrillingRates } from "@/lib/grilling-calculator";
-import { buildGrillingKitchenTicketHtml, buildGrillingHandoverTicketHtml } from "@/utils/printer/silent-print";
 
 interface PosTable {
   id: string;
@@ -100,6 +118,7 @@ interface PosMenuItem {
   categoryId: string;
   description?: string | null;
   image?: string;
+  isWeighted?: boolean;
 }
 
 interface CartItem {
@@ -108,6 +127,9 @@ interface CartItem {
   price: number;
   quantity: number;
   notes?: string;
+  weightGrams?: number;
+  rawWeightGrams?: number;
+  pricePerKg?: number;
 }
 
 export default function PosInterface({
@@ -144,6 +166,7 @@ export default function PosInterface({
   const [tables, setTables] = useState<PosTable[]>(initialTables);
   const [selectedTable, setSelectedTable] = useState<PosTable | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [activeFilter, setActiveFilter] = useState<"ALL" | "BEST_SELLER" | "OFFERS">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeOrderId, setActiveOrderId] = useState<string | undefined>(undefined);
@@ -156,7 +179,7 @@ export default function PosInterface({
   const [lastCompletedReceipt, setLastCompletedReceipt] = useState<any>(null);
   const [draftNotice, setDraftNotice] = useState<boolean>(false);
 
-  // Channels: TAKEAWAY (Default & Priority), DELIVERY, DINE_IN
+  // Channels: TAKEAWAY (Default & Priority), DELIVERY, DINE_IN, CUSTOMER_GRILL
   const [orderType, setOrderType] = useState<"TAKEAWAY" | "DELIVERY" | "DINE_IN" | "CUSTOMER_GRILL">("TAKEAWAY");
   const [weightModalItem, setWeightModalItem] = useState<PosMenuItem | null>(null);
   const [showGrillingTracker, setShowGrillingTracker] = useState(false);
@@ -186,16 +209,13 @@ export default function PosInterface({
     const cat = item.categoryId;
     const name = item.nameAr.toLowerCase();
     return (
-      cat === "GRILLS" ||
+      (item as any).isWeighted ||
       cat === "cat_grills_01" ||
-      name.includes("كفتة") ||
-      name.includes("كباب") ||
-      name.includes("شيش") ||
-      name.includes("مشوي") ||
-      name.includes("ريش") ||
-      name.includes("طرب") ||
-      name.includes("سجق") ||
-      name.includes("كيلو")
+      item.description?.includes("بالوزن") ||
+      (name.includes("مشوي") &&
+        !name.includes("ساندوتش") &&
+        !name.includes("فرنساوي") &&
+        !name.includes("صينية"))
     );
   };
 
@@ -215,10 +235,10 @@ export default function PosInterface({
       ...prev,
       {
         menuItemId: item.id,
-        nameAr: `${item.nameAr} (${weightLabel})`,
+        nameAr: item.nameAr,
         price: totalPrice,
         quantity: 1,
-        notes: notes || undefined,
+        notes: notes ? `${notes} (${weightLabel})` : weightLabel,
         weightGrams: weightGrams,
         rawWeightGrams: weightGrams,
         pricePerKg: item.price,
@@ -286,13 +306,8 @@ export default function PosInterface({
         notes: params.notes,
       };
 
-      // Print Kitchen Ticket
       await silentPrintHtml(buildGrillingKitchenTicketHtml(basePrintOptions));
-
-      // Print Handover Slip
       await silentPrintHtml(buildGrillingHandoverTicketHtml(basePrintOptions));
-
-      // Print Customer Check
       await silentPrintHtml(
         buildThermalReceiptHtml({
           ...basePrintOptions,
@@ -327,40 +342,31 @@ export default function PosInterface({
   const [showTablesModal, setShowTablesModal] = useState(false);
   const [isCheckPrinted, setIsCheckPrinted] = useState(false);
   const [activeShift, setActiveShift] = useState<any>(initialShift);
-  const [showEndShiftModal, setShowEndShiftModal] = useState(false);
-  const [countedCash, setCountedCash] = useState("");
-  const [endShiftNotes, setEndShiftNotes] = useState("");
-  const [receivedBy, setReceivedBy] = useState("");
 
-  // 1. CENTRAL SYSTEM LOCKDOWN (Synced with Server)
+  // System Lock State
   const [isSystemLocked, setIsSystemLocked] = useState<boolean>(initialSystemLocked);
   const [systemLockedBy, setSystemLockedBy] = useState<string | null>(initialLockedBy || null);
   const [systemLockedAt, setSystemLockedAt] = useState<string | null>(initialLockedAt || null);
 
-  // 2. INACTIVITY AUTO-LOCK (5 Minutes)
+  // Inactivity Auto-Lock
   const [isIdleLocked, setIsIdleLocked] = useState<boolean>(false);
   const [unlockPasswordInput, setUnlockPasswordInput] = useState<string>("");
   const [unlockError, setUnlockError] = useState<string | null>(null);
-  const [idleTimeoutMinutes, setIdleTimeoutMinutes] = useState<number>(5);
   const lastActivityTimeRef = useRef<number>(Date.now());
 
-  // Listen to user activity to reset idle timer
   useEffect(() => {
     const handleUserActivity = () => {
       lastActivityTimeRef.current = Date.now();
     };
-
     window.addEventListener("mousemove", handleUserActivity);
     window.addEventListener("mousedown", handleUserActivity);
     window.addEventListener("keydown", handleUserActivity);
     window.addEventListener("touchstart", handleUserActivity);
     window.addEventListener("scroll", handleUserActivity);
 
-    // Check idle timeout every 5 seconds
     const idleCheckInterval = setInterval(() => {
       const elapsedMs = Date.now() - lastActivityTimeRef.current;
-      const timeoutMs = idleTimeoutMinutes * 60 * 1000;
-      if (elapsedMs >= timeoutMs && !isIdleLocked) {
+      if (elapsedMs >= 5 * 60 * 1000 && !isIdleLocked) {
         setIsIdleLocked(true);
       }
     }, 5000);
@@ -373,43 +379,9 @@ export default function PosInterface({
       window.removeEventListener("scroll", handleUserActivity);
       clearInterval(idleCheckInterval);
     };
-  }, [idleTimeoutMinutes, isIdleLocked]);
+  }, [isIdleLocked]);
 
-  // Poll Central System Lock & Session Validity every 5 seconds
-  useEffect(() => {
-    const pollStatus = async () => {
-      try {
-        const res = await fetch("/api/system-status");
-        if (res.ok) {
-          const data = await res.json();
-          setIsSystemLocked(!!data.isLocked);
-          if (data.lockedBy) setSystemLockedBy(data.lockedBy);
-          if (data.lockedAt) setSystemLockedAt(data.lockedAt);
-
-          // Force logout if session was revoked globally
-          if (data.sessionCutoff && data.sessionCutoff > 0) {
-            const loginTimeStr = sessionStorage.getItem("pos_login_time");
-            const loginTime = loginTimeStr ? parseInt(loginTimeStr) : Date.now();
-            if (loginTime < data.sessionCutoff) {
-              alert("تم تسجيل الخروج الإجباري من قبل الإدارة. يرجى تسجيل الدخول مجدداً.");
-              signOut({ callbackUrl: "/login" });
-            }
-          }
-        }
-      } catch (e) {
-        // network polling silent catch
-      }
-    };
-
-    if (!sessionStorage.getItem("pos_login_time")) {
-      sessionStorage.setItem("pos_login_time", String(Date.now()));
-    }
-
-    const interval = setInterval(pollStatus, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Draft Order Persistence & Recovery (Auto-save / Auto-restore)
+  // Draft Order Persistence & Recovery
   useEffect(() => {
     try {
       const savedDraft = localStorage.getItem("basiony_pos_active_cart");
@@ -455,30 +427,37 @@ export default function PosInterface({
         localStorage.removeItem("basiony_pos_active_cart");
         setDraftNotice(false);
       }
-    } catch (e) {
-      // ignore quota / silent error
-    }
+    } catch (e) {}
   }, [cart, orderType, customerName, customerPhone, deliveryAddress, deliveryFee, orderNotes]);
 
-  // Live Clock
-  const [currentTime, setCurrentTime] = useState({ date: "2025/10/23", time: "20:37" });
+  // Live Clock (Arabic format matching screenshot)
+  const [currentDateTime, setCurrentDateTime] = useState({
+    dateStr: "السبت 26 أبريل 2025",
+    timeStr: "06:42 م",
+  });
 
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      const d = String(now.getDate()).padStart(2, "0");
-      const h = String(now.getHours()).padStart(2, "0");
-      const min = String(now.getMinutes()).padStart(2, "0");
-      setCurrentTime({ date: `${y}/${m}/${d}`, time: `${h}:${min}` });
+      const dateStr = now.toLocaleDateString("ar-EG", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+      const hours = now.getHours();
+      const mins = String(now.getMinutes()).padStart(2, "0");
+      const ampm = hours >= 12 ? "م" : "ص";
+      const h12 = hours % 12 || 12;
+      const timeStr = `${ampm} ${String(h12).padStart(2, "0")}:${mins}`;
+      setCurrentDateTime({ dateStr, timeStr });
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Single Source of Truth: 100% powered by real DB menu items
+  // Single Source of Truth Menu Items
   const allMenuItems = useMemo(() => {
     return menuItems.map((dbItem) => ({
       id: dbItem.id,
@@ -487,10 +466,11 @@ export default function PosInterface({
       categoryId: dbItem.categoryId,
       description: dbItem.description,
       image: (dbItem as any).imageUrl || dbItem.image || getMenuItemImage(dbItem.nameAr, dbItem.categoryId),
+      isWeighted: isGrillItem(dbItem),
     }));
   }, [menuItems]);
 
-  // Filtered menu items by active category and search
+  // Filtered menu items
   const filteredItems = useMemo(() => {
     return allMenuItems.filter((item) => {
       const matchCat = selectedCategory === "ALL" || item.categoryId === selectedCategory;
@@ -500,11 +480,18 @@ export default function PosInterface({
         item.nameAr.toLowerCase().includes(q) ||
         (item.description && item.description.toLowerCase().includes(q));
 
+      if (activeFilter === "BEST_SELLER") {
+        return matchCat && matchSearch && (item.isWeighted || item.nameAr.includes("كفتة") || item.nameAr.includes("سجق") || item.nameAr.includes("شيش"));
+      }
+      if (activeFilter === "OFFERS") {
+        return matchCat && matchSearch && (item.categoryId === "cat_offers_01" || item.nameAr.includes("عرض") || item.nameAr.includes("وجبة"));
+      }
+
       return matchCat && matchSearch;
     });
-  }, [allMenuItems, selectedCategory, searchQuery]);
+  }, [allMenuItems, selectedCategory, searchQuery, activeFilter]);
 
-  // 1. One-Click Takeaway Starter (The Primary Action)
+  // Start Takeaway
   const handleStartTakeaway = () => {
     if (isSystemLocked) {
       alert("النظام مقفول حالياً بواسطة الإدارة");
@@ -512,16 +499,9 @@ export default function PosInterface({
     }
     setOrderType("TAKEAWAY");
     setSelectedTable(null);
-    setCart([]);
-    setActiveOrderId(undefined);
-    setIsCheckPrinted(false);
-    setCustomerName("");
-    setCustomerPhone("");
-    setDeliveryAddress("");
-    setOrderNotes("");
   };
 
-  // 2. Start Delivery
+  // Start Delivery
   const handleStartDelivery = () => {
     if (isSystemLocked) {
       alert("النظام مقفول حالياً بواسطة الإدارة");
@@ -532,7 +512,7 @@ export default function PosInterface({
     setShowQuickCustomerModal(true);
   };
 
-  // 3. Start Dine-In
+  // Start Dine-In
   const handleStartDineIn = () => {
     if (isSystemLocked) {
       alert("النظام مقفول حالياً بواسطة الإدارة");
@@ -542,7 +522,7 @@ export default function PosInterface({
     setShowTablesModal(true);
   };
 
-  // Select Table handler
+  // Select Table
   const handleSelectTable = (table: PosTable) => {
     setSelectedTable(table);
     setOrderType("DINE_IN");
@@ -573,21 +553,11 @@ export default function PosInterface({
   // Add Item to Cart
   const handleAddToCart = (item: PosMenuItem) => {
     if (isSystemLocked) {
-      alert("النظام مقفول حالياً بواسطة الإدارة. لا يمكن إضافة أصناف للطلب.");
+      alert("النظام مقفول حالياً بواسطة الإدارة");
       return;
     }
 
-    // Check if item is sold by raw weight (Grills category or explicitly marked by weight)
-    const isWeightedItem =
-      (item as any).isWeighted ||
-      item.categoryId === "cat_grills_01" ||
-      item.description?.includes("بالوزن") ||
-      (item.nameAr.includes("مشوي") &&
-        !item.nameAr.includes("ساندوتش") &&
-        !item.nameAr.includes("فرنساوي") &&
-        !item.nameAr.includes("صينية"));
-
-    if (isWeightedItem) {
+    if (item.isWeighted) {
       setWeightModalItem(item);
       return;
     }
@@ -654,39 +624,10 @@ export default function PosInterface({
     }
   };
 
-  // Admin Quick Lock / Unlock Action
-  const handleToggleSystemLock = async () => {
-    if (userRole !== "ADMIN") return;
-    const nextAction = isSystemLocked ? "UNLOCK" : "LOCK";
-    const promptMsg = isSystemLocked
-      ? "هل تريد إعادة فتح النظام لجميع أجهزة الكاشير؟"
-      : "هل تريد قفل النظام فوراً على كل الأجهزة وتعليق عمليات البيع؟";
-
-    if (!confirm(promptMsg)) return;
-
-    try {
-      const res = await fetch("/api/system-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: nextAction }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIsSystemLocked(!isSystemLocked);
-        alert(data.message);
-      } else {
-        alert(data.error || "فشل تغيير حالة النظام");
-      }
-    } catch (e: any) {
-      alert("خطأ: " + e.message);
-    }
-  };
-
   // Unlock Inactivity Idle Screen
   const handleUnlockIdleScreen = (e: React.FormEvent) => {
     e.preventDefault();
     setUnlockError(null);
-    // Simple password unlock check: verify non-empty or correct pin
     if (unlockPasswordInput.trim().length > 0) {
       setIsIdleLocked(false);
       setUnlockPasswordInput("");
@@ -710,7 +651,7 @@ export default function PosInterface({
   const parsedAmountPaid = parseFloat(amountPaidInput) || 0;
   const changeDue = paymentMethod === "CASH" && parsedAmountPaid > totalAmount ? parsedAmountPaid - totalAmount : 0;
 
-  // Send Order to Prep (حفظ وطباعة الأوردر)
+  // Send Order to Prep (Kitchen Ticket - Zero financial details)
   const handleSendToPrep = () => {
     if (isSystemLocked) {
       alert("النظام مقفول حالياً بواسطة الإدارة (" + (systemLockedBy || "الإدارة") + ")");
@@ -740,23 +681,6 @@ export default function PosInterface({
         return;
       }
 
-      await routeAndPrintPrepOrder({
-        tableName: selectedTable?.name || (orderType === "DELIVERY" ? "دليفري" : "تيك أواي"),
-        orderNumber: res.order?.orderNumber,
-        orderType,
-        customerName: customerName || undefined,
-        customerPhone: customerPhone || undefined,
-        deliveryAddress: deliveryAddress || undefined,
-        deliveryFee: deliveryFeeNumber,
-        items: cart,
-        subtotal,
-        discount,
-        totalAmount,
-        isComplimentary,
-        notes: orderNotes,
-        cashierName: userName,
-      });
-
       await triggerKitchenPrepPrint({
         tableName: selectedTable?.name || (orderType === "DELIVERY" ? "دليفري" : "تيك أواي"),
         orderNumber: res.order?.orderNumber,
@@ -770,8 +694,6 @@ export default function PosInterface({
           price: i.price,
           notes: i.notes || null,
         })),
-        subtotal: 0,
-        totalAmount: 0,
         notes: orderNotes || undefined,
         cashierName: userName,
         timestamp: new Date(),
@@ -944,8 +866,7 @@ export default function PosInterface({
     });
   };
 
-  
-  // Reprint Last Completed Receipt (Read-Only Replica - Zero Side Effects on Database)
+  // Reprint Last Completed Receipt
   const handleReprintLastReceipt = async () => {
     let receipt = lastCompletedReceipt;
     if (!receipt) {
@@ -975,20 +896,592 @@ export default function PosInterface({
     await triggerSilentThermalPrint(reprintPayload);
   };
 
-  // Recent Orders
-  const recentOrders = useMemo(() => {
-    const list = [
-      { id: "0012", time: "20:25", table: "5", total: "285.00 ج.م", status: "قيد التحضير", type: "تيك أواي", icon: "🛍️", statusBadge: "bg-amber-500/20 text-amber-400 border border-amber-500/40" },
-      { id: "0013", time: "20:18", table: "3", total: "420.00 ج.م", status: "جاهز", type: "دليفري", icon: "🛵", statusBadge: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" },
-      { id: "0014", time: "20:05", table: "7", total: "190.00 ج.م", status: "قيد التحضير", type: "صالة", icon: "🪑", statusBadge: "bg-amber-500/20 text-amber-400 border border-amber-500/40" },
-      { id: "0015", time: "19:52", table: "2", total: "560.00 ج.م", status: "جاهز", type: "تيك أواي", icon: "🛍️", statusBadge: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" },
-    ];
-    return list;
-  }, []);
+  const cartTotalItemsCount = cart.reduce((s, i) => s + i.quantity, 0);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#070709] text-stone-100 select-none font-sans relative" dir="rtl">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0b0f19] text-stone-100 select-none font-sans relative" dir="rtl">
       
+      {/* 1. TOP HEADER (Exact match to reference) */}
+      <header className="h-16 shrink-0 bg-[#0c101d] border-b border-[#1c2438] px-4 flex items-center justify-between relative z-30 shadow-2xl">
+        
+        {/* Right side in RTL: Brand Logo, Slogan, Date/Time, Cashier */}
+        <div className="flex items-center gap-4 lg:gap-6">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-tr from-amber-600 to-orange-500 shadow-md shadow-orange-600/30 text-2xl">
+              🔥
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-amber-500 leading-none tracking-tight">
+                مشويات بسيوني
+              </h1>
+              <p className="text-[9px] font-mono font-bold tracking-wider text-stone-400 uppercase mt-0.5">
+                MASHWEYAT BASIONY
+              </p>
+            </div>
+          </div>
+
+          {/* Slogan */}
+          <div className="hidden xl:block">
+            <span className="text-xs font-bold text-amber-300/80 tracking-wide border-r border-stone-800 pr-4">
+              طعم زمان على أصوله
+            </span>
+          </div>
+
+          {/* Date & Time */}
+          <div className="hidden md:flex items-center gap-3 bg-[#111624] border border-[#1e2638] rounded-xl px-3 py-1.5 text-xs text-stone-300 font-mono">
+            <div className="flex items-center gap-1.5 text-stone-300 font-bold">
+              <span>📅</span>
+              <span>{currentDateTime.dateStr}</span>
+            </div>
+            <div className="w-px h-3 bg-stone-700"></div>
+            <div className="flex items-center gap-1.5 text-amber-400 font-black">
+              <span>⏰</span>
+              <span>{currentDateTime.timeStr}</span>
+            </div>
+          </div>
+
+          {/* Cashier Badge */}
+          <div className="flex items-center gap-2 bg-[#111624] border border-[#1e2638] rounded-xl px-3 py-1 text-xs">
+            <span className="text-stone-300 text-sm">👤</span>
+            <div className="text-right">
+              <p className="font-bold text-stone-100 text-[11px] leading-tight">{userName || "أحمد محمد"}</p>
+              <p className="text-[9px] text-stone-400 font-semibold">كاشير</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Left side in RTL: 4 Order Channel Buttons */}
+        <div className="flex items-center gap-2">
+          {/* 1. CUSTOMER GRILL (Special Golden Filled Button) */}
+          <button
+            onClick={() => {
+              setOrderType("CUSTOMER_GRILL");
+              setSelectedTable(null);
+            }}
+            className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition font-black text-xs shadow-md ${
+              orderType === "CUSTOMER_GRILL"
+                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 shadow-orange-500/30 border-2 border-amber-300 scale-105"
+                : "bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30"
+            }`}
+          >
+            <span className="text-base">🔥</span>
+            <div className="text-right">
+              <p className="leading-tight font-black">شوي للغير</p>
+              <p className="text-[9px] opacity-80">خامة العميل</p>
+            </div>
+          </button>
+
+          {/* 2. DINE-IN (HALL) */}
+          <button
+            onClick={handleStartDineIn}
+            className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition font-bold text-xs border ${
+              orderType === "DINE_IN"
+                ? "bg-[#182033] border-amber-500 text-amber-400 shadow-md font-black"
+                : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-600 hover:text-white"
+            }`}
+          >
+            <span className="text-base text-sky-400">🪑</span>
+            <div className="text-right">
+              <p className="leading-tight">الصالة</p>
+              <p className="text-[9px] text-stone-400 truncate max-w-[70px]">
+                {selectedTable ? selectedTable.name : "طاولة"}
+              </p>
+            </div>
+          </button>
+
+          {/* 3. DELIVERY */}
+          <button
+            onClick={handleStartDelivery}
+            className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition font-bold text-xs border ${
+              orderType === "DELIVERY"
+                ? "bg-[#182033] border-amber-500 text-amber-400 shadow-md font-black"
+                : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-600 hover:text-white"
+            }`}
+          >
+            <span className="text-base text-teal-400">🛵</span>
+            <div className="text-right">
+              <p className="leading-tight">دليفري</p>
+              <p className="text-[9px] text-stone-400">توصيل</p>
+            </div>
+          </button>
+
+          {/* 4. TAKEAWAY */}
+          <button
+            onClick={handleStartTakeaway}
+            className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition font-bold text-xs border ${
+              orderType === "TAKEAWAY"
+                ? "bg-[#182033] border-amber-500 text-amber-400 shadow-md font-black"
+                : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-600 hover:text-white"
+            }`}
+          >
+            <span className="text-base text-amber-400">🛍️</span>
+            <div className="text-right">
+              <p className="leading-tight">تيك أواي</p>
+              <p className="text-[9px] text-stone-400">سفري</p>
+            </div>
+          </button>
+
+          {/* Logout shortcut */}
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="p-2 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-rose-500 text-stone-400 hover:text-rose-400 text-xs transition mr-1"
+            title="تسجيل الخروج"
+          >
+            🚪
+          </button>
+        </div>
+      </header>
+
+      {/* 2. MAIN WORKSPACE (Left: Cart, Right: Menu & Food Cards) */}
+      <div className="flex-1 flex overflow-hidden bg-[#090d16]">
+        
+        {/* LEFT COLUMN: CURRENT ORDER PANEL ("الطلب الحالي") */}
+        <section className="w-[340px] sm:w-[360px] lg:w-[380px] bg-[#0c101c] border-l border-[#1c2438] flex flex-col justify-between shrink-0 p-3 z-20">
+          
+          {/* Header of Cart */}
+          <div className="flex items-center justify-between pb-2 border-b border-[#1c2438]">
+            <div className="flex items-center gap-2 text-white font-black text-sm">
+              <span className="text-amber-400 text-base">🛒</span>
+              <span>الطلب الحالي</span>
+            </div>
+            <div className="bg-sky-500/20 text-sky-400 border border-sky-500/40 rounded-lg px-2.5 py-0.5 text-xs font-mono font-black">
+              #{activeOrderId ? activeOrderId.slice(-4) : "1258"}
+            </div>
+          </div>
+
+          {/* Draft Notice Banner */}
+          {draftNotice && cart.length > 0 && (
+            <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl px-2.5 py-1 mt-2 flex items-center justify-between text-[11px] text-amber-300">
+              <div className="flex items-center gap-1.5">
+                <span>⚡</span>
+                <span className="font-bold">مسودة الطلب محفوظة ومسترجعة</span>
+              </div>
+              <button
+                onClick={() => setDraftNotice(false)}
+                className="text-stone-400 hover:text-white text-xs px-1"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Cart Items List */}
+          <div className="flex-1 overflow-y-auto space-y-2 py-2 pr-0.5">
+            {cart.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-stone-500 text-xs py-12">
+                <span className="text-4xl mb-2 text-stone-600">🛍️</span>
+                <span className="font-bold text-stone-400">لا توجد أصناف في الطلب</span>
+                <span className="text-[10px] text-stone-600 mt-1">اضغط على أي صنف لإضافته مباشرة</span>
+              </div>
+            ) : (
+              cart.map((item) => (
+                <div
+                  key={item.menuItemId}
+                  className="bg-[#111726] border border-[#1e263d] rounded-xl p-2.5 flex items-center gap-2.5 transition group hover:border-[#2a3654]"
+                >
+                  {/* Dish Thumbnail */}
+                  <img
+                    src={getMenuItemImage(item.nameAr)}
+                    alt={item.nameAr}
+                    className="w-12 h-12 rounded-lg object-cover bg-stone-900 shrink-0 border border-stone-800"
+                  />
+
+                  {/* Name and Stepper Controls */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-xs text-white truncate leading-tight">
+                      {item.nameAr}
+                    </p>
+                    {item.notes && (
+                      <p className="text-[10px] text-stone-400 truncate mt-0.5 font-medium">
+                        {item.notes}
+                      </p>
+                    )}
+
+                    {/* Stepper +/- */}
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <button
+                        onClick={() => handleUpdateQuantity(item.menuItemId, -1)}
+                        className="w-5 h-5 rounded bg-stone-800 hover:bg-amber-500 hover:text-black text-stone-300 text-xs flex items-center justify-center font-bold transition"
+                      >
+                        -
+                      </button>
+                      <span className="w-5 text-center font-mono font-bold text-xs text-stone-100">
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() => handleUpdateQuantity(item.menuItemId, 1)}
+                        className="w-5 h-5 rounded bg-stone-800 hover:bg-amber-500 hover:text-black text-stone-300 text-xs flex items-center justify-center font-bold transition"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Price & Delete */}
+                  <div className="flex flex-col items-end justify-between h-12 shrink-0">
+                    <span className="font-mono font-black text-xs text-amber-400">
+                      {(item.price * item.quantity).toFixed(2)} ج.م
+                    </span>
+                    <button
+                      onClick={() => handleRemoveItem(item.menuItemId)}
+                      className="text-stone-500 hover:text-rose-400 text-xs p-0.5 transition"
+                      title="حذف الصنف"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Financial Totals Block */}
+          <div className="pt-2 border-t border-[#1c2438] space-y-1">
+            <div className="flex justify-between items-center text-xs text-stone-400 font-bold">
+              <span>إجمالي الأصناف ({cartTotalItemsCount})</span>
+              <span className="font-mono text-stone-300">{subtotal.toFixed(2)} ج.م</span>
+            </div>
+            <div className="flex justify-between items-center text-sm font-black text-stone-100">
+              <span>إجمالي الطلب</span>
+              <span className="font-mono text-lg text-amber-400">{totalAmount.toFixed(2)} ج.م</span>
+            </div>
+          </div>
+
+          {/* Payment Method Tabs */}
+          <div className="mt-2.5 pt-2 border-t border-[#1c2438]">
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("CASH")}
+                className={`py-2 px-1 rounded-xl text-center font-bold text-xs transition flex flex-col items-center justify-center gap-1 border ${
+                  paymentMethod === "CASH"
+                    ? "bg-amber-500/20 border-amber-500 text-amber-300 font-black shadow-md shadow-amber-500/20"
+                    : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-700"
+                }`}
+              >
+                <span className="text-sm">💵</span>
+                <span>نقدي</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("CARD")}
+                className={`py-2 px-1 rounded-xl text-center font-bold text-xs transition flex flex-col items-center justify-center gap-1 border ${
+                  paymentMethod === "CARD"
+                    ? "bg-sky-500/20 border-sky-500 text-sky-300 font-black shadow-md shadow-sky-500/20"
+                    : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-700"
+                }`}
+              >
+                <span className="text-sm">💳</span>
+                <span>بطاقة</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("WALLET")}
+                className={`py-2 px-1 rounded-xl text-center font-bold text-xs transition flex flex-col items-center justify-center gap-1 border ${
+                  paymentMethod === "WALLET"
+                    ? "bg-purple-500/20 border-purple-500 text-purple-300 font-black shadow-md shadow-purple-500/20"
+                    : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-700"
+                }`}
+              >
+                <span className="text-sm">📱</span>
+                <span>دفع إلكتروني</span>
+              </button>
+            </div>
+
+            {/* Cash Input & Change */}
+            {paymentMethod === "CASH" && (
+              <div className="mt-2 bg-[#111624] border border-[#1e2638] rounded-xl p-2 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-stone-400 font-bold shrink-0">
+                    <span>🧮</span>
+                    <span>المبلغ المدفوع</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={amountPaidInput}
+                    onChange={(e) => setAmountPaidInput(e.target.value)}
+                    placeholder={totalAmount > 0 ? String(totalAmount) : "0"}
+                    className="w-24 bg-[#182033] border border-amber-500/50 focus:border-amber-400 text-amber-300 text-left font-mono font-black text-sm rounded-lg px-2 py-1 outline-none"
+                  />
+                </div>
+
+                {/* Quick cash increments */}
+                <div className="grid grid-cols-4 gap-1 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setAmountPaidInput(totalAmount.toString())}
+                    className="bg-[#182033] hover:bg-amber-600/30 text-stone-300 text-[10px] font-bold py-0.5 rounded border border-stone-800 transition"
+                  >
+                    بالضبط
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const base = Math.ceil(totalAmount / 50) * 50;
+                      setAmountPaidInput((base === totalAmount ? base + 50 : base).toString());
+                    }}
+                    className="bg-[#182033] hover:bg-amber-600/30 text-stone-300 text-[10px] font-bold py-0.5 rounded border border-stone-800 transition"
+                  >
+                    +50
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const base = Math.ceil(totalAmount / 100) * 100;
+                      setAmountPaidInput((base === totalAmount ? base + 100 : base).toString());
+                    }}
+                    className="bg-[#182033] hover:bg-amber-600/30 text-stone-300 text-[10px] font-bold py-0.5 rounded border border-stone-800 transition"
+                  >
+                    +100
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const base = Math.ceil(totalAmount / 200) * 200;
+                      setAmountPaidInput((base === totalAmount ? base + 200 : base).toString());
+                    }}
+                    className="bg-[#182033] hover:bg-amber-600/30 text-stone-300 text-[10px] font-bold py-0.5 rounded border border-stone-800 transition"
+                  >
+                    +200
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-stone-800">
+                  <span className="text-stone-300 font-bold">الباقي:</span>
+                  <span className="font-mono font-black text-emerald-400 text-sm">
+                    {changeDue.toFixed(2)} ج.م
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons Row: Cancel + Print Check */}
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <button
+              onClick={handleClearOrder}
+              className="bg-rose-950/50 hover:bg-rose-900/80 border border-rose-600/50 text-rose-300 font-bold py-2 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow"
+            >
+              <span>🗑️</span>
+              <span>إلغاء الطلب</span>
+            </button>
+
+            <button
+              onClick={handlePrintCustomerCheck}
+              className="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow shadow-sky-600/20"
+            >
+              <span>🖨️</span>
+              <span>طباعة الفاتورة</span>
+            </button>
+          </div>
+
+          {/* Big Green Checkout Button */}
+          <button
+            onClick={handleCollectPayment}
+            disabled={isPending}
+            className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition active:scale-[0.99]"
+          >
+            <span className="text-base font-black">✓</span>
+            <span>إتمام الطلب</span>
+          </button>
+
+          {/* Reprint Last Receipt Button */}
+          <button
+            type="button"
+            onClick={handleReprintLastReceipt}
+            disabled={!lastCompletedReceipt}
+            className={`w-full mt-1.5 py-1 text-[11px] font-bold flex items-center justify-center gap-1 transition rounded-lg border ${
+              lastCompletedReceipt
+                ? "text-amber-400/90 hover:text-amber-300 border-amber-500/30 hover:border-amber-500/60 bg-amber-500/5"
+                : "text-stone-600 border-stone-800/40 cursor-not-allowed"
+            }`}
+            title="إعادة طباعة آخر فاتورة تم إتمامها كنسخة طبق الأصل"
+          >
+            <span>🔄</span>
+            <span>إعادة طباعة آخر فاتورة</span>
+          </button>
+        </section>
+
+        {/* RIGHT AREA: MENU CATEGORIES, SEARCH, FOOD GRID, BOTTOM BAR */}
+        <section className="flex-1 flex flex-col overflow-hidden p-3 bg-[#090d16]">
+          {orderType === "CUSTOMER_GRILL" ? (
+            <CustomerGrillingForm
+              rates={grillingRates}
+              cashierName={userName}
+              onSubmit={handleCustomerGrillingSubmit}
+              isSubmitting={isPending}
+              onOpenTracker={() => setShowGrillingTracker(true)}
+            />
+          ) : (
+            <>
+              {/* 1. Horizontal Categories Bar */}
+              <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none shrink-0">
+                <button
+                  onClick={() => setSelectedCategory("ALL")}
+                  className={`min-w-[90px] h-[76px] flex flex-col items-center justify-center p-2 rounded-2xl border transition-all shrink-0 ${
+                    selectedCategory === "ALL"
+                      ? "bg-[#182033] border-2 border-amber-500 shadow-lg shadow-amber-500/20 text-white font-black scale-102"
+                      : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-600 hover:text-white"
+                  }`}
+                >
+                  <span className="text-2xl mb-1">🍽️</span>
+                  <span className="text-[11px] font-bold">الكل ({allMenuItems.length})</span>
+                </button>
+
+                {categories.map((cat) => {
+                  const isSelected = selectedCategory === cat.id;
+                  const icon = getCategoryIcon(cat.nameAr);
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={`min-w-[105px] h-[76px] flex flex-col items-center justify-center p-1.5 rounded-2xl border transition-all shrink-0 ${
+                        isSelected
+                          ? "bg-[#182033] border-2 border-amber-500 shadow-lg shadow-amber-500/20 text-white font-black scale-102"
+                          : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-600 hover:text-white"
+                      }`}
+                    >
+                      <span className="text-2xl mb-1">{icon}</span>
+                      <span className="text-[11px] font-bold text-center truncate max-w-[95px] leading-tight">
+                        {cat.nameAr}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 2. Search & Filter Bar */}
+              <div className="flex items-center gap-2.5 my-2 shrink-0">
+                <div className="relative flex-1 bg-[#111624] border border-[#1e2638] focus-within:border-amber-500 rounded-xl px-3 py-2 flex items-center gap-2 transition">
+                  <span className="text-stone-400 text-sm">🔍</span>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="ابحث عن صنف..."
+                    className="bg-transparent text-xs text-white placeholder-stone-500 outline-none w-full font-medium"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="text-stone-500 hover:text-white text-xs px-1"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter 1: Best Seller */}
+                <button
+                  onClick={() => setActiveFilter(activeFilter === "BEST_SELLER" ? "ALL" : "BEST_SELLER")}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition ${
+                    activeFilter === "BEST_SELLER"
+                      ? "border-amber-500 bg-amber-500/20 text-amber-300 font-black shadow-md shadow-amber-500/20"
+                      : "border-[#1e2638] bg-[#111624] text-stone-300 hover:border-amber-500/50"
+                  }`}
+                >
+                  <span className="text-amber-400">⭐</span>
+                  <span>الأكثر مبيعاً</span>
+                </button>
+
+                {/* Filter 2: Offers */}
+                <button
+                  onClick={() => setActiveFilter(activeFilter === "OFFERS" ? "ALL" : "OFFERS")}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition ${
+                    activeFilter === "OFFERS"
+                      ? "border-orange-500 bg-orange-500/20 text-orange-300 font-black shadow-md shadow-orange-500/20"
+                      : "border-[#1e2638] bg-[#111624] text-stone-300 hover:border-orange-500/50"
+                  }`}
+                >
+                  <span className="text-orange-400">🔥</span>
+                  <span>عروض خاصة</span>
+                </button>
+              </div>
+
+              {/* 3. High Quality 5-Column Food Grid (Exact to Reference Picture) */}
+              <div className="flex-1 overflow-y-auto pr-0.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3">
+                  {filteredItems.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleAddToCart(item)}
+                      className="bg-[#111624] border border-[#1e2638] hover:border-amber-500 rounded-2xl overflow-hidden cursor-pointer group transition-all duration-150 flex flex-col shadow-md relative hover:shadow-amber-500/10"
+                    >
+                      {/* Dish Image */}
+                      <div className="h-28 sm:h-32 w-full bg-stone-900 overflow-hidden relative">
+                        <img
+                          src={item.image}
+                          alt={item.nameAr}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        {/* Weighted Badge */}
+                        {item.isWeighted && (
+                          <div className="absolute top-2 right-2 bg-amber-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded shadow">
+                            بالوزن
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Details: Name & Price */}
+                      <div className="p-2 text-center flex flex-col justify-between flex-1">
+                        <h3 className="font-bold text-xs text-stone-100 truncate group-hover:text-amber-400 transition leading-snug">
+                          {item.nameAr}
+                        </h3>
+                        <p className="font-mono font-black text-xs text-amber-400 mt-1">
+                          {item.isWeighted ? `${item.price} ج.م / كيلو` : `${item.price} ج.م`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. Bottom Action Bar (Recall, Tracking, Refresh, Help) */}
+              <div className="h-11 shrink-0 border-t border-[#1c2438] mt-2 pt-2 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowTablesModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-stone-600 text-stone-300 font-bold flex items-center gap-1.5 transition"
+                  >
+                    <span>🔔</span>
+                    <span>إستدعاء الطلب</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowGrillingTracker(true)}
+                    className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-stone-600 text-stone-300 font-bold flex items-center gap-1.5 transition"
+                  >
+                    <span>📋</span>
+                    <span>متابعة الطلبات</span>
+                    {activeGrillingOrders.length > 0 && (
+                      <span className="bg-amber-500 text-stone-950 px-1.5 py-0.2 rounded-full font-black text-[10px]">
+                        {activeGrillingOrders.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-stone-600 text-stone-300 font-bold flex items-center gap-1.5 transition"
+                  >
+                    <span>🔄</span>
+                    <span>تحديث المنيو</span>
+                  </button>
+                </div>
+
+                <div className="text-[11px] text-stone-500 hidden sm:flex items-center gap-1 font-medium">
+                  <span>ℹ️</span>
+                  <span>لأي استفسار أو مساعدة تواصل مع المدير</span>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+
       {/* CENTRAL SYSTEM LOCK BANNER OVERLAY IF SYSTEM IS LOCKED */}
       {isSystemLocked && (
         <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-6 text-center animate-fadeIn">
@@ -1000,38 +1493,20 @@ export default function PosInterface({
               النظام مقفول حالياً بواسطة الإدارة
             </h2>
             <p className="text-stone-300 text-sm leading-relaxed">
-              تم تعليق جميع عمليات البيع وإنشاء الطلبات وإتمام الدفع على كافة الأجهزة مؤقتاً بأمر الإدارة.
+              تم تعليق جميع عمليات البيع مؤقتاً بأمر الإدارة.
             </p>
-            <div className="bg-stone-900 border border-stone-800 rounded-xl p-3 text-xs text-stone-400 font-mono space-y-1 text-right">
-              <div>👤 المنفّذ: <span className="text-rose-300 font-bold">{systemLockedBy || "أ/ أحمد بسيوني"}</span></div>
-              <div>⏰ التوقيت: <span className="text-stone-300">{systemLockedAt || "اليوم"}</span></div>
-              <div>🛡️ جميع بيانات الطلبات والورديات محفوظة بأمان.</div>
-            </div>
-
-            {userRole === "ADMIN" ? (
-              <button
-                onClick={handleToggleSystemLock}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 rounded-xl shadow-lg text-sm transition"
-              >
-                🔓 إعادة فتح النظام الآن (بصلاحية المدير)
-              </button>
-            ) : (
-              <p className="text-stone-500 text-xs italic">
-                يرجى مراجعة إدارة المطعم لإعادة فتح النظام.
-              </p>
-            )}
           </div>
         </div>
       )}
 
-      {/* INACTIVITY IDLE SCREEN LOCK OVERLAY (5 Minutes) */}
+      {/* INACTIVITY IDLE SCREEN LOCK OVERLAY */}
       {isIdleLocked && (
         <div className="absolute inset-0 bg-black/90 backdrop-blur-lg z-40 flex items-center justify-center p-6 text-center">
-          <div className="bg-[#121217] border border-orange-500/40 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-4">
-            <div className="w-16 h-16 bg-orange-950/40 border border-orange-500/40 rounded-full flex items-center justify-center mx-auto text-3xl shadow">
+          <div className="bg-[#121217] border border-amber-500/40 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-4">
+            <div className="w-16 h-16 bg-amber-950/40 border border-amber-500/40 rounded-full flex items-center justify-center mx-auto text-3xl shadow">
               ⏳
             </div>
-            <h2 className="text-xl font-black text-orange-400">
+            <h2 className="text-xl font-black text-amber-400">
               قفل الشاشة تلقائياً لعدم النشاط
             </h2>
             <p className="text-stone-300 text-xs">
@@ -1044,7 +1519,7 @@ export default function PosInterface({
                 value={unlockPasswordInput}
                 onChange={(e) => setUnlockPasswordInput(e.target.value)}
                 placeholder="أدخل رمز المرور أو PIN للمتابعة..."
-                className="w-full bg-[#181822] border border-stone-700 focus:border-orange-500 rounded-xl px-4 py-2.5 text-stone-100 text-center text-sm outline-none font-mono"
+                className="w-full bg-[#181822] border border-stone-700 focus:border-amber-500 rounded-xl px-4 py-2.5 text-stone-100 text-center text-sm outline-none font-mono"
                 autoFocus
               />
 
@@ -1054,818 +1529,23 @@ export default function PosInterface({
 
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-stone-950 font-black py-2.5 rounded-xl text-sm transition shadow-lg shadow-orange-500/20"
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black py-2.5 rounded-xl text-sm transition shadow-lg shadow-amber-500/20"
               >
                 إلغاء القفل والمتابعة
-              </button>
-
-              <button
-                type="button"
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="text-stone-400 hover:text-rose-400 text-xs underline block mx-auto pt-1"
-              >
-                تسجيل الخروج والتبديل لحساب آخر
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* 1. TOP HEADER */}
-      <header className="h-16 shrink-0 bg-[#0c0c0f] border-b border-orange-500/30 px-3 sm:px-4 flex items-center justify-between relative z-30 shadow-2xl">
-        {/* Left: Round Badge Logo & Slogan */}
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-orange-600 via-amber-400 to-orange-500 shadow-md shadow-orange-600/30">
-            <img
-              src="/logo.png"
-              alt="مشويات بسيوني"
-              className="w-full h-full rounded-full object-cover bg-black"
-            />
-          </div>
-          <div className="hidden sm:block">
-            <span className="text-[11px] text-stone-300 font-bold tracking-wide">طعم زمان على أصوله</span>
-          </div>
-        </div>
-
-        {/* Center: Glowing Orange Title & Flames */}
-        <div className="flex flex-col items-center justify-center text-center">
-          <div className="flex items-center gap-2">
-            <span className="text-xl sm:text-2xl animate-pulse">🔥</span>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 drop-shadow-[0_2px_8px_rgba(249,115,22,0.4)]">
-              مشويات بسيوني
-            </h1>
-            <span className="text-xl sm:text-2xl animate-pulse">🔥</span>
-          </div>
-          <p className="text-[10px] font-black tracking-[0.2em] text-orange-400/90 font-mono uppercase">
-            MASHWEYAT BASIONY
-          </p>
-        </div>
-
-        {/* Right: Phone, Management, Time, Address, User, Lock Button, Logout */}
-        <div className="flex items-center gap-2.5 text-xs">
-          {/* Phone & Management */}
-          <div className="hidden md:flex flex-col text-left font-mono">
-            <div className="flex items-center gap-1 text-orange-400 font-bold justify-end text-[11px]">
-              <span>01038029714</span>
-              <span>📞</span>
-            </div>
-            <div className="text-[10px] text-stone-300 font-bold text-right">
-              إدارة : أحمد بسيوني
-            </div>
-            <div className="text-[9px] text-stone-400 text-right">
-              Ahmed Basiouny
-            </div>
-          </div>
-
-          {/* Live Date, Time & Address */}
-          <div className="hidden lg:flex flex-col items-end text-[10px] font-mono text-stone-400 border-r border-stone-800 pr-2.5">
-            <div className="flex items-center gap-2">
-              <span className="text-orange-300 font-bold">📅 {currentTime.date}</span>
-              <span className="text-stone-300">⏰ {currentTime.time}</span>
-            </div>
-            <span className="text-[9px] text-stone-500 truncate max-w-[210px]">
-              عبدالقادر - شارع المستعمرة أمام شارع 10 مباشرة قبل مسجد السلام
-            </span>
-          </div>
-
-          {/* Shortcut to Grilling Handover Tracker */}
-          <button
-            onClick={() => setShowGrillingTracker(true)}
-            className="px-2.5 py-1 rounded-xl bg-orange-950/60 hover:bg-orange-900/80 text-orange-300 border border-orange-500/40 text-[11px] font-bold flex items-center gap-1.5 transition"
-            title="متابعة تسليم مشويات خامات العميل"
-          >
-            <span>📋</span>
-            <span className="hidden md:inline">متابعة الشوي</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-orange-500 text-stone-950 text-[10px] font-mono font-black">
-              {activeGrillingOrders.filter((o) => o.workflowStatus !== "DELIVERED").length}
-            </span>
-          </button>
-
-          {/* Admin Quick Lock/Unlock Shortcut if role === ADMIN */}
-          {userRole === "ADMIN" && (
-            <button
-              onClick={handleToggleSystemLock}
-              className={`px-2.5 py-1 rounded-xl font-bold text-[11px] flex items-center gap-1 border transition ${
-                isSystemLocked
-                  ? "bg-rose-950/60 text-rose-300 border-rose-500"
-                  : "bg-stone-900 text-stone-300 border-stone-800 hover:border-orange-500/50"
-              }`}
-              title="التحكم في قفل النظام المركزي"
-            >
-              <span>{isSystemLocked ? "🔒" : "🛡️"}</span>
-              <span className="hidden sm:inline">{isSystemLocked ? "النظام مقفول" : "قفل النظام"}</span>
-            </button>
-          )}
-
-          {/* User Badge */}
-          <div className="flex items-center gap-1.5 bg-[#141418] border border-stone-800 rounded-xl px-2.5 py-1">
-            <span className="text-amber-400 text-xs">👤</span>
-            <span className="font-bold text-stone-200 text-[11px]">{userName || "مدير النظام"}</span>
-          </div>
-
-          {/* Logout Button */}
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex items-center gap-1 bg-[#141418] border border-orange-500/40 hover:bg-orange-600 hover:text-black text-orange-400 px-2.5 py-1 rounded-xl font-bold transition text-[11px]"
-            title="تسجيل الخروج"
-          >
-            <span>تسجيل الخروج</span>
-            <span>🚪</span>
-          </button>
-        </div>
-      </header>
-
-      {/* 2. MAIN WORKSPACE (Flex Row) */}
-      <div className="flex-1 flex overflow-hidden">
-        
-        {/* A. FAR LEFT: CATEGORIES COLUMN (100% Dynamic from Database) */}
-        <aside className="w-24 sm:w-28 bg-[#0a0a0c] border-l border-orange-500/20 flex flex-col py-2 px-1.5 shrink-0 z-20 overflow-y-auto">
-          <div className="flex flex-col gap-1">
-            <button
-              onClick={() => setSelectedCategory("ALL")}
-              className={`flex items-center justify-between px-2 py-2 rounded-xl text-xs font-bold transition text-right ${
-                selectedCategory === "ALL"
-                  ? "bg-gradient-to-r from-orange-500 to-amber-500 text-stone-950 font-black shadow-lg shadow-orange-500/30"
-                  : "text-stone-300 hover:text-white hover:bg-stone-900 border border-stone-800/40"
-              }`}
-            >
-              <span className="truncate font-black">الكل</span>
-              <span className="text-[10px] font-mono text-orange-400">({allMenuItems.length})</span>
-            </button>
-            {categories.map((cat) => {
-              const isSelected = selectedCategory === cat.id;
-              const catItemCount = allMenuItems.filter((i) => i.categoryId === cat.id).length;
-              const icon = getCategoryIcon(cat.nameAr);
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`flex items-center justify-between px-1.5 py-2 rounded-xl text-xs font-bold transition text-right ${
-                    isSelected
-                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-stone-950 font-black shadow-lg shadow-orange-500/30"
-                      : "text-stone-300 hover:text-white hover:bg-stone-900 border border-stone-800/40"
-                  }`}
-                  title={cat.nameAr}
-                >
-                  <span className="truncate text-[11px] leading-tight">{cat.nameAr.trim()}</span>
-                  <span className="text-xs shrink-0 mr-1">{icon}</span>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-
-        {/* B. CENTER AREA: TOP 3 CHANNELS + SEARCH + DENSE FOOD GRID */}
-        <section className="flex-1 bg-[#09090b] flex flex-col overflow-hidden p-2.5">
-          
-          {/* Top 3 Channel Buttons (Takeaway is King!) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 mb-2.5">
-            {/* 1. TAKEAWAY (Primary Vibrant Card) */}
-            <button
-              onClick={handleStartTakeaway}
-              className={`p-2 sm:p-2.5 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md ${
-                orderType === "TAKEAWAY"
-                  ? "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-500 text-stone-950 shadow-orange-500/30 font-black border-2 border-orange-400"
-                  : "bg-[#121216] border border-orange-500/40 hover:border-orange-500 text-stone-200"
-              }`}
-            >
-              <span className="text-2xl">🛍️</span>
-              <div className="text-right">
-                <p className="text-sm font-black tracking-tight leading-tight">تيك أواي</p>
-                <p className={`text-[10px] font-bold ${orderType === "TAKEAWAY" ? "text-stone-900" : "text-orange-400"}`}>طلب جديد</p>
-              </div>
-            </button>
-
-            {/* 2. DELIVERY */}
-            <button
-              onClick={handleStartDelivery}
-              className={`p-2 sm:p-2.5 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md ${
-                orderType === "DELIVERY"
-                  ? "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-500 text-stone-950 shadow-orange-500/30 font-black border-2 border-orange-400"
-                  : "bg-[#121216] border border-stone-800 hover:border-orange-500/60 text-stone-200"
-              }`}
-            >
-              <span className="text-2xl">🛵</span>
-              <div className="text-right">
-                <p className="text-sm font-black tracking-tight leading-tight">دليفري</p>
-                <p className={`text-[10px] font-bold ${orderType === "DELIVERY" ? "text-stone-900" : "text-stone-400"}`}>توصيل للعميل</p>
-              </div>
-            </button>
-
-            {/* 3. DINE-IN (HALL) */}
-            <button
-              onClick={handleStartDineIn}
-              className={`p-2 sm:p-2.5 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md ${
-                orderType === "DINE_IN"
-                  ? "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-500 text-stone-950 shadow-orange-500/30 font-black border-2 border-orange-400"
-                  : "bg-[#121216] border border-stone-800 hover:border-orange-500/60 text-stone-200"
-              }`}
-            >
-              <span className="text-2xl">🪑</span>
-              <div className="text-right">
-                <p className="text-sm font-black tracking-tight leading-tight">الصالة</p>
-                <p className={`text-[10px] font-bold ${orderType === "DINE_IN" ? "text-stone-900" : "text-stone-400"}`}>
-                  {selectedTable ? selectedTable.name : "طلب على طاولة"}
-                </p>
-              </div>
-            </button>
-
-            {/* 4. CUSTOMER GRILL (الشوي الخارجي - خامة العميل) */}
-            <button
-              onClick={() => {
-                setOrderType("CUSTOMER_GRILL");
-                setSelectedTable(null);
-              }}
-              className={`p-2 sm:p-2.5 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md ${
-                orderType === "CUSTOMER_GRILL"
-                  ? "bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-stone-950 shadow-orange-500/40 font-black border-2 border-orange-400 scale-[1.02]"
-                  : "bg-[#121216] border border-orange-500/40 hover:border-orange-500 text-orange-400"
-              }`}
-            >
-              <span className="text-2xl animate-pulse">🔥</span>
-              <div className="text-right">
-                <p className="text-sm font-black tracking-tight leading-tight">شوي للغير</p>
-                <p className={`text-[10px] font-bold ${orderType === "CUSTOMER_GRILL" ? "text-stone-900" : "text-amber-400"}`}>
-                  خامة العميل
-                </p>
-              </div>
-            </button>
-          </div>
-
-          {orderType === "CUSTOMER_GRILL" ? (
-            <CustomerGrillingForm
-              rates={grillingRates}
-              cashierName={userName}
-              onSubmit={handleCustomerGrillingSubmit}
-              isSubmitting={isPending}
-              onOpenTracker={() => setShowGrillingTracker(true)}
-            />
-          ) : (
-            <>
-          {/* Search Bar & Categories Toggle */}
-          <div className="flex items-center gap-2 mb-2">
-            <div className="relative flex-1">
-              <span className="absolute right-3 top-2 text-stone-400 text-xs">🔍</span>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ابحث عن صنف..."
-                className="w-full bg-[#111115] border border-orange-500/30 focus:border-orange-500 text-stone-100 placeholder-stone-500 rounded-xl pr-8 pl-3 py-1.5 text-xs outline-none transition font-medium"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute left-2.5 top-1.5 text-stone-500 hover:text-white text-xs"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            <button
-              onClick={() => setSelectedCategory("ALL")}
-              className="bg-[#14141a] border border-orange-500/40 text-orange-400 hover:bg-orange-500 hover:text-black px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition"
-            >
-              <span>📂</span>
-              <span>الأصناف</span>
-            </button>
-          </div>
-
-          {/* Dense High-Capacity Grid of Food Cards (8 Columns on desktop!) */}
-          <div className="flex-1 overflow-y-auto pr-0.5">
-            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-2">
-              {filteredItems.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleAddToCart(item)}
-                  className="bg-[#121217] border border-orange-500/25 hover:border-orange-500 rounded-xl overflow-hidden cursor-pointer group transition-all duration-100 flex flex-col justify-between shadow relative p-1 hover:shadow-orange-500/10"
-                >
-                  {/* Dish Image */}
-                  <div className="h-14 w-full bg-stone-950 rounded-lg overflow-hidden relative mb-1">
-                    <img
-                      src={item.image || "/items/kofta.jpg"}
-                      alt={item.nameAr}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                    />
-                  </div>
-
-                  {/* Dish Name & Price */}
-                  <div className="text-center px-0.5">
-                    <h3 className="font-bold text-[11px] text-stone-100 truncate group-hover:text-amber-400 transition leading-tight">
-                      {item.nameAr}
-                    </h3>
-                    <div className="flex items-center justify-center gap-1 mt-0.5">
-                      <span className="font-mono font-black text-xs text-orange-400">
-                        {item.price}
-                      </span>
-                      <span className="text-[9px] text-stone-400 font-sans">
-                        {item.categoryId === "cat_grills_01" || item.description?.includes("بالوزن") ? "ج/كجم" : "ج.م"}
-                      </span>
-                      {(item.categoryId === "cat_grills_01" || item.description?.includes("بالوزن")) && (
-                        <span className="text-[8px] bg-orange-950 text-orange-300 border border-orange-800/80 px-1 rounded-full font-bold">
-                          بالوزن
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Corner Plus Button */}
-                  <div className="absolute bottom-1 left-1 w-4 h-4 rounded-full bg-orange-500/20 group-hover:bg-orange-500 text-orange-400 group-hover:text-stone-950 text-[10px] font-black flex items-center justify-center transition">
-                    +
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-            </>
-          )}
-        </section>
-
-        {/* C. FAR RIGHT: CURRENT ORDER PANEL ("الطلب الحالي") */}
-        <section className="w-[320px] sm:w-[350px] lg:w-[370px] bg-[#0c0c0f] border-r border-orange-500/25 flex flex-col justify-between shrink-0 p-2.5 z-20">
-          
-          {/* Draft Notice Banner */}
-          {draftNotice && cart.length > 0 && (
-            <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl px-2.5 py-1.5 mb-2 flex items-center justify-between text-[11px] text-amber-300 animate-fadeIn">
-              <div className="flex items-center gap-1.5">
-                <span>⚡</span>
-                <span className="font-bold">تم استرجاع مسودة الطلب تلقائياً</span>
-              </div>
-              <button
-                onClick={() => setDraftNotice(false)}
-                className="text-stone-400 hover:text-white text-xs px-1"
-                title="إخفاء التنبيه"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-
-          {/* Header: Title + New Order Button */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 text-orange-400 font-bold text-xs">
-              <span>🛒</span>
-              <span className="text-stone-100 font-black text-sm">الطلب الحالي</span>
-            </div>
-            <button
-              onClick={handleStartTakeaway}
-              className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-stone-950 font-black px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 shadow-md shadow-orange-500/20 transition"
-            >
-              <span>+ طلب جديد</span>
-            </button>
-          </div>
-
-          {/* Controls Bar: Cancel, Order Type, Customer */}
-          <div className="bg-[#121217] border border-stone-800 rounded-xl p-2 mb-2 space-y-1.5 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-stone-400 text-[10px]">نوع الطلب:</span>
-              <div className="flex items-center gap-1">
-                <span className="px-2 py-0.5 rounded-lg bg-orange-500/20 text-orange-400 border border-orange-500/40 text-[11px] font-bold">
-                  {orderType === "TAKEAWAY" && "🛍️ تيك أواي"}
-                  {orderType === "DELIVERY" && "🛵 دليفري"}
-                  {orderType === "DINE_IN" && `🪑 ${selectedTable?.name || "صالة"}`}
-                </span>
-                <button
-                  onClick={handleClearOrder}
-                  className="text-stone-500 hover:text-rose-400 text-xs px-1"
-                  title="إلغاء وتفريغ الطلب"
-                >
-                  🗑️
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-stone-400 text-[10px]">العميل:</span>
-              <div className="flex items-center gap-1">
-                <span className="font-bold text-stone-300">
-                  {customerName ? `👤 ${customerName}` : "عميل نقدي 👤"}
-                </span>
-                <button
-                  onClick={() => setShowQuickCustomerModal(true)}
-                  className="text-orange-400 hover:underline text-[10px] font-bold"
-                >
-                  تعديل
-                </button>
-              </div>
-            </div>
-
-            {orderType === "DINE_IN" && (
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-stone-400 text-[10px]">الطاولة:</span>
-                <button
-                  onClick={() => setShowTablesModal(true)}
-                  className="text-orange-400 font-bold hover:underline"
-                >
-                  {selectedTable ? selectedTable.name : "اختر الطاولة 🪑"}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Cart Table */}
-          <div className="flex-1 bg-[#101014] border border-stone-800/80 rounded-xl overflow-hidden flex flex-col mb-2">
-            <div className="bg-[#16161e] border-b border-stone-800 text-[10px] font-bold text-orange-300 py-1.5 px-2 grid grid-cols-12 gap-1 text-center">
-              <span className="col-span-1">#</span>
-              <span className="col-span-5 text-right">الصنف</span>
-              <span className="col-span-2">الكمية</span>
-              <span className="col-span-2">السعر</span>
-              <span className="col-span-2">الإجمالي</span>
-            </div>
-
-            <div className="flex-1 overflow-y-auto divide-y divide-stone-800/50 p-1">
-              {cart.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-stone-500 text-xs py-8">
-                  <span className="text-4xl mb-2 text-stone-600">🛍️</span>
-                  <span className="font-bold text-stone-400">لا توجد أصناف في الطلب</span>
-                  <span className="text-[10px] text-stone-600 mt-0.5">قم بإضافة الأصناف من القائمة</span>
-                </div>
-              ) : (
-                cart.map((item, idx) => (
-                  <div
-                    key={item.menuItemId}
-                    className="py-1 px-1 grid grid-cols-12 gap-1 items-center text-xs hover:bg-stone-800/30 rounded-lg group"
-                  >
-                    <span className="col-span-1 text-stone-500 font-mono text-center text-[10px]">{idx + 1}</span>
-                    <div className="col-span-5 text-right pr-0.5">
-                      <p className="font-bold text-stone-100 truncate text-[11px]">{item.nameAr}</p>
-                    </div>
-                    <div className="col-span-2 flex items-center justify-center gap-1 font-mono font-bold text-xs">
-                      <button
-                        onClick={() => handleUpdateQuantity(item.menuItemId, -1)}
-                        className="w-3.5 h-3.5 bg-stone-800 hover:bg-orange-500 hover:text-black rounded text-[10px] flex items-center justify-center transition"
-                      >
-                        -
-                      </button>
-                      <span>{item.quantity}</span>
-                      <button
-                        onClick={() => handleUpdateQuantity(item.menuItemId, 1)}
-                        className="w-3.5 h-3.5 bg-stone-800 hover:bg-orange-500 hover:text-black rounded text-[10px] flex items-center justify-center transition"
-                      >
-                        +
-                      </button>
-                    </div>
-                    <span className="col-span-2 text-center font-mono text-stone-300 text-[11px]">{item.price}</span>
-                    <div className="col-span-2 flex items-center justify-between font-mono font-black text-orange-400 pl-0.5 text-[11px]">
-                      <span>{item.price * item.quantity}</span>
-                      <button
-                        onClick={() => handleRemoveItem(item.menuItemId)}
-                        className="text-stone-500 hover:text-rose-500 text-xs"
-                        title="حذف"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Financial Totals Block */}
-          <div className="bg-[#121217] border border-orange-500/20 rounded-xl p-2 mb-2 space-y-0.5 text-[11px]">
-            <div className="flex justify-between items-center text-stone-400">
-              <span>إجمالي الطلب</span>
-              <span className="font-mono font-bold text-stone-200">{subtotal.toFixed(2)} ج.م</span>
-            </div>
-            <div className="flex justify-between items-center text-stone-400">
-              <span>الخصم</span>
-              <span className="font-mono font-bold text-stone-300">0.00 ج.م</span>
-            </div>
-            <div className="flex justify-between items-center text-stone-400">
-              <span>الضريبة (14%)</span>
-              <span className="font-mono font-bold text-stone-300">0.00 ج.م</span>
-            </div>
-
-            {/* Glowing Orange Grand Total Banner */}
-            <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-500 text-stone-950 font-black text-base py-1.5 px-3 rounded-xl flex justify-between items-center shadow-lg shadow-orange-500/25 mt-1">
-              <span>المبلغ الكلي</span>
-              <span className="font-mono text-lg">{totalAmount.toFixed(2)} ج.م</span>
-            </div>
-          </div>
-
-          {/* Payment Method & Change Calculator */}
-          <div className="bg-[#121217] border border-orange-500/25 rounded-xl p-2 mb-2 space-y-1.5 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-stone-400 text-[10px] font-bold">طريقة التحصيل:</span>
-              <span className="text-[10px] font-mono text-orange-400">
-                {paymentMethod === "CASH" ? "نقداً" : paymentMethod === "CARD" ? "فيزا / شبكة" : "محفظة كاش"}
-              </span>
-            </div>
-            
-            <div className="grid grid-cols-3 gap-1">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("CASH")}
-                className={`py-1.5 px-1 rounded-lg text-center font-bold text-[11px] transition flex items-center justify-center gap-1 ${
-                  paymentMethod === "CASH"
-                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 font-black border border-emerald-400"
-                    : "bg-[#181820] text-stone-300 border border-stone-800 hover:border-stone-700"
-                }`}
-              >
-                <span>💵</span>
-                <span>كاش</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("CARD")}
-                className={`py-1.5 px-1 rounded-lg text-center font-bold text-[11px] transition flex items-center justify-center gap-1 ${
-                  paymentMethod === "CARD"
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30 font-black border border-blue-400"
-                    : "bg-[#181820] text-stone-300 border border-stone-800 hover:border-stone-700"
-                }`}
-              >
-                <span>💳</span>
-                <span>فيزا</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("WALLET")}
-                className={`py-1.5 px-1 rounded-lg text-center font-bold text-[11px] transition flex items-center justify-center gap-1 ${
-                  paymentMethod === "WALLET"
-                    ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-md shadow-purple-600/30 font-black border border-purple-400"
-                    : "bg-[#181820] text-stone-300 border border-stone-800 hover:border-stone-700"
-                }`}
-              >
-                <span>📱</span>
-                <span>محفظة</span>
-              </button>
-            </div>
-
-            {paymentMethod === "CASH" && (
-              <div className="pt-1 border-t border-stone-800 space-y-1">
-                <div className="flex items-center justify-between gap-1.5">
-                  <span className="text-[10px] text-stone-400 font-bold shrink-0">المدفوع:</span>
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={amountPaidInput}
-                      onChange={(e) => setAmountPaidInput(e.target.value)}
-                      placeholder={totalAmount > 0 ? String(totalAmount) : "0"}
-                      className="w-full bg-[#181822] border border-emerald-500/40 focus:border-emerald-500 text-emerald-300 text-left font-mono font-black text-xs rounded-lg px-2 py-1 outline-none"
-                    />
-                    <span className="absolute right-2 top-1 text-[9px] text-stone-500">ج.م</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-4 gap-1 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setAmountPaidInput(totalAmount.toString())}
-                    className="bg-stone-800 hover:bg-emerald-600/40 text-stone-200 text-[9px] font-bold py-1 rounded border border-stone-700 transition"
-                  >
-                    بالضبط
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const base = Math.ceil(totalAmount / 50) * 50;
-                      setAmountPaidInput((base === totalAmount ? base + 50 : base).toString());
-                    }}
-                    className="bg-stone-800 hover:bg-emerald-600/40 text-stone-200 text-[9px] font-bold py-1 rounded border border-stone-700 transition"
-                  >
-                    +50
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const base = Math.ceil(totalAmount / 100) * 100;
-                      setAmountPaidInput((base === totalAmount ? base + 100 : base).toString());
-                    }}
-                    className="bg-stone-800 hover:bg-emerald-600/40 text-stone-200 text-[9px] font-bold py-1 rounded border border-stone-700 transition"
-                  >
-                    +100
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const base = Math.ceil(totalAmount / 200) * 200;
-                      setAmountPaidInput((base === totalAmount ? base + 200 : base).toString());
-                    }}
-                    className="bg-stone-800 hover:bg-emerald-600/40 text-stone-200 text-[9px] font-bold py-1 rounded border border-stone-700 transition"
-                  >
-                    +200
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between bg-[#0b1410] border border-emerald-500/40 rounded-lg px-2 py-1 text-[11px]">
-                  <span className="text-emerald-400 font-bold">الباقي للعميل:</span>
-                  <span className="font-mono font-black text-emerald-300 text-xs">
-                    {changeDue.toFixed(2)} ج.م
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Action Buttons Row */}
-          <div className="grid grid-cols-3 gap-1.5">
-            <button
-              onClick={handlePrintCustomerCheck}
-              className="bg-[#16161e] border border-orange-500/40 hover:bg-stone-800 text-orange-400 font-bold py-2 rounded-xl text-[11px] flex flex-col items-center justify-center gap-0.5 transition shadow"
-            >
-              <span className="text-sm">🖨️</span>
-              <span>طباعة الفاتورة</span>
-            </button>
-
-            <button
-              onClick={handleSendToPrep}
-              className="bg-[#16161e] border border-orange-500/40 hover:bg-stone-800 text-orange-400 font-bold py-2 rounded-xl text-[11px] flex flex-col items-center justify-center gap-0.5 transition shadow"
-            >
-              <span className="text-sm">💾</span>
-              <span>حفظ الطلب</span>
-            </button>
-
-            <button
-              onClick={handleCollectPayment}
-              className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-stone-950 font-black py-2 rounded-xl text-[11px] flex flex-col items-center justify-center gap-0.5 shadow-lg shadow-orange-500/40 transition"
-            >
-              <span className="text-sm">✓</span>
-              <span>إتمام الطلب</span>
-            </button>
-          </div>
-        
-          {/* Reprint Last Completed Receipt (Read-Only Copy) */}
-          <button
-            type="button"
-            onClick={handleReprintLastReceipt}
-            disabled={!lastCompletedReceipt}
-            className={`w-full mt-2 py-2 px-2.5 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 transition border ${
-              lastCompletedReceipt
-                ? "bg-[#181822] hover:bg-stone-800 text-amber-300 border-amber-500/40 hover:border-amber-500 shadow-md"
-                : "bg-[#121217] text-stone-600 border-stone-800/60 cursor-not-allowed opacity-50"
-            }`}
-            title="إعادة طباعة آخر فاتورة تم إتمامها كنسخة طبق الأصل دون إنشاء أي حركة بيع جديدة"
-          >
-            <span className="text-xs">🔄</span>
-            <span>إعادة طباعة آخر فاتورة</span>
-            {lastCompletedReceipt?.orderNumber && (
-              <span className="text-[10px] font-mono text-orange-400 bg-orange-950/80 px-1.5 py-0.2 rounded border border-orange-800 font-bold">
-                #{lastCompletedReceipt.orderNumber}
-              </span>
-            )}
-          </button>
-
-        </section>
-      </div>
-
-      {/* 3. BOTTOM SECTION: RECENT ORDERS, SHORTCUTS, QUICK STATS */}
-      <section className="h-40 shrink-0 bg-[#0a0a0c] border-t border-orange-500/30 px-3 py-2 flex flex-col sm:flex-row gap-2.5 z-30">
-        
-        {/* Box 1: Recent Orders Table */}
-        <div className="flex-1 bg-[#101014] border border-orange-500/20 rounded-2xl p-2 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-1 text-xs text-orange-400 font-bold">
-            <div className="flex items-center gap-1.5">
-              <span>🕒</span>
-              <span>آخر الطلبات</span>
-            </div>
-            <span className="text-[10px] text-stone-500 font-mono">اليوم</span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            <table className="w-full text-right text-[10px]">
-              <thead>
-                <tr className="text-stone-500 border-b border-stone-800">
-                  <th className="pb-1 text-center">#</th>
-                  <th className="pb-1 text-center">الوقت</th>
-                  <th className="pb-1 text-center">الطاولة</th>
-                  <th className="pb-1 text-center">الإجمالي</th>
-                  <th className="pb-1 text-center">الحالة</th>
-                  <th className="pb-1 text-center">نوع الطلب</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-800/40 font-mono">
-                {recentOrders.map((ro, i) => (
-                  <tr key={i} className="hover:bg-stone-800/30">
-                    <td className="py-1 text-center text-stone-400">{ro.id}</td>
-                    <td className="py-1 text-center text-stone-400">{ro.time}</td>
-                    <td className="py-1 text-center text-stone-200 font-bold">{ro.table}</td>
-                    <td className="py-1 text-center text-orange-400 font-bold">{ro.total}</td>
-                    <td className="py-1 text-center">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full inline-block font-sans ${ro.statusBadge}`}>
-                        {ro.status}
-                      </span>
-                    </td>
-                    <td className="py-1 text-center font-sans text-stone-300">
-                      <span>{ro.icon} {ro.type}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Box 2: 4 Meat/Grills Operational Shortcuts */}
-        <div className="w-[300px] bg-[#101014] border border-orange-500/20 rounded-2xl p-2 grid grid-cols-2 gap-2 shrink-0">
-          {/* Quick Takeaway Shortcut */}
-          <button
-            onClick={handleStartTakeaway}
-            className="bg-gradient-to-r from-orange-500 to-amber-500 text-stone-950 rounded-xl flex items-center justify-center gap-2 p-2 shadow-md shadow-orange-500/20 font-black group transition"
-          >
-            <span className="text-xl">🛍️</span>
-            <div className="text-right">
-              <p className="text-xs font-black leading-tight">تيك أواي سريع</p>
-              <p className="text-[9px] text-stone-900 font-bold">طلب فوري</p>
-            </div>
-          </button>
-
-          {/* Kitchen Ticket Print */}
-          <button
-            onClick={handleSendToPrep}
-            className="bg-[#14141a] hover:border-orange-500 border border-stone-800 rounded-xl flex items-center justify-center gap-2 p-2 transition group"
-          >
-            <span className="text-xl group-hover:scale-110 transition">👨‍🍳</span>
-            <div className="text-right">
-              <p className="text-xs font-bold text-stone-200 leading-tight">المطبخ</p>
-              <p className="text-[9px] text-stone-400">طباعة بون التحضير</p>
-            </div>
-          </button>
-
-          {/* Delivery Shortcut */}
-          <button
-            onClick={handleStartDelivery}
-            className="bg-[#14141a] hover:border-orange-500 border border-stone-800 rounded-xl flex items-center justify-center gap-2 p-2 transition group"
-          >
-            <span className="text-xl group-hover:scale-110 transition">🛵</span>
-            <div className="text-right">
-              <p className="text-xs font-bold text-stone-200 leading-tight">الدليفري</p>
-              <p className="text-[9px] text-stone-400">طلبات التوصيل</p>
-            </div>
-          </button>
-
-          {/* Tables Map Shortcut */}
-          <button
-            onClick={() => setShowTablesModal(true)}
-            className="bg-[#14141a] hover:border-orange-500 border border-stone-800 rounded-xl flex items-center justify-center gap-2 p-2 transition group"
-          >
-            <span className="text-xl group-hover:scale-110 transition">🪑</span>
-            <div className="text-right">
-              <p className="text-xs font-bold text-stone-200 leading-tight">الصالة</p>
-              <p className="text-[9px] text-stone-400">عرض الطاولات</p>
-            </div>
-          </button>
-        </div>
-
-        {/* Box 3: Quick Statistics */}
-        <div className="w-[280px] bg-[#101014] border border-orange-500/20 rounded-2xl p-2 flex flex-col justify-between shrink-0 text-xs">
-          <div className="flex items-center gap-1.5 text-orange-400 font-bold mb-0.5">
-            <span>📈</span>
-            <span className="text-[11px]">البيانات السريعة</span>
-          </div>
-
-          <div className="space-y-1 font-mono text-[11px]">
-            <div className="flex items-center justify-between text-stone-300">
-              <span className="font-sans text-[10px] text-stone-400">إجمالي المبيعات اليوم:</span>
-              <span className="font-bold text-orange-400 text-xs">4,850.00 ج.م</span>
-            </div>
-
-            <div className="flex items-center justify-between text-stone-300">
-              <span className="font-sans text-[10px] text-stone-400">عدد الطلبات:</span>
-              <span className="font-bold text-stone-100">18</span>
-            </div>
-
-            <div className="flex items-center justify-between text-stone-300">
-              <span className="font-sans text-[10px] text-stone-400">متوسط قيمة الطلب:</span>
-              <span className="font-bold text-stone-100">269.44 ج.م</span>
-            </div>
-
-            <div className="flex items-center justify-between text-stone-300">
-              <span className="font-sans text-[10px] text-stone-400">الطاولات المشغولة:</span>
-              <span className="font-bold text-amber-400">6/12</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. BOTTOM FOOTER BAR */}
-      <footer className="h-7 shrink-0 bg-[#060608] border-t border-stone-800/80 px-4 flex items-center justify-between text-[10px] text-stone-400 font-mono">
-        <div className="flex items-center gap-1.5 text-orange-400 font-bold">
-          <span>🔥</span>
-          <span>مشويات بسيوني - نظام نقاط البيع</span>
-        </div>
-
-        <div className="text-stone-500 hidden sm:block">
-          MASHWEYAT BASIONY
-        </div>
-
-        <div className="flex items-center gap-1.5 text-amber-400 font-sans font-bold">
-          <span>أطيب مشويات ... لأحلى تجميع</span>
-          <span>🔥</span>
-        </div>
-      </footer>
-
       {/* MODAL: TABLES VISUAL MAP */}
       {showTablesModal && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111116] border border-orange-500/40 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+          <div className="bg-[#111116] border border-amber-500/40 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
             <div className="p-4 border-b border-stone-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🪑</span>
-                <h2 className="text-base font-black text-orange-400">اختيار طاولة الصالة - مشويات بسيوني</h2>
+                <h2 className="text-base font-black text-amber-400">اختيار طاولة الصالة - مشويات بسيوني</h2>
               </div>
               <button
                 onClick={() => setShowTablesModal(false)}
@@ -1888,7 +1568,7 @@ export default function PosInterface({
                     }}
                     className={`p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between h-24 ${
                       isSelected
-                        ? "border-orange-500 bg-orange-500/10 shadow-lg shadow-orange-500/20"
+                        ? "border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/20"
                         : isOccupied
                         ? "border-rose-500/50 bg-rose-950/20"
                         : "border-stone-800 bg-[#16161e] hover:border-stone-600"
@@ -1920,8 +1600,8 @@ export default function PosInterface({
       {/* MODAL: QUICK CUSTOMER */}
       {showQuickCustomerModal && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111116] border border-orange-500/40 rounded-3xl w-full max-w-md p-5 shadow-2xl">
-            <h3 className="text-base font-black text-orange-400 mb-3 flex items-center gap-2">
+          <div className="bg-[#111116] border border-amber-500/40 rounded-3xl w-full max-w-md p-5 shadow-2xl">
+            <h3 className="text-base font-black text-amber-400 mb-3 flex items-center gap-2">
               <span>👤</span>
               <span>تسجيل بيانات العميل والدليفري</span>
             </h3>
@@ -1934,7 +1614,7 @@ export default function PosInterface({
                   value={quickName}
                   onChange={(e) => setQuickName(e.target.value)}
                   placeholder="مثال: أحمد بسيوني"
-                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-orange-500"
+                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-amber-500"
                 />
               </div>
 
@@ -1945,7 +1625,7 @@ export default function PosInterface({
                   value={quickPhone}
                   onChange={(e) => setQuickPhone(e.target.value)}
                   placeholder="010..."
-                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-orange-500 font-mono"
+                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-amber-500 font-mono"
                 />
               </div>
 
@@ -1956,7 +1636,7 @@ export default function PosInterface({
                   value={quickAddress}
                   onChange={(e) => setQuickAddress(e.target.value)}
                   placeholder="الشارع - رقم العمارة - الشقة"
-                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-orange-500"
+                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-amber-500"
                 />
               </div>
 
@@ -1967,7 +1647,7 @@ export default function PosInterface({
                   value={deliveryFee}
                   onChange={(e) => setDeliveryFee(e.target.value)}
                   placeholder="0"
-                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-orange-500 font-mono"
+                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-amber-500 font-mono"
                 />
               </div>
 
@@ -1996,7 +1676,7 @@ export default function PosInterface({
                     }
                     setShowQuickCustomerModal(false);
                   }}
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 text-stone-950 font-bold py-2 rounded-xl shadow-lg shadow-orange-500/30"
+                  className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-bold py-2 rounded-xl shadow-lg shadow-amber-500/30"
                 >
                   اعتماد العميل
                 </button>
@@ -2012,8 +1692,7 @@ export default function PosInterface({
         </div>
       )}
 
-    
-      {/* Weight Selection Modal */}
+      {/* MODAL: WEIGHT SELECTION */}
       {weightModalItem && (
         <WeightModal
           item={{
@@ -2024,28 +1703,17 @@ export default function PosInterface({
           }}
           onClose={() => setWeightModalItem(null)}
           onAdd={({ weightGrams, totalPrice }) => {
-            const weightLabel =
-              weightGrams >= 1000
-                ? `${weightGrams / 1000} كجم`
-                : `${weightGrams} جم`;
-
-            setCart((prev) => [
-              ...prev,
-              {
-                menuItemId: weightModalItem.id,
-                nameAr: `${weightModalItem.nameAr} (${weightLabel})`,
-                price: totalPrice,
-                unitPrice: (weightModalItem as any).unitPrice || weightModalItem.price,
-                weightGrams: weightGrams,
-                quantity: 1,
-              },
-            ]);
+            handleAddWeightedItem({
+              item: weightModalItem,
+              weightGrams,
+              totalPrice,
+            });
             setWeightModalItem(null);
           }}
         />
       )}
 
-      {/* Grilling Handover Tracker Modal */}
+      {/* MODAL: GRILLING HANDOVER TRACKER */}
       {showGrillingTracker && (
         <GrillingTrackerModal
           orders={activeGrillingOrders}
