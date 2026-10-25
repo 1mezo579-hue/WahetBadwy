@@ -620,7 +620,7 @@ export default function MenuManager({
                 <input
                   name="nameAr"
                   required
-                  placeholder="مثال: الطواجن البدوية"
+                  placeholder="مثال: مشويات مشكلة"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
@@ -933,7 +933,7 @@ export default function MenuManager({
                   name="nameAr"
                   defaultValue={editingCategory.nameAr}
                   required
-                  placeholder="مثال: المشويات البدوي"
+                  placeholder="مثال: مشويات بسيوني"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 outline-none font-bold"
                 />
               </div>

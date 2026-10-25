@@ -417,7 +417,7 @@ async function handleSeed(req: NextRequest) {
         notes: "فحص الأسلاك وتغيير الشمعات الحرارية دورياً",
       },
       {
-        name: "منقل فحم نحاسي بدوي مزخرف وملاقط أمان",
+        name: "منقل فحم نحاسي فاخر وملاقط أمان",
         type: EquipmentType.SHISHA,
         status: EquipmentStatus.OPERATIONAL,
         location: "ركن الشيشة",
@@ -515,8 +515,8 @@ async function handleSeed(req: NextRequest) {
       },
       {
         id: "cat_trays_02",
-        name: "Bedouin Trays",
-        nameAr: "صواني بدوي",
+        name: "Basiony Trays",
+        nameAr: "صواني بسيوني",
         description: "جميع الصواني تقدم مع أرز + سلطات + عيش + مخلل",
         order: 2,
       },
@@ -597,15 +597,15 @@ async function handleSeed(req: NextRequest) {
       { name: "Panee 1KG", nameAr: "بانية (ك)", price: 400, categoryId: "cat_grills_01", desc: "صدور دجاج بانيه متبل ومقرمش" },
       { name: "Roast Beef 1KG", nameAr: "روز بيف (ك)", price: 450, categoryId: "cat_grills_01", desc: "روز بيف فاخر مشوي" },
 
-      // صواني بدوي (مع أرز + سلطات + عيش + مخلل)
-      { name: "Bedouin Tray 1", nameAr: "صينية بدوي 1", price: 380, categoryId: "cat_trays_02", desc: "ربع كفتة + ربع سجق + ربع شيش + طحينة + أرز وعيش ومخلل" },
-      { name: "Bedouin Tray 2", nameAr: "صينية بدوي 2", price: 480, categoryId: "cat_trays_02", desc: "ربع كفتة + ربع سجق + ربع شيش + ربع فلتو + أرز وعيش ومخلل" },
-      { name: "Bedouin Tray 3", nameAr: "صينية بدوي 3", price: 580, categoryId: "cat_trays_02", desc: "ربع كفتة + ربع سجق + ربع شيش + ربع فلتو + فرد حمام" },
-      { name: "Bedouin Tray 4", nameAr: "صينية بدوي 4", price: 250, categoryId: "cat_trays_02", desc: "نصف مشكل من اللحوم المشوية + أرز وسلطات" },
-      { name: "Bedouin Tray 5", nameAr: "صينية بدوي 5", price: 350, categoryId: "cat_trays_02", desc: "نصف مشكل + فرد حمام + أرز وسلطات وعيش" },
-      { name: "Bedouin Tray 6", nameAr: "صينية بدوي 6", price: 360, categoryId: "cat_trays_02", desc: "نصف مشكل + نصف فرخة مشوية + أرز وسلطات وعيش" },
-      { name: "Bedouin Tray 7", nameAr: "صينية بدوي 7", price: 650, categoryId: "cat_trays_02", desc: "كيلو مشكل + فرخة مشوية كاملة + أرز وسلطات" },
-      { name: "Bedouin Tray 8", nameAr: "صينية بدوي 8", price: 750, categoryId: "cat_trays_02", desc: "كيلو مشكل + فرخة مشوية + فرد حمام + أرز وسلطات" },
+      // صواني بسيوني (مع أرز + سلطات + عيش + مخلل)
+      { name: "Basiony Tray 1", nameAr: "صينية بسيوني 1", price: 380, categoryId: "cat_trays_02", desc: "ربع كفتة + ربع سجق + ربع شيش + طحينة + أرز وعيش ومخلل" },
+      { name: "Basiony Tray 2", nameAr: "صينية بسيوني 2", price: 480, categoryId: "cat_trays_02", desc: "ربع كفتة + ربع سجق + ربع شيش + ربع فلتو + أرز وعيش ومخلل" },
+      { name: "Basiony Tray 3", nameAr: "صينية بسيوني 3", price: 580, categoryId: "cat_trays_02", desc: "ربع كفتة + ربع سجق + ربع شيش + ربع فلتو + فرد حمام" },
+      { name: "Basiony Tray 4", nameAr: "صينية بسيوني 4", price: 250, categoryId: "cat_trays_02", desc: "نصف مشكل من اللحوم المشوية + أرز وسلطات" },
+      { name: "Basiony Tray 5", nameAr: "صينية بسيوني 5", price: 350, categoryId: "cat_trays_02", desc: "نصف مشكل + فرد حمام + أرز وسلطات وعيش" },
+      { name: "Basiony Tray 6", nameAr: "صينية بسيوني 6", price: 360, categoryId: "cat_trays_02", desc: "نصف مشكل + نصف فرخة مشوية + أرز وسلطات وعيش" },
+      { name: "Basiony Tray 7", nameAr: "صينية بسيوني 7", price: 650, categoryId: "cat_trays_02", desc: "كيلو مشكل + فرخة مشوية كاملة + أرز وسلطات" },
+      { name: "Basiony Tray 8", nameAr: "صينية بسيوني 8", price: 750, categoryId: "cat_trays_02", desc: "كيلو مشكل + فرخة مشوية + فرد حمام + أرز وسلطات" },
 
       // الساندوتشات (على الفحم)
       { name: "Kofta Sandwich Small", nameAr: "ساندوتش كفتة صغير", price: 30, categoryId: "cat_sandwiches_03", desc: "كفتة على الفحم عيش بلدي أو فرنساوي" },
@@ -634,7 +634,7 @@ async function handleSeed(req: NextRequest) {
 
       // مشروبات ساخنة
       { name: "Tea", nameAr: "شاي", price: 15, categoryId: "cat_hot_drinks_06", desc: "شاي أسود مظبوط" },
-      { name: "Zarda Tea", nameAr: "شاي زردة", price: 15, categoryId: "cat_hot_drinks_06", desc: "شاي زردة بدوي على الفحم" },
+      { name: "Zarda Tea", nameAr: "شاي زردة", price: 15, categoryId: "cat_hot_drinks_06", desc: "شاي زردة أصلي على الفحم" },
       { name: "Flavored Tea", nameAr: "شاي نكهات", price: 22, categoryId: "cat_hot_drinks_06", desc: "شاي بنكهات متنوعة (خوخ/توت/نعناع)" },
       { name: "Milk Tea", nameAr: "شاي بالحليب", price: 25, categoryId: "cat_hot_drinks_06", desc: "شاي بالحليب الطازج" },
       { name: "Green Tea", nameAr: "شاي أخضر", price: 20, categoryId: "cat_hot_drinks_06", desc: "شاي أخضر نقي" },
@@ -720,7 +720,7 @@ async function handleSeed(req: NextRequest) {
     // 6. Seed Demo Customers for Delivery & Takeaway
     const sampleCustomers = [
       {
-        name: "الحاج إبراهيم البدوي",
+        name: "الحاج إبراهيم بسيوني",
         phone: "01012345678",
         address: "عبدالقادر - شارع المستعمرة أمام شارع 10 مباشرة قبل مسجد السلام",
         notes: "عميل دائم - يفضل اللحوم المشوية نصف سوا",

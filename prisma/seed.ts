@@ -201,7 +201,7 @@ async function main() {
       notes: "فحص الأسلاك وتغيير الشمعات الحرارية دورياً",
     },
     {
-      name: "منقل فحم نحاسي بدوي مزخرف وملاقط أمان",
+      name: "منقل فحم نحاسي فاخر وملاقط أمان",
       type: EquipmentType.SHISHA,
       status: EquipmentStatus.OPERATIONAL,
       location: "ركن الشيشة",

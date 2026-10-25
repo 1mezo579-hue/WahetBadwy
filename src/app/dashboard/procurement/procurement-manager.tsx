@@ -255,7 +255,7 @@ export default function ProcurementManager({ initialMaterials }: { initialMateri
                 <input
                   name="name"
                   required
-                  placeholder="مثال: دقيق فاخر، سكر أبيض، زيت زيتون بدوي..."
+                  placeholder="مثال: لحم بلدي، دقيق فاخر، أرز بسمتي، توابل بسيوني..."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>

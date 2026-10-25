@@ -4,7 +4,7 @@ import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: "مشويات بسيوني - نظام نقاط البيع",
-  description: "نظام نقاط البيع لمطعم مشويات بسيوني",
+  description: "نظام نقاط البيع لمطعم مشويات بسيوني - MASHWEYAT BASIONY",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1e40af",
+  themeColor: "#ea580c",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
