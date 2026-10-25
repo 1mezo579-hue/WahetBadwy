@@ -530,6 +530,21 @@ export default function PosInterface({
       return;
     }
 
+    // Check if item is sold by raw weight (Grills category or explicitly marked by weight)
+    const isWeightedItem =
+      (item as any).isWeighted ||
+      item.categoryId === "cat_grills_01" ||
+      item.description?.includes("بالوزن") ||
+      (item.nameAr.includes("مشوي") &&
+        !item.nameAr.includes("ساندوتش") &&
+        !item.nameAr.includes("فرنساوي") &&
+        !item.nameAr.includes("صينية"));
+
+    if (isWeightedItem) {
+      setWeightModalItem(item);
+      return;
+    }
+
     setCart((prev) => {
       const existing = prev.find((i) => i.menuItemId === item.id || i.nameAr === item.nameAr);
       if (existing) {
@@ -1090,7 +1105,7 @@ export default function PosInterface({
         <section className="flex-1 bg-[#09090b] flex flex-col overflow-hidden p-2.5">
           
           {/* Top 3 Channel Buttons (Takeaway is King!) */}
-          <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 mb-2.5">
             {/* 1. TAKEAWAY (Primary Vibrant Card) */}
             <button
               onClick={handleStartTakeaway}
@@ -1137,6 +1152,27 @@ export default function PosInterface({
                 <p className="text-sm font-black tracking-tight leading-tight">الصالة</p>
                 <p className={`text-[10px] font-bold ${orderType === "DINE_IN" ? "text-stone-900" : "text-stone-400"}`}>
                   {selectedTable ? selectedTable.name : "طلب على طاولة"}
+                </p>
+              </div>
+            </button>
+
+            {/* 4. CUSTOMER GRILL (الشوي الخارجي - خامة العميل) */}
+            <button
+              onClick={() => {
+                setOrderType("CUSTOMER_GRILL");
+                setSelectedTable(null);
+              }}
+              className={`p-2 sm:p-2.5 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md ${
+                orderType === "CUSTOMER_GRILL"
+                  ? "bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-stone-950 shadow-orange-500/40 font-black border-2 border-orange-400 scale-[1.02]"
+                  : "bg-[#121216] border border-orange-500/40 hover:border-orange-500 text-orange-400"
+              }`}
+            >
+              <span className="text-2xl animate-pulse">🔥</span>
+              <div className="text-right">
+                <p className="text-sm font-black tracking-tight leading-tight">شوي للغير</p>
+                <p className={`text-[10px] font-bold ${orderType === "CUSTOMER_GRILL" ? "text-stone-900" : "text-amber-400"}`}>
+                  خامة العميل
                 </p>
               </div>
             </button>
@@ -1209,7 +1245,14 @@ export default function PosInterface({
                       <span className="font-mono font-black text-xs text-orange-400">
                         {item.price}
                       </span>
-                      <span className="text-[9px] text-stone-400 font-sans">ج.م</span>
+                      <span className="text-[9px] text-stone-400 font-sans">
+                        {item.categoryId === "cat_grills_01" || item.description?.includes("بالوزن") ? "ج/كجم" : "ج.م"}
+                      </span>
+                      {(item.categoryId === "cat_grills_01" || item.description?.includes("بالوزن")) && (
+                        <span className="text-[8px] bg-orange-950 text-orange-300 border border-orange-800/80 px-1 rounded-full font-bold">
+                          بالوزن
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -1698,6 +1741,49 @@ export default function PosInterface({
             </div>
           </div>
         </div>
+      )}
+
+    
+      {/* Weight Selection Modal */}
+      {weightModalItem && (
+        <WeightModal
+          item={{
+            id: weightModalItem.id,
+            nameAr: weightModalItem.nameAr,
+            price: (weightModalItem as any).unitPrice || weightModalItem.price,
+            image: weightModalItem.image,
+          }}
+          onClose={() => setWeightModalItem(null)}
+          onAdd={({ weightGrams, totalPrice }) => {
+            const weightLabel =
+              weightGrams >= 1000
+                ? `${weightGrams / 1000} كجم`
+                : `${weightGrams} جم`;
+
+            setCart((prev) => [
+              ...prev,
+              {
+                menuItemId: weightModalItem.id,
+                nameAr: `${weightModalItem.nameAr} (${weightLabel})`,
+                price: totalPrice,
+                unitPrice: (weightModalItem as any).unitPrice || weightModalItem.price,
+                weightGrams: weightGrams,
+                quantity: 1,
+              },
+            ]);
+            setWeightModalItem(null);
+          }}
+        />
+      )}
+
+      {/* Grilling Handover Tracker Modal */}
+      {showGrillingTracker && (
+        <GrillingTrackerModal
+          orders={activeGrillingOrders}
+          currentUser={userName}
+          onRefresh={refreshGrillingOrders}
+          onClose={() => setShowGrillingTracker(false)}
+        />
       )}
 
     </div>
