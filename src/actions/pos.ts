@@ -16,7 +16,8 @@ export interface CartItemInput {
 export interface OrderPayload {
   orderId?: string;
   tableId?: string;
-  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | "CUSTOMER_GRILL" | string;
+  orderKind?: "NORMAL" | "CUSTOMER_GRILL";
   customerId?: string;
   customerName?: string;
   customerPhone?: string;
@@ -24,6 +25,15 @@ export interface OrderPayload {
   deliveryFee?: number;
   items: CartItemInput[];
   notes?: string;
+  customerMeatWeight?: number;
+  cookedWeight?: number;
+  grillingFee?: number;
+  meatType?: string;
+  pricingMode?: "PER_KG" | "PER_PIECE" | "FIXED" | string;
+  expectedPickupTime?: string;
+  receivedBy?: string;
+  deliveredBy?: string;
+  workflowStatus?: string;
 }
 
 // 1. Get POS Initial Data (Tables with their active open order, Categories, MenuItems, and Customers)

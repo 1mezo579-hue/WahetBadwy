@@ -14,9 +14,16 @@ import {
 import {
   triggerSilentThermalPrint,
   buildZReportHtml,
+  buildThermalReceiptHtml,
   silentPrintHtml,
 } from "@/utils/printer/silent-print";
 import { OFFICIAL_CATEGORIES, OFFICIAL_MENU_ITEMS, MenuItemData } from "@/data/official-menu";
+import WeightModal from "@/components/pos/weight-modal";
+import CustomerGrillingForm from "@/components/pos/customer-grilling-form";
+import GrillingTrackerModal from "@/components/pos/grilling-tracker-modal";
+import { getGrillingRates, getActiveGrillingOrders } from "@/actions/grilling-service";
+import { GrillingRates } from "@/lib/grilling-calculator";
+import { buildGrillingKitchenTicketHtml, buildGrillingHandoverTicketHtml } from "@/utils/printer/silent-print";
 
 interface PosTable {
   id: string;
@@ -111,7 +118,159 @@ export default function PosInterface({
   const [isPending, startTransition] = useTransition();
 
   // Channels: TAKEAWAY (Default & Priority), DELIVERY, DINE_IN
-  const [orderType, setOrderType] = useState<"TAKEAWAY" | "DELIVERY" | "DINE_IN">("TAKEAWAY");
+  const [orderType, setOrderType] = useState<"TAKEAWAY" | "DELIVERY" | "DINE_IN" | "CUSTOMER_GRILL">("TAKEAWAY");
+  const [weightModalItem, setWeightModalItem] = useState<PosMenuItem | null>(null);
+  const [showGrillingTracker, setShowGrillingTracker] = useState(false);
+  const [activeGrillingOrders, setActiveGrillingOrders] = useState<any[]>([]);
+  const [grillingRates, setGrillingRates] = useState<GrillingRates>({
+    meatPricePerKg: 60,
+    chickenPricePerKg: 50,
+    chickenPricePerPiece: 25,
+    fixedServiceFee: 30,
+  });
+
+  useEffect(() => {
+    getGrillingRates().then(setGrillingRates).catch(console.error);
+    getActiveGrillingOrders().then(setActiveGrillingOrders).catch(console.error);
+  }, []);
+
+  const refreshGrillingOrders = async () => {
+    try {
+      const orders = await getActiveGrillingOrders();
+      setActiveGrillingOrders(orders);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const isGrillItem = (item: PosMenuItem) => {
+    const cat = item.categoryId;
+    const name = item.nameAr.toLowerCase();
+    return (
+      cat === "GRILLS" ||
+      cat === "cat_grills_01" ||
+      name.includes("كفتة") ||
+      name.includes("كباب") ||
+      name.includes("شيش") ||
+      name.includes("مشوي") ||
+      name.includes("ريش") ||
+      name.includes("طرب") ||
+      name.includes("سجق") ||
+      name.includes("كيلو")
+    );
+  };
+
+  const handleAddWeightedItem = ({
+    item,
+    weightGrams,
+    totalPrice,
+    notes,
+  }: {
+    item: { id: string; nameAr: string; price: number };
+    weightGrams: number;
+    totalPrice: number;
+    notes?: string;
+  }) => {
+    const weightLabel = weightGrams >= 1000 ? `${(weightGrams / 1000).toFixed(2)} كجم` : `${weightGrams} جم`;
+    setCart((prev) => [
+      ...prev,
+      {
+        menuItemId: item.id,
+        nameAr: `${item.nameAr} (${weightLabel})`,
+        price: totalPrice,
+        quantity: 1,
+        notes: notes || undefined,
+        weightGrams: weightGrams,
+        rawWeightGrams: weightGrams,
+        pricePerKg: item.price,
+      },
+    ]);
+  };
+
+  const handleCustomerGrillingSubmit = async (params: any) => {
+    startTransition(async () => {
+      const isPay = params.actionType === "PAY";
+      const itemsPayload = params.addons.map((a: any) => ({
+        menuItemId: a.id,
+        nameAr: a.nameAr,
+        price: a.price,
+        quantity: a.quantity,
+        isCustomerMeat: false,
+      }));
+
+      const orderPayload: any = {
+        orderType: "TAKEAWAY",
+        orderKind: "CUSTOMER_GRILL",
+        customerName: params.customerName,
+        customerPhone: params.customerPhone,
+        customerMeatWeight: params.rawWeightGrams,
+        grillingFee: params.grillingFee,
+        meatType: params.meatType,
+        pricingMode: params.pricingMode,
+        expectedPickupTime: params.expectedPickupTime,
+        receivedBy: userName,
+        workflowStatus: isPay ? "DELIVERED" : "RECEIVED_CUSTOMER_MEAT",
+        notes: params.notes,
+        items: itemsPayload,
+      };
+
+      const actionFn = isPay ? collectOrderPayment : sendOrderToPrep;
+      const res = await actionFn(orderPayload);
+
+      if (res?.error) {
+        alert(res.error);
+        return;
+      }
+
+      const orderNumber = (res as any).order?.orderNumber;
+
+      const basePrintOptions = {
+        tableName: "خامات العميل (شوي للغير)",
+        orderNumber,
+        customerName: params.customerName,
+        customerPhone: params.customerPhone,
+        items: params.addons.map((a: any) => ({
+          nameAr: a.nameAr,
+          quantity: a.quantity,
+          price: a.price,
+        })),
+        subtotal: params.grillingFee + params.addons.reduce((s: number, a: any) => s + a.price * a.quantity, 0),
+        totalAmount: params.grillingFee + params.addons.reduce((s: number, a: any) => s + a.price * a.quantity, 0),
+        cashierName: userName,
+        isPaid: isPay,
+        orderKind: "CUSTOMER_GRILL" as const,
+        meatType: params.meatType,
+        customerMeatWeight: params.rawWeightGrams,
+        grillingFee: params.grillingFee,
+        expectedPickupTime: params.expectedPickupTime,
+        receivedBy: userName,
+        notes: params.notes,
+      };
+
+      // Print Kitchen Ticket
+      await silentPrintHtml(buildGrillingKitchenTicketHtml(basePrintOptions));
+
+      // Print Handover Slip
+      await silentPrintHtml(buildGrillingHandoverTicketHtml(basePrintOptions));
+
+      // Print Customer Check
+      await silentPrintHtml(
+        buildThermalReceiptHtml({
+          ...basePrintOptions,
+          title: isPay ? "فاتورة سداد خدمة شوي للغير" : "شيك استلام خدمة شوي للغير",
+        })
+      );
+
+      alert(
+        isPay
+          ? "تم تحصيل رسوم الشوي وطباعة البونات بنجاح ✓"
+          : "تم تسجيل واستلام خامات العميل وتوجيه بون الشواية وبون الاستلام للطباعة بنجاح ✓"
+      );
+
+      await refreshGrillingOrders();
+      setOrderType("TAKEAWAY");
+    });
+  };
 
   // Customer State
   const [customersList, setCustomersList] = useState<any[]>(initialCustomers || []);
@@ -854,6 +1013,19 @@ export default function PosInterface({
             </span>
           </div>
 
+          {/* Shortcut to Grilling Handover Tracker */}
+          <button
+            onClick={() => setShowGrillingTracker(true)}
+            className="px-2.5 py-1 rounded-xl bg-orange-950/60 hover:bg-orange-900/80 text-orange-300 border border-orange-500/40 text-[11px] font-bold flex items-center gap-1.5 transition"
+            title="متابعة تسليم مشويات خامات العميل"
+          >
+            <span>📋</span>
+            <span className="hidden md:inline">متابعة الشوي</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-orange-500 text-stone-950 text-[10px] font-mono font-black">
+              {activeGrillingOrders.filter((o) => o.workflowStatus !== "DELIVERED").length}
+            </span>
+          </button>
+
           {/* Admin Quick Lock/Unlock Shortcut if role === ADMIN */}
           {userRole === "ADMIN" && (
             <button
@@ -970,6 +1142,16 @@ export default function PosInterface({
             </button>
           </div>
 
+          {orderType === "CUSTOMER_GRILL" ? (
+            <CustomerGrillingForm
+              rates={grillingRates}
+              cashierName={userName}
+              onSubmit={handleCustomerGrillingSubmit}
+              isSubmitting={isPending}
+              onOpenTracker={() => setShowGrillingTracker(true)}
+            />
+          ) : (
+            <>
           {/* Search Bar & Categories Toggle */}
           <div className="flex items-center gap-2 mb-2">
             <div className="relative flex-1">
@@ -1039,6 +1221,8 @@ export default function PosInterface({
               ))}
             </div>
           </div>
+            </>
+          )}
         </section>
 
         {/* C. FAR RIGHT: CURRENT ORDER PANEL ("الطلب الحالي") */}

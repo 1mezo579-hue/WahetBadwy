@@ -351,6 +351,16 @@ export default function ReportsView({ data }: ReportsViewProps) {
   const complimentary = data.complimentaryReport || { orders: [], totalWaived: 0, count: 0 };
   const auditLogs = data.auditReport?.logs || [];
   const staff = data.staffReport || [];
+  const grilling = data.grillingReport || {
+    totalGrillingRevenue: 0,
+    normalFoodSales: sales.totalSales,
+    totalCustomerMeatWeightGrams: 0,
+    totalCustomerMeatWeightKg: 0,
+    totalCustomerOrdersCount: 0,
+    paidCustomerOrdersCount: 0,
+    averageGrillingFee: 0,
+    orders: [],
+  };
 
   // Filtered orders for table search
   const filteredOrdersList = orders.orders.filter((o: any) => {

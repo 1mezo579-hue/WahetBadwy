@@ -209,7 +209,19 @@ model Order {
   subtotal        Float       @default(0)
   discount        Float       @default(0)
   totalAmount     Float       @default(0) @map("total_amount")
-  notes           String?
+    notes           String?
+  orderKind       String?     @default("NORMAL") @map("order_kind")
+  customerMeatWeight Float?   @default(0) @map("customer_meat_weight")
+  cookedWeight    Float?      @default(0) @map("cooked_weight")
+  grillingFee     Float?      @default(0) @map("grilling_fee")
+  meatType        String?     @map("meat_type")
+  pricingMode     String?     @default("PER_KG") @map("pricing_mode")
+  expectedPickupTime String?  @map("expected_pickup_time")
+  receivedBy      String?     @map("received_by")
+  deliveredBy     String?     @map("delivered_by")
+  reprintCount    Int?        @default(0) @map("reprint_count")
+  workflowStatus  String?     @default("NEW") @map("workflow_status")
+  statusHistory   Json?       @default("[]") @map("status_history")
   items           OrderItem[]
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
@@ -259,7 +271,11 @@ model OrderItem {
   quantity   Int      @default(1)
   unitPrice  Float    @map("unit_price")
   totalPrice Float    @map("total_price")
-  notes      String?
+    notes      String?
+  weightGrams        Float?   @default(0) @map("weight_grams")
+  rawWeightGrams     Float?   @default(0) @map("raw_weight_grams")
+  cookedWeightGrams  Float?   @default(0) @map("cooked_weight_grams")
+  isCustomerMeat     Boolean? @default(false) @map("is_customer_meat")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 

@@ -13,10 +13,10 @@ export interface ThermalReceiptItem {
 
 export interface ThermalReceiptOptions {
   title?: string;
-  receiptType?: "CHECK" | "RECEIPT" | "PREP" | "Z_REPORT";
+  receiptType?: "CHECK" | "RECEIPT" | "PREP" | "Z_REPORT" | "GRILL_KITCHEN" | "GRILL_HANDOVER";
   tableName: string;
   orderNumber?: number | string;
-  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | string;
+  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | "CUSTOMER_GRILL" | string;
   customerName?: string;
   customerPhone?: string;
   deliveryAddress?: string;
@@ -30,6 +30,16 @@ export interface ThermalReceiptOptions {
   timestamp?: Date;
   cashierName?: string;
   isPaid?: boolean;
+  orderKind?: "NORMAL" | "CUSTOMER_GRILL";
+  meatType?: string;
+  customerMeatWeight?: number;
+  cookedWeight?: number;
+  grillingFee?: number;
+  expectedPickupTime?: string;
+  receivedBy?: string;
+  deliveredBy?: string;
+  packageCount?: number;
+  reprintCount?: number;
 }
 
 /**
@@ -520,4 +530,239 @@ export async function triggerTestPrint(cashierName: string = "كاشير مشو�
     isPaid: true,
     notes: "تجربة الطباعة التلقائية على طابعة Xprinter 80mm",
   });
+}
+
+
+/**
+ * Builds Kitchen Grill Ticket for Customer Meat ("شوي للغير")
+ * Prominently warns kitchen staff that materials belong to customer.
+ */
+export function buildGrillingKitchenTicketHtml(options: ThermalReceiptOptions): string {
+  const timestamp = options.timestamp || new Date();
+  const dateStr = timestamp.toLocaleDateString("ar-EG");
+  const timeStr = timestamp.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+  const rawWeightKg = ((options.customerMeatWeight || 0) / 1000).toFixed(2);
+
+  return `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>بون الشواية - خامات العميل</title>
+  <style>
+    @page { margin: 0; size: 80mm auto; }
+    body {
+      font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+      width: 76mm;
+      margin: 0 auto;
+      padding: 3mm 2mm 6mm 2mm;
+      color: #000;
+      background: #fff;
+      font-size: 11px;
+      line-height: 1.35;
+      direction: rtl;
+      text-align: right;
+    }
+    .text-center { text-align: center; }
+    .font-bold { font-weight: 700; }
+    .font-black { font-weight: 900; }
+    .warning-box {
+      border: 2px dashed #000;
+      background: #fff8e1;
+      padding: 5px;
+      margin: 6px 0;
+      text-align: center;
+      font-weight: 900;
+      font-size: 11px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 13px;
+      font-weight: 900;
+      border: 2px solid #000;
+      border-radius: 4px;
+      margin: 4px 0;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      font-size: 11px;
+      border-bottom: 1px dotted #ccc;
+    }
+    .divider { border-top: 1px dashed #000; margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <div class="text-center">
+    <div style="font-size: 15px; font-weight: 900;">مشويات بسيوني - MASHWEYAT BASIONY</div>
+    <div class="badge">🔥 بون الشواية والمطبخ (خامات العميل) 🔥</div>
+    ${options.reprintCount && options.reprintCount > 0 ? `<div style="font-weight: 900; color: #b00; margin: 2px 0;">*** نسخة معاد طباعتها #${options.reprintCount} ***</div>` : ""}
+    <div style="font-size: 10px;">رقم الطلب: #${options.orderNumber || "---"} | ${dateStr} - ${timeStr}</div>
+  </div>
+
+  <div class="warning-box">
+    ⚠️ تنبيه رقابي للمطبخ والشواية ⚠️<br>
+    الخامات ملك للعميل • ممنوع خصمها من مخزون المطعم أو احتساب قيمتها كمبيعات!
+  </div>
+
+  <div class="detail-row">
+    <span>اسم العميل:</span>
+    <strong style="font-size: 13px;">${options.customerName || "عميل خارجي"}</strong>
+  </div>
+  ${options.customerPhone ? `<div class="detail-row"><span>الهاتف:</span><strong style="font-family: monospace;">${options.customerPhone}</strong></div>` : ""}
+  
+  <div class="detail-row">
+    <span>نوع اللحم / الخامة:</span>
+    <strong style="font-size: 13px; color: #b00;">${options.meatType || "مشويات مشكلة"}</strong>
+  </div>
+
+  <div class="detail-row" style="background: #f0f0f0; padding: 4px;">
+    <span>الوزن النيء المستلم:</span>
+    <strong style="font-size: 14px;">${options.customerMeatWeight || 0} جم (${rawWeightKg} كجم)</strong>
+  </div>
+
+  ${options.cookedWeight && options.cookedWeight > 0 ? `
+  <div class="detail-row" style="background: #e8f5e9; padding: 4px;">
+    <span>الوزن بعد التسوية:</span>
+    <strong style="font-size: 13px; color: #006600;">${options.cookedWeight} جم (انكماش: ${Math.max(0, (options.customerMeatWeight || 0) - options.cookedWeight)} جم)</strong>
+  </div>
+  ` : ""}
+
+  <div class="detail-row">
+    <span>موعد التسليم المتوقع:</span>
+    <strong style="font-size: 12px; color: #000;">${options.expectedPickupTime || "حسب الجاهزية"}</strong>
+  </div>
+
+  <div class="detail-row">
+    <span>الموظف المستلم:</span>
+    <strong>${options.receivedBy || options.cashierName || "كاشير"}</strong>
+  </div>
+
+  ${options.notes ? `
+  <div class="divider"></div>
+  <div style="padding: 4px; background: #fffde7; border: 1px solid #000; border-radius: 4px; margin-top: 4px;">
+    <strong>تعليمات الشوي والتتبيل:</strong><br>
+    ${options.notes}
+  </div>
+  ` : ""}
+
+  <div class="divider"></div>
+  <div class="text-center" style="font-size: 9px; margin-top: 6px;">
+    قسم الشواية والمطبخ • مشويات بسيوني
+  </div>
+</body>
+</html>`;
+}
+
+/**
+ * Builds Handover & Packaging Slip for Customer Grilling
+ */
+export function buildGrillingHandoverTicketHtml(options: ThermalReceiptOptions): string {
+  const timestamp = options.timestamp || new Date();
+  const dateStr = timestamp.toLocaleDateString("ar-EG");
+  const timeStr = timestamp.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+
+  return `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>بون تسليم المشويات</title>
+  <style>
+    @page { margin: 0; size: 80mm auto; }
+    body {
+      font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+      width: 76mm;
+      margin: 0 auto;
+      padding: 3mm 2mm 6mm 2mm;
+      color: #000;
+      background: #fff;
+      font-size: 11px;
+      line-height: 1.35;
+      direction: rtl;
+      text-align: right;
+    }
+    .text-center { text-align: center; }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 900;
+      border: 1.5px solid #000;
+      border-radius: 4px;
+      margin: 4px 0;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      font-size: 11px;
+      border-bottom: 1px dotted #ccc;
+    }
+    .divider { border-top: 1px dashed #000; margin: 5px 0; }
+    .sign-box {
+      border: 1px solid #999;
+      padding: 6px;
+      margin-top: 8px;
+      text-align: center;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="text-center">
+    <div style="font-size: 14px; font-weight: 900;">مشويات بسيوني – MASHWEYAT BASIONY</div>
+    <div class="badge">📦 بون التسليم والتغليف (خامات العميل) 📦</div>
+    <div style="font-size: 10px;">رقم الطلب: #${options.orderNumber || "---"} | ${dateStr} - ${timeStr}</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="detail-row">
+    <span>اسم العميل:</span>
+    <strong style="font-size: 12px;">${options.customerName || "عميل خارجي"}</strong>
+  </div>
+  ${options.customerPhone ? `<div class="detail-row"><span>رقم الهاتف:</span><strong style="font-family: monospace;">${options.customerPhone}</strong></div>` : ""}
+  
+  <div class="detail-row">
+    <span>نوع المشويات:</span>
+    <strong>${options.meatType || "مشويات"}</strong>
+  </div>
+
+  <div class="detail-row">
+    <span>الوزن النيء المسجل:</span>
+    <strong>${options.customerMeatWeight || 0} جم</strong>
+  </div>
+
+  <div class="detail-row">
+    <span>عدد العلب / الشنط:</span>
+    <strong style="font-size: 13px;">${options.packageCount || 1} علبة</strong>
+  </div>
+
+  <div class="detail-row">
+    <span>وقت التسليم المتوقع:</span>
+    <strong>${options.expectedPickupTime || "---"}</strong>
+  </div>
+
+  <div class="detail-row">
+    <span>الموظف المستلم:</span>
+    <span>${options.receivedBy || "الكاشير"}</span>
+  </div>
+
+  <div class="detail-row">
+    <span>الموظف المسلّم:</span>
+    <span>${options.deliveredBy || "المسؤول"}</span>
+  </div>
+
+  <div class="sign-box">
+    توقيع الكاشير المسلّم: ............................<br><br>
+    توقيع العميل المستلم: ............................
+  </div>
+
+  <div class="divider"></div>
+  <div class="text-center" style="font-size: 9px; margin-top: 4px;">
+    مشويات بسيوني • عبدالقادر شارع المستعمرة • 01038029714
+  </div>
+</body>
+</html>`;
 }

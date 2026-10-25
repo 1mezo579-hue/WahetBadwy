@@ -87,7 +87,7 @@ export function getItemDepartment(item: {
 export interface RoutePrepOrderInput {
   tableName: string;
   orderNumber?: number;
-  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | string;
   customerName?: string;
   customerPhone?: string;
   deliveryAddress?: string;

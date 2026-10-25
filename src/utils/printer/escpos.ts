@@ -84,7 +84,7 @@ export interface PrepTicketOptions {
 export interface CustomerCheckOptions {
   tableName: string;
   orderNumber?: number;
-  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | string;
   customerName?: string;
   customerPhone?: string;
   deliveryAddress?: string;
@@ -97,6 +97,16 @@ export interface CustomerCheckOptions {
   notes?: string;
   timestamp?: Date;
   cashierName?: string;
+  orderKind?: "NORMAL" | "CUSTOMER_GRILL";
+  meatType?: string;
+  customerMeatWeight?: number;
+  cookedWeight?: number;
+  grillingFee?: number;
+  expectedPickupTime?: string;
+  receivedBy?: string;
+  deliveredBy?: string;
+  reprintCount?: number;
+  packageCount?: number;
 }
 
 /**
@@ -467,6 +477,102 @@ export function buildPaymentReceipt(
     ESC_COMMANDS.FEED_5_LINES,
     ESC_COMMANDS.FULL_CUT
   );
+
+  return concatByteArrays(...chunks);
+}
+
+
+/**
+ * 6. KITCHEN GRILLING TICKET FOR CUSTOMER MEAT (بون الشواية - خامات العميل)
+ * Hardware ESC/POS: prominent warning that raw materials belong to customer.
+ */
+export function buildGrillingKitchenTicket(options: CustomerCheckOptions): Uint8Array {
+  const timeStr = (options.timestamp || new Date()).toLocaleTimeString("ar-EG", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const rawWeightKg = ((options.customerMeatWeight || 0) / 1000).toFixed(2);
+
+  const chunks: Uint8Array[] = [
+    ESC_COMMANDS.INIT,
+    ESC_COMMANDS.ALIGN_CENTER,
+    ESC_COMMANDS.BOLD_ON,
+    ESC_COMMANDS.SIZE_DOUBLE_WIDTH,
+    encodeText("مشويات بسيوني - MASHWEYAT BASIONY"),
+    ESC_COMMANDS.SIZE_TITLE_LARGE,
+    encodeText("*** بون الشواية - خامات العميل ***"),
+    ESC_COMMANDS.SIZE_NORMAL,
+    options.reprintCount && options.reprintCount > 0
+      ? encodeText(`*** نسخة معاد طباعتها #${options.reprintCount} ***`)
+      : new Uint8Array(),
+    encodeText("================================"),
+    encodeText("⚠️ تنبيه رقابي للشواية والمطبخ ⚠️"),
+    encodeText("الخامات ملك للعميل - ممنوع خصمها"),
+    encodeText("من مخزون المطعم أو حسابها كمبيعات"),
+    encodeText("--------------------------------"),
+    ESC_COMMANDS.ALIGN_RIGHT,
+    options.orderNumber ? encodeText(`رقم الطلب: #${options.orderNumber}`) : new Uint8Array(),
+    options.customerName ? encodeText(`العميل: ${options.customerName}`) : new Uint8Array(),
+    options.customerPhone ? encodeText(`الهاتف: ${options.customerPhone}`) : new Uint8Array(),
+    ESC_COMMANDS.BOLD_ON,
+    ESC_COMMANDS.SIZE_DOUBLE_HEIGHT,
+    encodeText(`نوع الخامة: ${options.meatType || "مشويات"}`),
+    encodeText(`الوزن المستلم: ${options.customerMeatWeight || 0} جم (${rawWeightKg} كجم)`),
+    ESC_COMMANDS.SIZE_NORMAL,
+    ESC_COMMANDS.BOLD_OFF,
+    options.cookedWeight ? encodeText(`الوزن بعد التسوية: ${options.cookedWeight} جم`) : new Uint8Array(),
+    encodeText(`موعد التسليم المتوقع: ${options.expectedPickupTime || "حسب الجاهزية"}`),
+    encodeText(`المستلم: ${options.receivedBy || "الكاشير"}`),
+    encodeText(`الوقت: ${timeStr}`),
+    encodeText("--------------------------------"),
+    options.notes ? encodeText(`تعليمات الشوي: ${options.notes}`) : new Uint8Array(),
+    ESC_COMMANDS.ALIGN_CENTER,
+    encodeText("================================"),
+    encodeText("قسم الشواية والمطبخ"),
+    ESC_COMMANDS.FEED_5_LINES,
+    ESC_COMMANDS.FULL_CUT,
+  ];
+
+  return concatByteArrays(...chunks);
+}
+
+/**
+ * 7. HANDOVER SLIP FOR CUSTOMER GRILLING (بون تسليم المشويات والتغليف)
+ */
+export function buildGrillingHandoverTicket(options: CustomerCheckOptions): Uint8Array {
+  const timeStr = (options.timestamp || new Date()).toLocaleTimeString("ar-EG", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const chunks: Uint8Array[] = [
+    ESC_COMMANDS.INIT,
+    ESC_COMMANDS.ALIGN_CENTER,
+    ESC_COMMANDS.BOLD_ON,
+    ESC_COMMANDS.SIZE_DOUBLE_WIDTH,
+    encodeText("مشويات بسيوني - MASHWEYAT BASIONY"),
+    ESC_COMMANDS.SIZE_NORMAL,
+    encodeText("*** بون التسليم والتغليف ***"),
+    encodeText("================================"),
+    ESC_COMMANDS.ALIGN_RIGHT,
+    options.orderNumber ? encodeText(`رقم الطلب: #${options.orderNumber}`) : new Uint8Array(),
+    encodeText(`العميل: ${options.customerName || "عميل خارجي"}`),
+    options.customerPhone ? encodeText(`الهاتف: ${options.customerPhone}`) : new Uint8Array(),
+    encodeText(`الخامة: ${options.meatType || "مشويات"}`),
+    encodeText(`الوزن المستلم: ${options.customerMeatWeight || 0} جم`),
+    encodeText(`عدد العلب/الشنط: ${options.packageCount || 1} علبة`),
+    encodeText(`وقت التسليم: ${options.expectedPickupTime || "---"}`),
+    encodeText(`المستلم: ${options.receivedBy || "الكاشير"}`),
+    encodeText(`المسلّم: ${options.deliveredBy || "المسؤول"}`),
+    encodeText("--------------------------------"),
+    encodeText("توقيع الكاشير: ........................"),
+    encodeText("توقيع المستلم: ........................"),
+    ESC_COMMANDS.ALIGN_CENTER,
+    encodeText("================================"),
+    encodeText("مشويات بسيوني • 01038029714"),
+    ESC_COMMANDS.FEED_5_LINES,
+    ESC_COMMANDS.FULL_CUT,
+  ];
 
   return concatByteArrays(...chunks);
 }
