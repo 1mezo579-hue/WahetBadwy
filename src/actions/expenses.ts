@@ -10,6 +10,7 @@ import {
   saveExpenseCategories,
   ExpenseCategoryItem,
   DEFAULT_EXPENSE_CATEGORIES,
+  matchExpenseCategory,
 } from "@/lib/expenses-catalog";
 
 export interface ExpenseRecord {
@@ -26,6 +27,10 @@ export interface ExpenseRecord {
   shiftId?: string;
   shiftNumber?: number;
   timestamp: string;
+  isVoided?: boolean;
+  voidReason?: string;
+  voidedBy?: string;
+  voidedAt?: string;
 }
 
 const LEDGER_CONFIG_KEY = "EXPENSE_CENTRAL_LEDGER_V1";
@@ -336,4 +341,186 @@ export async function resetCategoriesCatalog() {
   const ok = await saveExpenseCategories(DEFAULT_EXPENSE_CATEGORIES);
   revalidatePath("/dashboard/reports");
   return { success: ok };
+}
+
+
+/**
+ * 6. Void an Erroneous Expense (Admin & Manager)
+ * Restores cash drawer if paid in cash from active shift, flags as isVoided, logs security event.
+ */
+export async function voidExpense(expenseId: string, reason?: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || ((session.user as any).role !== "ADMIN" && (session.user as any).role !== "MANAGER")) {
+      return { success: false, error: "غير مصرح: إلغاء المصروفات مقتصر على الإدارة." };
+    }
+
+    const userName = session.user.name || (session.user as any).username || "الإدارة";
+    const ledger = await getCentralExpenseLedger();
+    const target = ledger.find((e) => e.id === expenseId);
+
+    if (!target) {
+      return { success: false, error: "المصروف غير موجود أو تم حذفه مسبقاً." };
+    }
+
+    if (target.isVoided) {
+      return { success: false, error: "هذا المصروف ملغي بالفعل." };
+    }
+
+    target.isVoided = true;
+    target.voidReason = reason || "إلغاء بواسطة الإدارة";
+    target.voidedBy = userName;
+    target.voidedAt = new Date().toISOString();
+
+    // If it belongs to an active OPEN shift and paid in CASH, adjust shift expectedCash and expensesTotal
+    if (target.shiftId) {
+      const shift = await prisma.shift.findUnique({
+        where: { id: target.shiftId },
+      });
+
+      if (shift && shift.status === "OPEN") {
+        let details: any[] = [];
+        if (Array.isArray(shift.expensesDetails)) details = shift.expensesDetails;
+        else if (typeof shift.expensesDetails === "string") {
+          try { details = JSON.parse(shift.expensesDetails); } catch {}
+        }
+
+        const filteredDetails = details.filter((d: any) => d.id !== expenseId);
+        const newTotal = Math.max(0, (shift.expensesTotal || 0) - target.amount);
+        let newExpectedCash = shift.expectedCash;
+        if (target.paymentMethod === "CASH") {
+          newExpectedCash = (shift.expectedCash || 0) + target.amount;
+        }
+
+        await prisma.shift.update({
+          where: { id: shift.id },
+          data: {
+            expensesTotal: newTotal,
+            expensesDetails: filteredDetails as any,
+            expectedCash: newExpectedCash,
+          },
+        });
+      }
+    }
+
+    await saveCentralExpenseLedger(ledger);
+
+    await logSecurityEvent(
+      "VOID_EXPENSE",
+      "إلغاء مصروف",
+      userName,
+      `تم إلغاء المصروف #${expenseId} بقيمة ${target.amount} ج.م [${target.categoryName}]. السبب: ${reason || "بدون سبب"}`
+    );
+
+    revalidatePath("/dashboard/reports");
+    revalidatePath("/pos");
+
+    return { success: true, message: "تم إلغاء المصروف وتحديث الحسابات بنجاح." };
+  } catch (err: any) {
+    console.error("Error voiding expense:", err);
+    return { success: false, error: err.message || "حدث خطأ أثناء إلغاء المصروف." };
+  }
+}
+
+/**
+ * 7. Batch Import Expenses from Excel / CSV Data
+ */
+export interface ImportedExpenseInput {
+  item: string;
+  categoryName?: string;
+  amount: number;
+  paymentMethod?: string;
+  receiver?: string;
+  responsible?: string;
+  notes?: string;
+  date?: string;
+}
+
+export async function importExpensesBatch(rows: ImportedExpenseInput[]) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || ((session.user as any).role !== "ADMIN" && (session.user as any).role !== "MANAGER")) {
+      return { success: false, error: "غير مصرح: استيراد المصروفات مخصص للإدارة فقط." };
+    }
+
+    const userName = session.user.name || (session.user as any).username || "الإدارة";
+    const categories = await getExpenseCategories();
+    const ledger = await getCentralExpenseLedger();
+
+    let importedCount = 0;
+    const errors: string[] = [];
+    const newRecords: ExpenseRecord[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const amount = Number(r.amount);
+      if (!amount || isNaN(amount) || amount <= 0) {
+        errors.push(`السطر ${i + 1}: المبلغ غير صالح (${r.amount})`);
+        continue;
+      }
+
+      const itemDesc = (r.item || r.categoryName || "مصروف مستورد").trim();
+      let matchedCat = r.categoryName ? matchExpenseCategory(r.categoryName, categories) : null;
+      if (!matchedCat) {
+        matchedCat = matchExpenseCategory(itemDesc, categories);
+      }
+
+      let payMethod: "CASH" | "VISA" | "TRANSFER" = "CASH";
+      const payRaw = (r.paymentMethod || "").toLowerCase();
+      if (payRaw.includes("فيزا") || payRaw.includes("visa") || payRaw.includes("كارت")) {
+        payMethod = "VISA";
+      } else if (payRaw.includes("تحويل") || payRaw.includes("bank") || payRaw.includes("انستا") || payRaw.includes("فودافون")) {
+        payMethod = "TRANSFER";
+      }
+
+      let timestamp = new Date().toISOString();
+      if (r.date) {
+        const parsedD = new Date(r.date);
+        if (!isNaN(parsedD.getTime())) {
+          timestamp = parsedD.toISOString();
+        }
+      }
+
+      const newRecord: ExpenseRecord = {
+        id: "exp-imp-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6) + "-" + i,
+        amount,
+        item: itemDesc,
+        categoryId: matchedCat?.id,
+        categoryName: matchedCat?.nameAr || r.categoryName || "مصروفات عامة",
+        paymentMethod: payMethod,
+        receiver: (r.receiver || "غير محدد").trim(),
+        responsible: (r.responsible || userName).trim(),
+        notes: (r.notes || "مستورد من ملف Excel").trim(),
+        timestamp,
+      };
+
+      newRecords.push(newRecord);
+      importedCount++;
+    }
+
+    if (newRecords.length > 0) {
+      const updatedLedger = [...newRecords, ...ledger];
+      await saveCentralExpenseLedger(updatedLedger);
+
+      await logSecurityEvent(
+        "IMPORT_EXPENSES",
+        "استيراد مصروفات من Excel",
+        userName,
+        `تم استيراد ${importedCount} مصروف بنجاح من ملف Excel/CSV.`
+      );
+
+      revalidatePath("/dashboard/reports");
+      revalidatePath("/pos");
+    }
+
+    return {
+      success: true,
+      importedCount,
+      errors,
+      message: `تم استيراد ${importedCount} مصروف بنجاح.${errors.length > 0 ? ` (تم تخطي ${errors.length} سطر غير صالح)` : ""}`,
+    };
+  } catch (err: any) {
+    console.error("Error importing expenses batch:", err);
+    return { success: false, error: err.message || "فشل استيراد المصروفات." };
+  }
 }

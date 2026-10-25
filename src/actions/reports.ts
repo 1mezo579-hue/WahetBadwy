@@ -344,6 +344,7 @@ export async function getAdminReportsData(filters?: ReportFilters) {
       id?: string;
       date: string;
       shiftNumber?: number | string;
+      shiftId?: string;
       cashierName: string;
       amount: number;
       item: string;
@@ -352,6 +353,10 @@ export async function getAdminReportsData(filters?: ReportFilters) {
       receiver?: string;
       responsible?: string;
       notes?: string;
+      isVoided?: boolean;
+      voidReason?: string;
+      voidedBy?: string;
+      timestamp?: string;
     }> = [];
 
     // Central Expenses Ledger
@@ -364,6 +369,7 @@ export async function getAdminReportsData(filters?: ReportFilters) {
         id: c.id,
         date: cDate.toLocaleDateString("ar-EG"),
         shiftNumber: c.shiftNumber ? "#" + c.shiftNumber : "عام",
+        shiftId: c.shiftId,
         cashierName: c.responsible || "الإدارة",
         amount: c.amount,
         item: c.item,
@@ -372,6 +378,10 @@ export async function getAdminReportsData(filters?: ReportFilters) {
         receiver: c.receiver || "-",
         responsible: c.responsible || "-",
         notes: c.notes || "",
+        isVoided: !!c.isVoided,
+        voidReason: c.voidReason,
+        voidedBy: c.voidedBy,
+        timestamp: c.timestamp,
       });
     });
 
@@ -409,12 +419,14 @@ export async function getAdminReportsData(filters?: ReportFilters) {
       });
     });
 
-    const totalRecordedExpenses = expensesList.reduce((sum, e) => sum + e.amount, 0);
+    // Only active (non-voided) expenses count in financial totals
+    const activeExpensesList = expensesList.filter((e) => !e.isVoided);
+    const totalRecordedExpenses = activeExpensesList.reduce((sum, e) => sum + e.amount, 0);
 
     // Categories and Payment Breakdown
     const expCatMap = new Map<string, number>();
     const expPayMap = { CASH: 0, VISA: 0, TRANSFER: 0 };
-    expensesList.forEach((e) => {
+    activeExpensesList.forEach((e) => {
       const cat = e.category || "عام";
       expCatMap.set(cat, (expCatMap.get(cat) || 0) + e.amount);
       if (e.paymentMethod && e.paymentMethod.includes("فيزا")) expPayMap.VISA += e.amount;

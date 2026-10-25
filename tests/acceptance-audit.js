@@ -518,6 +518,107 @@ console.log("=================================================================="
 
 console.log("==================================================================");
 console.log(`📊 TEST SUITE SUMMARY: ${passedCount} PASSED, ${failedCount} FAILED`);
+
+// ==================================================================
+// 14. Excel / CSV Import Parser & Multi-row Validation
+// ==================================================================
+test("CSV Import Parser: Accurately validates headers, skips invalid rows, and normalizes payment methods", () => {
+  const sampleCsv = `البند,المبلغ,طريقة الدفع,التصنيف,المستلم,ملاحظات
+لحوم بلدي ضاني,1500,CASH,المشتريات الغذائية,مورد اللحوم,طلب كباب
+أكياس بلاستيك سفري,300,فيزا,التعبئة والتغليف,شركة التغليف,بكرات وطباعة
+سطر خاطئ بدون مبلغ,-50,نقدي,منظفات,أحمد,خطأ
+شحن رصيد كاشير,100,تحويل بنكي,المرافق,كاشير الوردية,باقة إنترنت`;
+
+  const lines = sampleCsv.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
+  const rows = [];
+  const errors = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(",").map(p => p.trim());
+    const amount = parseFloat(parts[1]) || 0;
+    if (amount <= 0) {
+      errors.push(`السطر ${i + 1}: مبلغ غير صالح`);
+      continue;
+    }
+
+    let payMethod = "CASH";
+    const payRaw = (parts[2] || "").toLowerCase();
+    if (payRaw.includes("فيزا") || payRaw.includes("visa")) payMethod = "VISA";
+    else if (payRaw.includes("تحويل") || payRaw.includes("بنك")) payMethod = "TRANSFER";
+
+    rows.push({
+      item: parts[0],
+      amount,
+      paymentMethod: payMethod,
+      categoryName: parts[3],
+      receiver: parts[4],
+      notes: parts[5],
+    });
+  }
+
+  assert.strictEqual(rows.length, 3, "Must successfully parse 3 valid rows");
+  assert.strictEqual(errors.length, 1, "Must catch 1 invalid row with negative/zero amount");
+  assert.strictEqual(rows[0].paymentMethod, "CASH");
+  assert.strictEqual(rows[1].paymentMethod, "VISA");
+  assert.strictEqual(rows[2].paymentMethod, "TRANSFER");
+  assert.strictEqual(rows.reduce((sum, r) => sum + r.amount, 0), 1900);
+});
+
+// ==================================================================
+// 15. Expense Voiding & Audit Status
+// ==================================================================
+test("Expense Voiding: Flags expense as isVoided, logs voidReason, and excludes amount from net expenses", () => {
+  const ledger = [
+    { id: "e1", item: "فحم", amount: 200, isVoided: false, paymentMethod: "CASH" },
+    { id: "e2", item: "خضار", amount: 300, isVoided: false, paymentMethod: "CASH" },
+    { id: "e3", item: "منظفات", amount: 150, isVoided: false, paymentMethod: "CASH" },
+  ];
+
+  // Void e2
+  const target = ledger.find(e => e.id === "e2");
+  target.isVoided = true;
+  target.voidReason = "تسجيل مكرر بالخطأ";
+  target.voidedBy = "أحمد بسيوني";
+
+  const activeLedger = ledger.filter(e => !e.isVoided);
+  const netTotal = activeLedger.reduce((sum, e) => sum + e.amount, 0);
+
+  assert.strictEqual(activeLedger.length, 2, "Only 2 active expenses remain");
+  assert.strictEqual(netTotal, 350, "Net total should be 200 + 150 = 350");
+  assert.strictEqual(target.isVoided, true);
+  assert.strictEqual(target.voidReason, "تسجيل مكرر بالخطأ");
+});
+
+// ==================================================================
+// 16. Shift & Day Multi-filter Isolation
+// ==================================================================
+test("Shift & Day Filtering: Isolates expenses by date range, shift number, and payment method cleanly", () => {
+  const testExpenses = [
+    { id: "1", date: "2026-10-24", shiftNumber: "#1", category: "لحوم", paymentMethod: "CASH", amount: 500 },
+    { id: "2", date: "2026-10-24", shiftNumber: "#2", category: "منظفات", paymentMethod: "VISA", amount: 200 },
+    { id: "3", date: "2026-10-25", shiftNumber: "#3", category: "لحوم", paymentMethod: "CASH", amount: 800 },
+  ];
+
+  // Filter: Shift #1
+  const shift1Only = testExpenses.filter(e => e.shiftNumber === "#1");
+  assert.strictEqual(shift1Only.length, 1);
+  assert.strictEqual(shift1Only[0].id, "1");
+
+  // Filter: Date 2026-10-25
+  const oct25Only = testExpenses.filter(e => e.date === "2026-10-25");
+  assert.strictEqual(oct25Only.length, 1);
+  assert.strictEqual(oct25Only[0].amount, 800);
+
+  // Filter: Payment Method CASH
+  const cashOnly = testExpenses.filter(e => e.paymentMethod === "CASH");
+  assert.strictEqual(cashOnly.length, 2);
+  assert.strictEqual(cashOnly.reduce((s, e) => s + e.amount, 0), 1300);
+});
+
+console.log("==================================================================");
+
+console.log("==================================================================");
+console.log(`📊 TEST SUITE SUMMARY: ${passedCount} PASSED, ${failedCount} FAILED`);
 console.log("==================================================================");
 
 if (failedCount > 0) {

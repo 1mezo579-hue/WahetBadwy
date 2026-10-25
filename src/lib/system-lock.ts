@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 
 export interface SecurityAuditLog {
   id: string;
-  action: "LOCK_SYSTEM" | "UNLOCK_SYSTEM" | "FORCE_LOGOUT_ALL" | "VOID_ORDER" | "REFUND_ORDER" | "PRICE_CHANGE" | "DISCOUNT_APPLIED" | "ZERO_OUT_RESET" | "RECORD_EXPENSE";
+  action: "LOCK_SYSTEM" | "UNLOCK_SYSTEM" | "FORCE_LOGOUT_ALL" | "VOID_ORDER" | "REFUND_ORDER" | "PRICE_CHANGE" | "DISCOUNT_APPLIED" | "ZERO_OUT_RESET" | "RECORD_EXPENSE" | "VOID_EXPENSE" | "IMPORT_EXPENSES";
   actionAr: string;
   performedBy: string;
   timestamp: string;
