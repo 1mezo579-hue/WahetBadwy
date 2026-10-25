@@ -13,6 +13,7 @@ import {
 } from "@/utils/printer/order-router";
 import {
   triggerSilentThermalPrint,
+  triggerKitchenPrepPrint,
   buildZReportHtml,
   buildThermalReceiptHtml,
   silentPrintHtml,
@@ -148,6 +149,12 @@ export default function PosInterface({
   const [activeOrderId, setActiveOrderId] = useState<string | undefined>(undefined);
   const [orderNotes, setOrderNotes] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  // Payment & Change Calculator State
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "WALLET">("CASH");
+  const [amountPaidInput, setAmountPaidInput] = useState<string>("");
+  const [lastCompletedReceipt, setLastCompletedReceipt] = useState<any>(null);
+  const [draftNotice, setDraftNotice] = useState<boolean>(false);
 
   // Channels: TAKEAWAY (Default & Priority), DELIVERY, DINE_IN
   const [orderType, setOrderType] = useState<"TAKEAWAY" | "DELIVERY" | "DINE_IN" | "CUSTOMER_GRILL">("TAKEAWAY");
@@ -402,6 +409,57 @@ export default function PosInterface({
     return () => clearInterval(interval);
   }, []);
 
+  // Draft Order Persistence & Recovery (Auto-save / Auto-restore)
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem("basiony_pos_active_cart");
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed?.cart && Array.isArray(parsed.cart) && parsed.cart.length > 0) {
+          setCart(parsed.cart);
+          if (parsed.orderType) setOrderType(parsed.orderType);
+          if (parsed.customerName) setCustomerName(parsed.customerName);
+          if (parsed.customerPhone) setCustomerPhone(parsed.customerPhone);
+          if (parsed.deliveryAddress) setDeliveryAddress(parsed.deliveryAddress);
+          if (parsed.deliveryFee) setDeliveryFee(parsed.deliveryFee);
+          if (parsed.orderNotes) setOrderNotes(parsed.orderNotes);
+          setDraftNotice(true);
+        }
+      }
+      const storedLastReceipt = sessionStorage.getItem("basiony_last_receipt");
+      if (storedLastReceipt) {
+        setLastCompletedReceipt(JSON.parse(storedLastReceipt));
+      }
+    } catch (e) {
+      console.warn("Failed to load draft from localStorage", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (cart.length > 0) {
+        localStorage.setItem(
+          "basiony_pos_active_cart",
+          JSON.stringify({
+            cart,
+            orderType,
+            customerName,
+            customerPhone,
+            deliveryAddress,
+            deliveryFee,
+            orderNotes,
+            savedAt: Date.now(),
+          })
+        );
+      } else {
+        localStorage.removeItem("basiony_pos_active_cart");
+        setDraftNotice(false);
+      }
+    } catch (e) {
+      // ignore quota / silent error
+    }
+  }, [cart, orderType, customerName, customerPhone, deliveryAddress, deliveryFee, orderNotes]);
+
   // Live Clock
   const [currentTime, setCurrentTime] = useState({ date: "2025/10/23", time: "20:37" });
 
@@ -588,6 +646,11 @@ export default function PosInterface({
       setCart([]);
       setActiveOrderId(undefined);
       setIsCheckPrinted(false);
+      setAmountPaidInput("");
+      setDraftNotice(false);
+      try {
+        localStorage.removeItem("basiony_pos_active_cart");
+      } catch (e) {}
     }
   };
 
@@ -643,6 +706,10 @@ export default function PosInterface({
   const discount = isComplimentary ? (subtotal + deliveryFeeNumber) : 0;
   const totalAmount = isComplimentary ? 0 : Math.max(0, subtotal + deliveryFeeNumber - discount);
 
+  // Cash Change Calculation
+  const parsedAmountPaid = parseFloat(amountPaidInput) || 0;
+  const changeDue = paymentMethod === "CASH" && parsedAmountPaid > totalAmount ? parsedAmountPaid - totalAmount : 0;
+
   // Send Order to Prep (حفظ وطباعة الأوردر)
   const handleSendToPrep = () => {
     if (isSystemLocked) {
@@ -690,34 +757,23 @@ export default function PosInterface({
         cashierName: userName,
       });
 
-      await triggerSilentThermalPrint({
-        title:
-          orderType === "DELIVERY"
-            ? "بون دليفري (توصيل)"
-            : orderType === "TAKEAWAY"
-            ? "بون تيك أواي (سفري)"
-            : "بون تحضير الصالة (KITCHEN)",
-        receiptType: "PREP",
-        tableName: selectedTable?.name || (orderType === "DELIVERY" ? "طلب دليفري" : "تيك أواي مباشر"),
+      await triggerKitchenPrepPrint({
+        tableName: selectedTable?.name || (orderType === "DELIVERY" ? "دليفري" : "تيك أواي"),
         orderNumber: res.order?.orderNumber,
         orderType,
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
         deliveryAddress: deliveryAddress || undefined,
-        deliveryFee: deliveryFeeNumber || undefined,
         items: cart.map((i) => ({
           nameAr: i.nameAr,
           quantity: i.quantity,
           price: i.price,
           notes: i.notes || null,
         })),
-        subtotal,
-        discount: discount || undefined,
-        totalAmount,
-        isComplimentary,
+        subtotal: 0,
+        totalAmount: 0,
         notes: orderNotes || undefined,
         cashierName: userName,
-        isPaid: false,
         timestamp: new Date(),
       });
 
@@ -783,6 +839,7 @@ export default function PosInterface({
 
   // Collect Payment
   const handleCollectPayment = () => {
+    if (isPending) return;
     if (isSystemLocked) {
       alert("النظام مقفول حالياً بواسطة الإدارة (" + (systemLockedBy || "الإدارة") + ")");
       return;
@@ -811,11 +868,17 @@ export default function PosInterface({
         return;
       }
 
-      await triggerSilentThermalPrint({
+      const finalAmountPaid = paymentMethod === "CASH"
+        ? (parsedAmountPaid > 0 ? parsedAmountPaid : totalAmount)
+        : totalAmount;
+      const finalChange = paymentMethod === "CASH" ? Math.max(0, finalAmountPaid - totalAmount) : 0;
+      const paymentMethodArabic = paymentMethod === "CASH" ? "كاش (نقدي)" : paymentMethod === "CARD" ? "فيزا / بطاقة" : "محفظة إلكترونية";
+
+      const receiptData = {
         title: "فاتورة سداد نقدي (PAID RECEIPT)",
-        receiptType: "RECEIPT",
+        receiptType: "RECEIPT" as const,
         tableName: selectedTable?.name || (orderType === "DELIVERY" ? "طلب دليفري" : "تيك أواي"),
-        orderNumber: activeOrderId ? parseInt(activeOrderId.slice(-4)) : undefined,
+        orderNumber: res.order?.orderNumber || (activeOrderId ? parseInt(activeOrderId.slice(-4)) : undefined),
         orderType,
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
@@ -830,12 +893,22 @@ export default function PosInterface({
         subtotal,
         discount: discount || undefined,
         totalAmount,
+        paymentMethod: paymentMethodArabic,
+        amountPaid: finalAmountPaid,
+        changeAmount: finalChange,
         isComplimentary,
         notes: orderNotes || undefined,
         cashierName: userName,
         isPaid: true,
         timestamp: new Date(),
-      });
+      };
+
+      setLastCompletedReceipt(receiptData);
+      try {
+        sessionStorage.setItem("basiony_last_receipt", JSON.stringify(receiptData));
+      } catch (e) {}
+
+      await triggerSilentThermalPrint(receiptData);
 
       if (selectedTable) {
         setTables((prev) =>
@@ -847,13 +920,20 @@ export default function PosInterface({
         );
       }
 
-      // Reset for next order
+      // Reset for next order & clear draft
+      try {
+        localStorage.removeItem("basiony_pos_active_cart");
+      } catch (e) {}
+      setDraftNotice(false);
       setCart([]);
       setActiveOrderId(undefined);
       setIsCheckPrinted(false);
       setCustomerName("");
       setCustomerPhone("");
+      setDeliveryAddress("");
+      setDeliveryFee("");
       setOrderNotes("");
+      setAmountPaidInput("");
 
       if (userId) {
         const updated = await getActiveShift(userId);
@@ -862,6 +942,37 @@ export default function PosInterface({
 
       alert("تم إتمام الطلب وسداد الحساب بنجاح ✓");
     });
+  };
+
+  
+  // Reprint Last Completed Receipt (Read-Only Replica - Zero Side Effects on Database)
+  const handleReprintLastReceipt = async () => {
+    let receipt = lastCompletedReceipt;
+    if (!receipt) {
+      try {
+        const stored = sessionStorage.getItem("basiony_last_receipt");
+        if (stored) receipt = JSON.parse(stored);
+      } catch (e) {}
+    }
+
+    if (!receipt) {
+      alert("لا توجد فاتورة مكتملة محفوظة في هذه الجلسة لإعادة طباعتها!");
+      return;
+    }
+
+    const updatedCount = (receipt.reprintCount || 0) + 1;
+    const reprintPayload = {
+      ...receipt,
+      isReprint: true,
+      reprintCount: updatedCount,
+    };
+
+    setLastCompletedReceipt(reprintPayload);
+    try {
+      sessionStorage.setItem("basiony_last_receipt", JSON.stringify(reprintPayload));
+    } catch (e) {}
+
+    await triggerSilentThermalPrint(reprintPayload);
   };
 
   // Recent Orders
@@ -1274,6 +1385,23 @@ export default function PosInterface({
         {/* C. FAR RIGHT: CURRENT ORDER PANEL ("الطلب الحالي") */}
         <section className="w-[320px] sm:w-[350px] lg:w-[370px] bg-[#0c0c0f] border-r border-orange-500/25 flex flex-col justify-between shrink-0 p-2.5 z-20">
           
+          {/* Draft Notice Banner */}
+          {draftNotice && cart.length > 0 && (
+            <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl px-2.5 py-1.5 mb-2 flex items-center justify-between text-[11px] text-amber-300 animate-fadeIn">
+              <div className="flex items-center gap-1.5">
+                <span>⚡</span>
+                <span className="font-bold">تم استرجاع مسودة الطلب تلقائياً</span>
+              </div>
+              <button
+                onClick={() => setDraftNotice(false)}
+                className="text-stone-400 hover:text-white text-xs px-1"
+                title="إخفاء التنبيه"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Header: Title + New Order Button */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 text-orange-400 font-bold text-xs">
@@ -1417,6 +1545,122 @@ export default function PosInterface({
             </div>
           </div>
 
+          {/* Payment Method & Change Calculator */}
+          <div className="bg-[#121217] border border-orange-500/25 rounded-xl p-2 mb-2 space-y-1.5 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-stone-400 text-[10px] font-bold">طريقة التحصيل:</span>
+              <span className="text-[10px] font-mono text-orange-400">
+                {paymentMethod === "CASH" ? "نقداً" : paymentMethod === "CARD" ? "فيزا / شبكة" : "محفظة كاش"}
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-1">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("CASH")}
+                className={`py-1.5 px-1 rounded-lg text-center font-bold text-[11px] transition flex items-center justify-center gap-1 ${
+                  paymentMethod === "CASH"
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 font-black border border-emerald-400"
+                    : "bg-[#181820] text-stone-300 border border-stone-800 hover:border-stone-700"
+                }`}
+              >
+                <span>💵</span>
+                <span>كاش</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("CARD")}
+                className={`py-1.5 px-1 rounded-lg text-center font-bold text-[11px] transition flex items-center justify-center gap-1 ${
+                  paymentMethod === "CARD"
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30 font-black border border-blue-400"
+                    : "bg-[#181820] text-stone-300 border border-stone-800 hover:border-stone-700"
+                }`}
+              >
+                <span>💳</span>
+                <span>فيزا</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("WALLET")}
+                className={`py-1.5 px-1 rounded-lg text-center font-bold text-[11px] transition flex items-center justify-center gap-1 ${
+                  paymentMethod === "WALLET"
+                    ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-md shadow-purple-600/30 font-black border border-purple-400"
+                    : "bg-[#181820] text-stone-300 border border-stone-800 hover:border-stone-700"
+                }`}
+              >
+                <span>📱</span>
+                <span>محفظة</span>
+              </button>
+            </div>
+
+            {paymentMethod === "CASH" && (
+              <div className="pt-1 border-t border-stone-800 space-y-1">
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="text-[10px] text-stone-400 font-bold shrink-0">المدفوع:</span>
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={amountPaidInput}
+                      onChange={(e) => setAmountPaidInput(e.target.value)}
+                      placeholder={totalAmount > 0 ? String(totalAmount) : "0"}
+                      className="w-full bg-[#181822] border border-emerald-500/40 focus:border-emerald-500 text-emerald-300 text-left font-mono font-black text-xs rounded-lg px-2 py-1 outline-none"
+                    />
+                    <span className="absolute right-2 top-1 text-[9px] text-stone-500">ج.م</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setAmountPaidInput(totalAmount.toString())}
+                    className="bg-stone-800 hover:bg-emerald-600/40 text-stone-200 text-[9px] font-bold py-1 rounded border border-stone-700 transition"
+                  >
+                    بالضبط
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const base = Math.ceil(totalAmount / 50) * 50;
+                      setAmountPaidInput((base === totalAmount ? base + 50 : base).toString());
+                    }}
+                    className="bg-stone-800 hover:bg-emerald-600/40 text-stone-200 text-[9px] font-bold py-1 rounded border border-stone-700 transition"
+                  >
+                    +50
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const base = Math.ceil(totalAmount / 100) * 100;
+                      setAmountPaidInput((base === totalAmount ? base + 100 : base).toString());
+                    }}
+                    className="bg-stone-800 hover:bg-emerald-600/40 text-stone-200 text-[9px] font-bold py-1 rounded border border-stone-700 transition"
+                  >
+                    +100
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const base = Math.ceil(totalAmount / 200) * 200;
+                      setAmountPaidInput((base === totalAmount ? base + 200 : base).toString());
+                    }}
+                    className="bg-stone-800 hover:bg-emerald-600/40 text-stone-200 text-[9px] font-bold py-1 rounded border border-stone-700 transition"
+                  >
+                    +200
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between bg-[#0b1410] border border-emerald-500/40 rounded-lg px-2 py-1 text-[11px]">
+                  <span className="text-emerald-400 font-bold">الباقي للعميل:</span>
+                  <span className="font-mono font-black text-emerald-300 text-xs">
+                    {changeDue.toFixed(2)} ج.م
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Action Buttons Row */}
           <div className="grid grid-cols-3 gap-1.5">
             <button
@@ -1443,6 +1687,28 @@ export default function PosInterface({
               <span>إتمام الطلب</span>
             </button>
           </div>
+        
+          {/* Reprint Last Completed Receipt (Read-Only Copy) */}
+          <button
+            type="button"
+            onClick={handleReprintLastReceipt}
+            disabled={!lastCompletedReceipt}
+            className={`w-full mt-2 py-2 px-2.5 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 transition border ${
+              lastCompletedReceipt
+                ? "bg-[#181822] hover:bg-stone-800 text-amber-300 border-amber-500/40 hover:border-amber-500 shadow-md"
+                : "bg-[#121217] text-stone-600 border-stone-800/60 cursor-not-allowed opacity-50"
+            }`}
+            title="إعادة طباعة آخر فاتورة تم إتمامها كنسخة طبق الأصل دون إنشاء أي حركة بيع جديدة"
+          >
+            <span className="text-xs">🔄</span>
+            <span>إعادة طباعة آخر فاتورة</span>
+            {lastCompletedReceipt?.orderNumber && (
+              <span className="text-[10px] font-mono text-orange-400 bg-orange-950/80 px-1.5 py-0.2 rounded border border-orange-800 font-bold">
+                #{lastCompletedReceipt.orderNumber}
+              </span>
+            )}
+          </button>
+
         </section>
       </div>
 
