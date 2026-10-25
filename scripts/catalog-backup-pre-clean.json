@@ -1,0 +1,1675 @@
+{
+  "timestamp": "2026-10-25T15:53:28.880Z",
+  "categories": [
+    {
+      "id": "cmvnzebyx000bxjqfegobyfm7",
+      "name": "فراخ مشوية عالفحم ",
+      "nameAr": "فراخ مشوية عالفحم ",
+      "description": null,
+      "order": 0,
+      "createdAt": "2026-10-25T15:27:19.834Z",
+      "updatedAt": "2026-10-25T15:27:19.834Z",
+      "_count": {
+        "items": 3
+      }
+    },
+    {
+      "id": "cmvnzaox40000xjqfs862x5q5",
+      "name": "ساندوتشات سوري عالفحم ",
+      "nameAr": "ساندوتشات سوري عالفحم ",
+      "description": null,
+      "order": 0,
+      "createdAt": "2026-10-25T15:24:29.993Z",
+      "updatedAt": "2026-10-25T15:24:29.993Z",
+      "_count": {
+        "items": 5
+      }
+    },
+    {
+      "id": "cat_grills_01",
+      "name": "Grills",
+      "nameAr": "المشويات",
+      "description": "مشويات على الفحم البلدي - تباع بالوزن النيء (ربع / نصف / إلا ربع / كيلو)",
+      "order": 1,
+      "createdAt": "2026-10-25T14:50:26.739Z",
+      "updatedAt": "2026-10-25T14:50:26.739Z",
+      "_count": {
+        "items": 5
+      }
+    },
+    {
+      "id": "cat_sandwiches_charcoal_02",
+      "name": "Charcoal Sandwiches",
+      "nameAr": "ساندوتشات على الفحم",
+      "description": "طعم الفحم الأصلي ريحة تفتح النفس",
+      "order": 2,
+      "createdAt": "2026-10-25T14:50:27.572Z",
+      "updatedAt": "2026-10-25T14:50:27.572Z",
+      "_count": {
+        "items": 5
+      }
+    },
+    {
+      "id": "cat_sandwiches_french_03",
+      "name": "French Sandwiches",
+      "nameAr": "الساندوتشات الفرنساوي",
+      "description": "ساندوتشات مشويات في خبز فرنساوي فاخر",
+      "order": 3,
+      "createdAt": "2026-10-25T14:50:28.659Z",
+      "updatedAt": "2026-10-25T14:50:28.659Z",
+      "_count": {
+        "items": 5
+      }
+    },
+    {
+      "id": "cat_special_trays_04",
+      "name": "Basiony Special Trays",
+      "nameAr": "صواني بسيوني الخاصة",
+      "description": "صواني المشويات الفاخرة مع الأرز والسلطات",
+      "order": 4,
+      "createdAt": "2026-10-25T14:50:29.807Z",
+      "updatedAt": "2026-10-25T14:50:29.807Z",
+      "_count": {
+        "items": 6
+      }
+    },
+    {
+      "id": "cat_family_trays_05",
+      "name": "Family Trays",
+      "nameAr": "صواني العيلة",
+      "description": "صواني ولائم عائلية متكاملة تكفي كل العيلة",
+      "order": 5,
+      "createdAt": "2026-10-25T14:50:30.538Z",
+      "updatedAt": "2026-10-25T14:50:30.538Z",
+      "_count": {
+        "items": 2
+      }
+    },
+    {
+      "id": "cat_labor_meals_06",
+      "name": "Labor Meals",
+      "nameAr": "وجبات العمالة",
+      "description": "جميع وجبات العمالة معها طبق رز هدية ★",
+      "order": 6,
+      "createdAt": "2026-10-25T14:50:33.042Z",
+      "updatedAt": "2026-10-25T14:50:33.042Z",
+      "_count": {
+        "items": 5
+      }
+    },
+    {
+      "id": "cat_offal_07",
+      "name": "Offal & Delicacies",
+      "nameAr": "حلويات اللحمة (السقط)",
+      "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+      "order": 7,
+      "createdAt": "2026-10-25T14:50:33.963Z",
+      "updatedAt": "2026-10-25T14:50:33.963Z",
+      "_count": {
+        "items": 12
+      }
+    },
+    {
+      "id": "cat_offers_08",
+      "name": "Special Offers",
+      "nameAr": "العروض الحصرية",
+      "description": "عروض وتوفير مشويات بسيوني الحصرية",
+      "order": 8,
+      "createdAt": "2026-10-25T14:50:36.516Z",
+      "updatedAt": "2026-10-25T14:50:36.516Z",
+      "_count": {
+        "items": 6
+      }
+    },
+    {
+      "id": "cat_sides_drinks_09",
+      "name": "Sides & Drinks",
+      "nameAr": "الإضافات والمشروبات",
+      "description": "أرز، سلطات، عيش، مخلل، ومشروبات باردة",
+      "order": 9,
+      "createdAt": "2026-10-25T14:50:38.572Z",
+      "updatedAt": "2026-10-25T14:50:38.572Z",
+      "_count": {
+        "items": 10
+      }
+    }
+  ],
+  "allItems": [
+    {
+      "id": "cmvnzezmv000fxjqf2w9mv2z9",
+      "name": "1/2 فرخة عالفحم ",
+      "nameAr": "1/2 فرخة عالفحم ",
+      "description": null,
+      "price": 150,
+      "categoryId": "cmvnzebyx000bxjqfegobyfm7",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T15:27:50.504Z",
+      "updatedAt": "2026-10-25T15:27:50.504Z",
+      "category": {
+        "id": "cmvnzebyx000bxjqfegobyfm7",
+        "name": "فراخ مشوية عالفحم ",
+        "nameAr": "فراخ مشوية عالفحم ",
+        "description": null,
+        "order": 0,
+        "createdAt": "2026-10-25T15:27:19.834Z",
+        "updatedAt": "2026-10-25T15:27:19.834Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvnzfhf4000hxjqfakogrk2m",
+      "name": "1/4 فرخة عالفحم ",
+      "nameAr": "1/4 فرخة عالفحم ",
+      "description": null,
+      "price": 100,
+      "categoryId": "cmvnzebyx000bxjqfegobyfm7",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T15:28:13.553Z",
+      "updatedAt": "2026-10-25T15:28:13.553Z",
+      "category": {
+        "id": "cmvnzebyx000bxjqfegobyfm7",
+        "name": "فراخ مشوية عالفحم ",
+        "nameAr": "فراخ مشوية عالفحم ",
+        "description": null,
+        "order": 0,
+        "createdAt": "2026-10-25T15:27:19.834Z",
+        "updatedAt": "2026-10-25T15:27:19.834Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny6jys003913g8scz93vld",
+      "name": "Pepsi 1.5L",
+      "nameAr": "زجاجة بيبسي 1.5 لتر",
+      "description": "زجاجة بيبسي عائلية 1.5 لتر",
+      "price": 35,
+      "categoryId": "cat_sides_drinks_09",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:53:17.332Z",
+      "updatedAt": "2026-10-25T14:53:17.332Z",
+      "category": {
+        "id": "cat_sides_drinks_09",
+        "name": "Sides & Drinks",
+        "nameAr": "الإضافات والمشروبات",
+        "description": "أرز، سلطات، عيش، مخلل، ومشروبات باردة",
+        "order": 9,
+        "createdAt": "2026-10-25T14:50:38.572Z",
+        "updatedAt": "2026-10-25T14:50:38.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvnzddzz0008xjqf61yl393u",
+      "name": "ساندوتش سجق سوري عالفحم",
+      "nameAr": "ساندوتش سجق سوري عالفحم",
+      "description": null,
+      "price": 50,
+      "categoryId": "cmvnzaox40000xjqfs862x5q5",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T15:26:35.807Z",
+      "updatedAt": "2026-10-25T15:26:35.807Z",
+      "category": {
+        "id": "cmvnzaox40000xjqfs862x5q5",
+        "name": "ساندوتشات سوري عالفحم ",
+        "nameAr": "ساندوتشات سوري عالفحم ",
+        "description": null,
+        "order": 0,
+        "createdAt": "2026-10-25T15:24:29.993Z",
+        "updatedAt": "2026-10-25T15:24:29.993Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvnzcluq0006xjqfk6qmou7t",
+      "name": "ساندوتش شيش سوري عالفحم",
+      "nameAr": "ساندوتش شيش سوري عالفحم",
+      "description": null,
+      "price": 50,
+      "categoryId": "cmvnzaox40000xjqfs862x5q5",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T15:25:59.330Z",
+      "updatedAt": "2026-10-25T15:25:59.330Z",
+      "category": {
+        "id": "cmvnzaox40000xjqfs862x5q5",
+        "name": "ساندوتشات سوري عالفحم ",
+        "nameAr": "ساندوتشات سوري عالفحم ",
+        "description": null,
+        "order": 0,
+        "createdAt": "2026-10-25T15:24:29.993Z",
+        "updatedAt": "2026-10-25T15:24:29.993Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvnzc6710004xjqfr4r2wi16",
+      "name": "ساندوتش طرب سوري عالفحم",
+      "nameAr": "ساندوتش طرب سوري عالفحم",
+      "description": null,
+      "price": 65,
+      "categoryId": "cmvnzaox40000xjqfs862x5q5",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T15:25:39.038Z",
+      "updatedAt": "2026-10-25T15:25:39.038Z",
+      "category": {
+        "id": "cmvnzaox40000xjqfs862x5q5",
+        "name": "ساندوتشات سوري عالفحم ",
+        "nameAr": "ساندوتشات سوري عالفحم ",
+        "description": null,
+        "order": 0,
+        "createdAt": "2026-10-25T15:24:29.993Z",
+        "updatedAt": "2026-10-25T15:24:29.993Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny51aq001r13g8q3m1eaok",
+      "name": "Kersha Sandwich Small",
+      "nameAr": "ساندوتش كرشة (صغير)",
+      "description": "ساندوتش كرشة متبلة صغير",
+      "price": 20,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:06.483Z",
+      "updatedAt": "2026-10-25T14:52:06.483Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny53gl001t13g886ei4ynv",
+      "name": "Kersha Sandwich Large",
+      "nameAr": "ساندوتش كرشة (كبير)",
+      "description": "ساندوتش كرشة متبلة كبير",
+      "price": 40,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:09.285Z",
+      "updatedAt": "2026-10-25T14:52:09.285Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvnzbnth0002xjqfugvr7wnp",
+      "name": "ساندوتش كفتة سوري عالفحم ",
+      "nameAr": "ساندوتش كفتة سوري عالفحم ",
+      "description": null,
+      "price": 50,
+      "categoryId": "cmvnzaox40000xjqfs862x5q5",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T15:25:15.221Z",
+      "updatedAt": "2026-10-25T15:25:15.221Z",
+      "category": {
+        "id": "cmvnzaox40000xjqfs862x5q5",
+        "name": "ساندوتشات سوري عالفحم ",
+        "nameAr": "ساندوتشات سوري عالفحم ",
+        "description": null,
+        "order": 0,
+        "createdAt": "2026-10-25T15:24:29.993Z",
+        "updatedAt": "2026-10-25T15:24:29.993Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvnze1ue000axjqfm70lhgn5",
+      "name": "ساندوتش ميكس مشويات عالفحم",
+      "nameAr": "ساندوتش ميكس مشويات عالفحم",
+      "description": null,
+      "price": 65,
+      "categoryId": "cmvnzaox40000xjqfs862x5q5",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T15:27:06.710Z",
+      "updatedAt": "2026-10-25T15:27:06.710Z",
+      "category": {
+        "id": "cmvnzaox40000xjqfs862x5q5",
+        "name": "ساندوتشات سوري عالفحم ",
+        "nameAr": "ساندوتشات سوري عالفحم ",
+        "description": null,
+        "order": 0,
+        "createdAt": "2026-10-25T15:24:29.993Z",
+        "updatedAt": "2026-10-25T15:24:29.993Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3lac000d13g8avrf56k1",
+      "name": "Sausage Charcoal Sandwich",
+      "nameAr": "سجق على الفحم",
+      "description": "ساندوتش سجق مشوي على الفحم",
+      "price": 25,
+      "categoryId": "cat_sandwiches_charcoal_02",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:50:59.076Z",
+      "updatedAt": "2026-10-25T15:23:30.022Z",
+      "category": {
+        "id": "cat_sandwiches_charcoal_02",
+        "name": "Charcoal Sandwiches",
+        "nameAr": "ساندوتشات على الفحم",
+        "description": "طعم الفحم الأصلي ريحة تفتح النفس",
+        "order": 2,
+        "createdAt": "2026-10-25T14:50:27.572Z",
+        "updatedAt": "2026-10-25T14:50:27.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny39ve000313g8tzqfoium",
+      "name": "Sausage Grilled",
+      "nameAr": "سجق مشوي",
+      "description": "سجق بلدي متبل على الفحم - تباع بالوزن النيء: ربع 100 ج / نصف 200 ج / كيلو 400 ج",
+      "price": 400,
+      "categoryId": "cat_grills_01",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:50:44.283Z",
+      "updatedAt": "2026-10-25T14:50:44.283Z",
+      "category": {
+        "id": "cat_grills_01",
+        "name": "Grills",
+        "nameAr": "المشويات",
+        "description": "مشويات على الفحم البلدي - تباع بالوزن النيء (ربع / نصف / إلا ربع / كيلو)",
+        "order": 1,
+        "createdAt": "2026-10-25T14:50:26.739Z",
+        "updatedAt": "2026-10-25T14:50:26.739Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny69ry002z13g8cnglmgu5",
+      "name": "Green Salad",
+      "nameAr": "سلطة خضراء",
+      "description": "سلطة بلدي خضراء طازجة",
+      "price": 10,
+      "categoryId": "cat_sides_drinks_09",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:53:03.942Z",
+      "updatedAt": "2026-10-25T14:53:03.942Z",
+      "category": {
+        "id": "cat_sides_drinks_09",
+        "name": "Sides & Drinks",
+        "nameAr": "الإضافات والمشروبات",
+        "description": "أرز، سلطات، عيش، مخلل، ومشروبات باردة",
+        "order": 9,
+        "createdAt": "2026-10-25T14:50:38.572Z",
+        "updatedAt": "2026-10-25T14:50:38.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny6be5003113g81hisspas",
+      "name": "Tahina Salad",
+      "nameAr": "سلطة طحينة",
+      "description": "طحينة بيضاء خام متبلة بالليمون والكمون",
+      "price": 10,
+      "categoryId": "cat_sides_drinks_09",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:53:06.221Z",
+      "updatedAt": "2026-10-25T14:53:06.221Z",
+      "category": {
+        "id": "cat_sides_drinks_09",
+        "name": "Sides & Drinks",
+        "nameAr": "الإضافات والمشروبات",
+        "description": "أرز، سلطات، عيش، مخلل، ومشروبات باردة",
+        "order": 9,
+        "createdAt": "2026-10-25T14:50:38.572Z",
+        "updatedAt": "2026-10-25T14:50:38.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3ei4000713g8rh3tlzej",
+      "name": "Shish Tawook Grilled",
+      "nameAr": "شيش طاووق",
+      "description": "شيش طاووق دجاج على الفحم - تباع بالوزن النيء: ربع 100 ج / نصف 200 ج / كيلو 400 ج",
+      "price": 400,
+      "categoryId": "cat_grills_01",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:50:50.284Z",
+      "updatedAt": "2026-10-25T14:50:50.284Z",
+      "category": {
+        "id": "cat_grills_01",
+        "name": "Grills",
+        "nameAr": "المشويات",
+        "description": "مشويات على الفحم البلدي - تباع بالوزن النيء (ربع / نصف / إلا ربع / كيلو)",
+        "order": 1,
+        "createdAt": "2026-10-25T14:50:26.739Z",
+        "updatedAt": "2026-10-25T14:50:26.739Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3ox4000h13g8as6yj9nl",
+      "name": "Shish Tawook Charcoal Sandwich",
+      "nameAr": "شيش طاووق على الفحم",
+      "description": "ساندوتش شيش طاووق على الفحم",
+      "price": 35,
+      "categoryId": "cat_sandwiches_charcoal_02",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:03.784Z",
+      "updatedAt": "2026-10-25T14:51:03.784Z",
+      "category": {
+        "id": "cat_sandwiches_charcoal_02",
+        "name": "Charcoal Sandwiches",
+        "nameAr": "ساندوتشات على الفحم",
+        "description": "طعم الفحم الأصلي ريحة تفتح النفس",
+        "order": 2,
+        "createdAt": "2026-10-25T14:50:27.572Z",
+        "updatedAt": "2026-10-25T14:50:27.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny4i2e001913g808jjxzho",
+      "name": "Big House Tray",
+      "nameAr": "صينية البيت الكبير",
+      "description": "فرخة كاملة + نصف كيلو مشكل + رز كبير + سلطات",
+      "price": 700,
+      "categoryId": "cat_family_trays_05",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:41.559Z",
+      "updatedAt": "2026-10-25T15:21:07.956Z",
+      "category": {
+        "id": "cat_family_trays_05",
+        "name": "Family Trays",
+        "nameAr": "صواني العيلة",
+        "description": "صواني ولائم عائلية متكاملة تكفي كل العيلة",
+        "order": 5,
+        "createdAt": "2026-10-25T14:50:30.538Z",
+        "updatedAt": "2026-10-25T14:50:30.538Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny4dzc001513g8rmyxskcj",
+      "name": "Sultan Tray",
+      "nameAr": "صينية السلطان",
+      "description": "كيلو مشكل + فرخة + رز عائلي + سلطات",
+      "price": 1100,
+      "categoryId": "cat_special_trays_04",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:36.265Z",
+      "updatedAt": "2026-10-25T15:21:32.693Z",
+      "category": {
+        "id": "cat_special_trays_04",
+        "name": "Basiony Special Trays",
+        "nameAr": "صواني بسيوني الخاصة",
+        "description": "صواني المشويات الفاخرة مع الأرز والسلطات",
+        "order": 4,
+        "createdAt": "2026-10-25T14:50:29.807Z",
+        "updatedAt": "2026-10-25T14:50:29.807Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny46iw000z13g8lr0kh3co",
+      "name": "Knockout Punch Tray",
+      "nameAr": "صينية الضربة القاضية",
+      "description": "ربع كفتة + ربع سجق + طرب + رز + سلطات",
+      "price": 400,
+      "categoryId": "cat_special_trays_04",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:26.600Z",
+      "updatedAt": "2026-10-25T15:22:00.662Z",
+      "category": {
+        "id": "cat_special_trays_04",
+        "name": "Basiony Special Trays",
+        "nameAr": "صواني بسيوني الخاصة",
+        "description": "صواني المشويات الفاخرة مع الأرز والسلطات",
+        "order": 4,
+        "createdAt": "2026-10-25T14:50:29.807Z",
+        "updatedAt": "2026-10-25T14:50:29.807Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny4jwb001b13g8mjzo7rrp",
+      "name": "The Feast Tray",
+      "nameAr": "صينية العزومة",
+      "description": "فرختين + كيلو مشكل + رز عائلي + سلطات",
+      "price": 1200,
+      "categoryId": "cat_family_trays_05",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:43.932Z",
+      "updatedAt": "2026-10-25T15:20:48.996Z",
+      "category": {
+        "id": "cat_family_trays_05",
+        "name": "Family Trays",
+        "nameAr": "صواني العيلة",
+        "description": "صواني ولائم عائلية متكاملة تكفي كل العيلة",
+        "order": 5,
+        "createdAt": "2026-10-25T14:50:30.538Z",
+        "updatedAt": "2026-10-25T14:50:30.538Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny45dx000x13g80vhyjmqt",
+      "name": "High Mood Tray",
+      "nameAr": "صينية الكيف العالي",
+      "description": "نصف كيلو مشكل + رز + سلطات + طحينة",
+      "price": 400,
+      "categoryId": "cat_special_trays_04",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:25.125Z",
+      "updatedAt": "2026-10-25T15:22:11.223Z",
+      "category": {
+        "id": "cat_special_trays_04",
+        "name": "Basiony Special Trays",
+        "nameAr": "صواني بسيوني الخاصة",
+        "description": "صواني المشويات الفاخرة مع الأرز والسلطات",
+        "order": 4,
+        "createdAt": "2026-10-25T14:50:29.807Z",
+        "updatedAt": "2026-10-25T14:50:29.807Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny48nh001113g8mrgb5ucv",
+      "name": "Kings Tray",
+      "nameAr": "صينية الملوك",
+      "description": "نصف كيلو مشكل + بطاطس + رز + سلطات",
+      "price": 400,
+      "categoryId": "cat_special_trays_04",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:29.103Z",
+      "updatedAt": "2026-10-25T15:21:46.378Z",
+      "category": {
+        "id": "cat_special_trays_04",
+        "name": "Basiony Special Trays",
+        "nameAr": "صواني بسيوني الخاصة",
+        "description": "صواني المشويات الفاخرة مع الأرز والسلطات",
+        "order": 4,
+        "createdAt": "2026-10-25T14:50:29.807Z",
+        "updatedAt": "2026-10-25T14:50:29.807Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny4b1x001313g8j88haa3t",
+      "name": "Al-Wagsh Tray",
+      "nameAr": "صينية الوجش",
+      "description": "كيلو مشكل مشويات + رز عائلي + سلطات",
+      "price": 800,
+      "categoryId": "cat_special_trays_04",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:32.469Z",
+      "updatedAt": "2026-10-25T15:21:40.325Z",
+      "category": {
+        "id": "cat_special_trays_04",
+        "name": "Basiony Special Trays",
+        "nameAr": "صواني بسيوني الخاصة",
+        "description": "صواني المشويات الفاخرة مع الأرز والسلطات",
+        "order": 4,
+        "createdAt": "2026-10-25T14:50:29.807Z",
+        "updatedAt": "2026-10-25T14:50:29.807Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny43mb000v13g8x3b2bfyg",
+      "name": "Fahmet Basiony Tray",
+      "nameAr": "صينية فحمة بسيوني",
+      "description": "ربع كيلو مشكل + رز + سلطات + طحينة",
+      "price": 210,
+      "categoryId": "cat_special_trays_04",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:22.836Z",
+      "updatedAt": "2026-10-25T15:22:19.440Z",
+      "category": {
+        "id": "cat_special_trays_04",
+        "name": "Basiony Special Trays",
+        "nameAr": "صواني بسيوني الخاصة",
+        "description": "صواني المشويات الفاخرة مع الأرز والسلطات",
+        "order": 4,
+        "createdAt": "2026-10-25T14:50:29.807Z",
+        "updatedAt": "2026-10-25T14:50:29.807Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny64q4002v13g8xwva3xmk",
+      "name": "Rice With Nuts Small",
+      "nameAr": "طبق أرز بالخلطة",
+      "description": "طبق أرز مبهر فاخر بالخلطة",
+      "price": 25,
+      "categoryId": "cat_sides_drinks_09",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:57.580Z",
+      "updatedAt": "2026-10-25T14:52:57.580Z",
+      "category": {
+        "id": "cat_sides_drinks_09",
+        "name": "Sides & Drinks",
+        "nameAr": "الإضافات والمشروبات",
+        "description": "أرز، سلطات، عيش، مخلل، ومشروبات باردة",
+        "order": 9,
+        "createdAt": "2026-10-25T14:50:38.572Z",
+        "updatedAt": "2026-10-25T14:50:38.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny674v002x13g8rdjv01go",
+      "name": "Family Rice",
+      "nameAr": "طبق أرز عائلي كبير",
+      "description": "سرفيس أرز عائلي كبير",
+      "price": 45,
+      "categoryId": "cat_sides_drinks_09",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:53:00.704Z",
+      "updatedAt": "2026-10-25T14:53:00.704Z",
+      "category": {
+        "id": "cat_sides_drinks_09",
+        "name": "Sides & Drinks",
+        "nameAr": "الإضافات والمشروبات",
+        "description": "أرز، سلطات، عيش، مخلل، ومشروبات باردة",
+        "order": 9,
+        "createdAt": "2026-10-25T14:50:38.572Z",
+        "updatedAt": "2026-10-25T14:50:38.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5hpi002713g8mfdn8i5c",
+      "name": "Kersha Plate Small",
+      "nameAr": "طبق كرشة (صغير)",
+      "description": "طبق كرشة متبلة صغير",
+      "price": 50,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:27.750Z",
+      "updatedAt": "2026-10-25T14:52:27.750Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5jp5002913g8bmvhx2r2",
+      "name": "Kersha Plate Large",
+      "nameAr": "طبق كرشة (كبير)",
+      "description": "طبق كرشة متبلة كبير",
+      "price": 90,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:30.329Z",
+      "updatedAt": "2026-10-25T14:52:30.329Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5lqo002b13g8hdjioclz",
+      "name": "Meshakel Saqat Plate Small",
+      "nameAr": "طبق مشكل سقط (صغير)",
+      "description": "طبق مشكل سقط وحلويات لحمة صغير",
+      "price": 60,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:32.734Z",
+      "updatedAt": "2026-10-25T14:52:32.734Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5omd002d13g8r7yhv5bj",
+      "name": "Meshakel Saqat Plate Large",
+      "nameAr": "طبق مشكل سقط (كبير)",
+      "description": "طبق مشكل سقط وحلويات لحمة كبير",
+      "price": 100,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:36.709Z",
+      "updatedAt": "2026-10-25T15:18:25.001Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny4vxg001n13g8zmprmiua",
+      "name": "Mombar Sandwich Small",
+      "nameAr": "طبق ممبار (صغير)",
+      "description": "ساندوتش ممبار بلدي صغير",
+      "price": 60,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:59.524Z",
+      "updatedAt": "2026-10-25T15:19:19.232Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5ekg002313g8liyvpldz",
+      "name": "Mombar Plate Small",
+      "nameAr": "طبق ممبار (صغير)",
+      "description": "طبق ممبار بلدي صغير",
+      "price": 50,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:23.680Z",
+      "updatedAt": "2026-10-25T14:52:23.680Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny4ybd001p13g84r6dkqdq",
+      "name": "Mombar Sandwich Large",
+      "nameAr": "طبق ممبار (كبير)",
+      "description": "ساندوتش ممبار بلدي كبير",
+      "price": 100,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:02.617Z",
+      "updatedAt": "2026-10-25T15:19:29.570Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5fq1002513g8gf64fi58",
+      "name": "Mombar Plate Large",
+      "nameAr": "طبق ممبار (كبير)",
+      "description": "طبق ممبار بلدي كبير",
+      "price": 90,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:25.178Z",
+      "updatedAt": "2026-10-25T14:52:25.178Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5qpg002f13g8nfu1u7o6",
+      "name": "Mombar & Kersha Plate Small",
+      "nameAr": "طبق ممبار وكرشة (صغير)",
+      "description": "طبق مشكل ممبار وكرشة صغير",
+      "price": 55,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:39.413Z",
+      "updatedAt": "2026-10-25T14:52:39.413Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5rxx002h13g8gqsqqxgp",
+      "name": "Mombar & Kersha Plate Large",
+      "nameAr": "طبق ممبار وكرشة (كبير)",
+      "description": "طبق مشكل ممبار وكرشة كبير",
+      "price": 110,
+      "categoryId": "cat_offal_07",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:41.014Z",
+      "updatedAt": "2026-10-25T14:52:41.014Z",
+      "category": {
+        "id": "cat_offal_07",
+        "name": "Offal & Delicacies",
+        "nameAr": "حلويات اللحمة (السقط)",
+        "description": "ساندوتشات وأطباق ممبار، كرشة، كوارع، ومشكل سقط",
+        "order": 7,
+        "createdAt": "2026-10-25T14:50:33.963Z",
+        "updatedAt": "2026-10-25T14:50:33.963Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3n80000f13g8hlton8vz",
+      "name": "Tarb Charcoal Sandwich",
+      "nameAr": "طرب على الفحم",
+      "description": "ساندوتش طرب بلدي فاخر على الفحم",
+      "price": 40,
+      "categoryId": "cat_sandwiches_charcoal_02",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:01.584Z",
+      "updatedAt": "2026-10-25T14:51:01.584Z",
+      "category": {
+        "id": "cat_sandwiches_charcoal_02",
+        "name": "Charcoal Sandwiches",
+        "nameAr": "ساندوتشات على الفحم",
+        "description": "طعم الفحم الأصلي ريحة تفتح النفس",
+        "order": 2,
+        "createdAt": "2026-10-25T14:50:27.572Z",
+        "updatedAt": "2026-10-25T14:50:27.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3c5g000513g8txeojyu9",
+      "name": "Tarb Grilled",
+      "nameAr": "طرب مشوي",
+      "description": "طرب بلدي فاخر على الفحم - تباع بالوزن النيء: ربع 125 ج / نصف 250 ج / كيلو 500 ج",
+      "price": 500,
+      "categoryId": "cat_grills_01",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:50:47.236Z",
+      "updatedAt": "2026-10-25T14:50:47.236Z",
+      "category": {
+        "id": "cat_grills_01",
+        "name": "Grills",
+        "nameAr": "المشويات",
+        "description": "مشويات على الفحم البلدي - تباع بالوزن النيء (ربع / نصف / إلا ربع / كيلو)",
+        "order": 1,
+        "createdAt": "2026-10-25T14:50:26.739Z",
+        "updatedAt": "2026-10-25T14:50:26.739Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5zkz002p13g8nkpgwkkh",
+      "name": "Friday Offer",
+      "nameAr": "عرض الجمعة",
+      "description": "كيلو كفتة + 4 أرز + سلطة كبيرة",
+      "price": 449,
+      "categoryId": "cat_offers_08",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:50.915Z",
+      "updatedAt": "2026-10-25T14:52:50.915Z",
+      "category": {
+        "id": "cat_offers_08",
+        "name": "Special Offers",
+        "nameAr": "العروض الحصرية",
+        "description": "عروض وتوفير مشويات بسيوني الحصرية",
+        "order": 8,
+        "createdAt": "2026-10-25T14:50:36.516Z",
+        "updatedAt": "2026-10-25T14:50:36.516Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5vcl002l13g8nuoxk0xx",
+      "name": "El-Habayeb Offer",
+      "nameAr": "عرض الحبايب",
+      "description": "كيلو مشكل مشويات + 2 رز + 2 طحينة هدية",
+      "price": 400,
+      "categoryId": "cat_offers_08",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:45.429Z",
+      "updatedAt": "2026-10-25T14:52:45.429Z",
+      "category": {
+        "id": "cat_offers_08",
+        "name": "Special Offers",
+        "nameAr": "العروض الحصرية",
+        "description": "عروض وتوفير مشويات بسيوني الحصرية",
+        "order": 8,
+        "createdAt": "2026-10-25T14:50:36.516Z",
+        "updatedAt": "2026-10-25T14:50:36.516Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny62hz002t13g8ohj33aje",
+      "name": "Sahra Offer",
+      "nameAr": "عرض السهرة",
+      "description": "5 ساندوتشات على الفحم + زجاجة بيبسي 1.5 لتر هدية",
+      "price": 150,
+      "categoryId": "cat_offers_08",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:54.695Z",
+      "updatedAt": "2026-10-25T14:52:54.695Z",
+      "category": {
+        "id": "cat_offers_08",
+        "name": "Special Offers",
+        "nameAr": "العروض الحصرية",
+        "description": "عروض وتوفير مشويات بسيوني الحصرية",
+        "order": 8,
+        "createdAt": "2026-10-25T14:50:36.516Z",
+        "updatedAt": "2026-10-25T14:50:36.516Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5xs9002n13g8on1cmutf",
+      "name": "Family Offer",
+      "nameAr": "عرض العيلة",
+      "description": "فرخة كاملة + نصف كيلو كفتة + رز عائلي + سلطات",
+      "price": 379,
+      "categoryId": "cat_offers_08",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:48.293Z",
+      "updatedAt": "2026-10-25T14:52:48.293Z",
+      "category": {
+        "id": "cat_offers_08",
+        "name": "Special Offers",
+        "nameAr": "العروض الحصرية",
+        "description": "عروض وتوفير مشويات بسيوني الحصرية",
+        "order": 8,
+        "createdAt": "2026-10-25T14:50:36.516Z",
+        "updatedAt": "2026-10-25T14:50:36.516Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny5tig002j13g87rfz48g9",
+      "name": "El-Keif Offer",
+      "nameAr": "عرض الكيف",
+      "description": "نصف كيلو كفتة + 2 سلطة طحينة هدية",
+      "price": 200,
+      "categoryId": "cat_offers_08",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:43.048Z",
+      "updatedAt": "2026-10-25T14:52:43.048Z",
+      "category": {
+        "id": "cat_offers_08",
+        "name": "Special Offers",
+        "nameAr": "العروض الحصرية",
+        "description": "عروض وتوفير مشويات بسيوني الحصرية",
+        "order": 8,
+        "createdAt": "2026-10-25T14:50:36.516Z",
+        "updatedAt": "2026-10-25T14:50:36.516Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny617n002r13g8zw9gn4b9",
+      "name": "Golden Basiony Offer",
+      "nameAr": "عرض بسيوني الذهبي",
+      "description": "2 فرخة مشوية + رز عائلي + سلطات",
+      "price": 499,
+      "categoryId": "cat_offers_08",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:52:53.027Z",
+      "updatedAt": "2026-10-25T14:52:53.027Z",
+      "category": {
+        "id": "cat_offers_08",
+        "name": "Special Offers",
+        "nameAr": "العروض الحصرية",
+        "description": "عروض وتوفير مشويات بسيوني الحصرية",
+        "order": 8,
+        "createdAt": "2026-10-25T14:50:36.516Z",
+        "updatedAt": "2026-10-25T14:50:36.516Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny6fig003513g8s6eh1yo5",
+      "name": "Baladi Bread Pack",
+      "nameAr": "عيش بلدي (5 رغيف)",
+      "description": "عيش بلدي طازج مخبوز 5 أرغفة",
+      "price": 10,
+      "categoryId": "cat_sides_drinks_09",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:53:11.561Z",
+      "updatedAt": "2026-10-25T15:17:55.136Z",
+      "category": {
+        "id": "cat_sides_drinks_09",
+        "name": "Sides & Drinks",
+        "nameAr": "الإضافات والمشروبات",
+        "description": "أرز، سلطات، عيش، مخلل، ومشروبات باردة",
+        "order": 9,
+        "createdAt": "2026-10-25T14:50:38.572Z",
+        "updatedAt": "2026-10-25T14:50:38.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvnzekot000dxjqfd7qv4gbo",
+      "name": "فرخة كاملة",
+      "nameAr": "فرخة كاملة",
+      "description": null,
+      "price": 270,
+      "categoryId": "cmvnzebyx000bxjqfegobyfm7",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T15:27:31.133Z",
+      "updatedAt": "2026-10-25T15:27:31.133Z",
+      "category": {
+        "id": "cmvnzebyx000bxjqfegobyfm7",
+        "name": "فراخ مشوية عالفحم ",
+        "nameAr": "فراخ مشوية عالفحم ",
+        "description": null,
+        "order": 0,
+        "createdAt": "2026-10-25T15:27:19.834Z",
+        "updatedAt": "2026-10-25T15:27:19.834Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3vhd000n13g8rg2rr8lj",
+      "name": "French Sausage",
+      "nameAr": "فرنساوي سجق",
+      "description": "سجق مشوي في خبز فرنساوي فاخر",
+      "price": 35,
+      "categoryId": "cat_sandwiches_french_03",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:12.289Z",
+      "updatedAt": "2026-10-25T15:23:06.243Z",
+      "category": {
+        "id": "cat_sandwiches_french_03",
+        "name": "French Sandwiches",
+        "nameAr": "الساندوتشات الفرنساوي",
+        "description": "ساندوتشات مشويات في خبز فرنساوي فاخر",
+        "order": 3,
+        "createdAt": "2026-10-25T14:50:28.659Z",
+        "updatedAt": "2026-10-25T14:50:28.659Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3ygx000r13g8zq4qaw0m",
+      "name": "French Shish",
+      "nameAr": "فرنساوي شيش",
+      "description": "شيش طاووق في خبز فرنساوي فاخر",
+      "price": 45,
+      "categoryId": "cat_sandwiches_french_03",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:16.161Z",
+      "updatedAt": "2026-10-25T15:22:56.860Z",
+      "category": {
+        "id": "cat_sandwiches_french_03",
+        "name": "French Sandwiches",
+        "nameAr": "الساندوتشات الفرنساوي",
+        "description": "ساندوتشات مشويات في خبز فرنساوي فاخر",
+        "order": 3,
+        "createdAt": "2026-10-25T14:50:28.659Z",
+        "updatedAt": "2026-10-25T14:50:28.659Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3x2r000p13g8y8fehh94",
+      "name": "French Tarb",
+      "nameAr": "فرنساوي طرب",
+      "description": "طرب بلدي مشوي في خبز فرنساوي فاخر",
+      "price": 50,
+      "categoryId": "cat_sandwiches_french_03",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:14.355Z",
+      "updatedAt": "2026-10-25T15:23:01.257Z",
+      "category": {
+        "id": "cat_sandwiches_french_03",
+        "name": "French Sandwiches",
+        "nameAr": "الساندوتشات الفرنساوي",
+        "description": "ساندوتشات مشويات في خبز فرنساوي فاخر",
+        "order": 3,
+        "createdAt": "2026-10-25T14:50:28.659Z",
+        "updatedAt": "2026-10-25T14:50:28.659Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3tls000l13g8rb18xhp7",
+      "name": "French Kofta",
+      "nameAr": "فرنساوي كفتة",
+      "description": "كفتة مشوية في خبز فرنساوي فاخر",
+      "price": 35,
+      "categoryId": "cat_sandwiches_french_03",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:09.857Z",
+      "updatedAt": "2026-10-25T15:23:11.995Z",
+      "category": {
+        "id": "cat_sandwiches_french_03",
+        "name": "French Sandwiches",
+        "nameAr": "الساندوتشات الفرنساوي",
+        "description": "ساندوتشات مشويات في خبز فرنساوي فاخر",
+        "order": 3,
+        "createdAt": "2026-10-25T14:50:28.659Z",
+        "updatedAt": "2026-10-25T14:50:28.659Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny415g000t13g8exc8u590",
+      "name": "French Mix Basiony",
+      "nameAr": "فرنساوي ميكس بسيوني",
+      "description": "ميكس مشويات بسيوني المميز في خبز فرنساوي",
+      "price": 60,
+      "categoryId": "cat_sandwiches_french_03",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:19.636Z",
+      "updatedAt": "2026-10-25T15:22:39.892Z",
+      "category": {
+        "id": "cat_sandwiches_french_03",
+        "name": "French Sandwiches",
+        "nameAr": "الساندوتشات الفرنساوي",
+        "description": "ساندوتشات مشويات في خبز فرنساوي فاخر",
+        "order": 3,
+        "createdAt": "2026-10-25T14:50:28.659Z",
+        "updatedAt": "2026-10-25T14:50:28.659Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny6hma003713g8l0a3io4x",
+      "name": "Can Soda",
+      "nameAr": "كانز بيبسي / ميرندا / سفن",
+      "description": "مشروب غازي كانز مثلج 330 مل",
+      "price": 22,
+      "categoryId": "cat_sides_drinks_09",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:53:14.291Z",
+      "updatedAt": "2026-10-25T15:17:27.615Z",
+      "category": {
+        "id": "cat_sides_drinks_09",
+        "name": "Sides & Drinks",
+        "nameAr": "الإضافات والمشروبات",
+        "description": "أرز، سلطات، عيش، مخلل، ومشروبات باردة",
+        "order": 9,
+        "createdAt": "2026-10-25T14:50:38.572Z",
+        "updatedAt": "2026-10-25T14:50:38.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3i89000b13g8ry16w95d",
+      "name": "Kofta Charcoal Sandwich",
+      "nameAr": "كفتة على الفحم",
+      "description": "ساندوتش كفتة مشوية على الفحم بلدي",
+      "price": 25,
+      "categoryId": "cat_sandwiches_charcoal_02",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:50:55.113Z",
+      "updatedAt": "2026-10-25T15:23:34.631Z",
+      "category": {
+        "id": "cat_sandwiches_charcoal_02",
+        "name": "Charcoal Sandwiches",
+        "nameAr": "ساندوتشات على الفحم",
+        "description": "طعم الفحم الأصلي ريحة تفتح النفس",
+        "order": 2,
+        "createdAt": "2026-10-25T14:50:27.572Z",
+        "updatedAt": "2026-10-25T14:50:27.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3857000113g8x7owmhuv",
+      "name": "Kofta Grilled",
+      "nameAr": "كفتة مشوية",
+      "description": "كفتة بلدي مشوية على الفحم - تباع بالوزن النيء: ربع 100 ج / نصف 200 ج / كيلو 400 ج",
+      "price": 400,
+      "categoryId": "cat_grills_01",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:50:42.012Z",
+      "updatedAt": "2026-10-25T14:50:42.012Z",
+      "category": {
+        "id": "cat_grills_01",
+        "name": "Grills",
+        "nameAr": "المشويات",
+        "description": "مشويات على الفحم البلدي - تباع بالوزن النيء (ربع / نصف / إلا ربع / كيلو)",
+        "order": 1,
+        "createdAt": "2026-10-25T14:50:26.739Z",
+        "updatedAt": "2026-10-25T14:50:26.739Z"
+      },
+      "_count": {
+        "orderItems": 1
+      }
+    },
+    {
+      "id": "cmvny6ct4003313g8ppqyaina",
+      "name": "Pickles",
+      "nameAr": "مخلل مشكل",
+      "description": "مخلل بلدي مشكل مقرمش",
+      "price": 10,
+      "categoryId": "cat_sides_drinks_09",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:53:08.056Z",
+      "updatedAt": "2026-10-25T14:53:08.056Z",
+      "category": {
+        "id": "cat_sides_drinks_09",
+        "name": "Sides & Drinks",
+        "nameAr": "الإضافات والمشروبات",
+        "description": "أرز، سلطات، عيش، مخلل، ومشروبات باردة",
+        "order": 9,
+        "createdAt": "2026-10-25T14:50:38.572Z",
+        "updatedAt": "2026-10-25T14:50:38.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3ggi000913g8830biyef",
+      "name": "Mixed Grills",
+      "nameAr": "مشكل مشويات",
+      "description": "مشكل مشويات بلدي على الفحم - تباع بالوزن النيء: ربع 100 ج / نصف 200 ج / كيلو 400 ج",
+      "price": 800,
+      "categoryId": "cat_grills_01",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:50:52.818Z",
+      "updatedAt": "2026-10-25T15:23:51.075Z",
+      "category": {
+        "id": "cat_grills_01",
+        "name": "Grills",
+        "nameAr": "المشويات",
+        "description": "مشويات على الفحم البلدي - تباع بالوزن النيء (ربع / نصف / إلا ربع / كيلو)",
+        "order": 1,
+        "createdAt": "2026-10-25T14:50:26.739Z",
+        "updatedAt": "2026-10-25T14:50:26.739Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny6mvj003b13g8e0y5oxnq",
+      "name": "Mineral Water Small",
+      "nameAr": "مياه معدنية صغيرة",
+      "description": "مياه طبيعية نقية 600 مل",
+      "price": 10,
+      "categoryId": "cat_sides_drinks_09",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:53:20.930Z",
+      "updatedAt": "2026-10-25T14:53:20.930Z",
+      "category": {
+        "id": "cat_sides_drinks_09",
+        "name": "Sides & Drinks",
+        "nameAr": "الإضافات والمشروبات",
+        "description": "أرز، سلطات، عيش، مخلل، ومشروبات باردة",
+        "order": 9,
+        "createdAt": "2026-10-25T14:50:38.572Z",
+        "updatedAt": "2026-10-25T14:50:38.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny6oga003d13g8nr82oox8",
+      "name": "Mineral Water Large",
+      "nameAr": "مياه معدنية كبيرة",
+      "description": "مياه طبيعية نقية 1.5 لتر",
+      "price": 15,
+      "categoryId": "cat_sides_drinks_09",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:53:23.146Z",
+      "updatedAt": "2026-10-25T15:17:40.598Z",
+      "category": {
+        "id": "cat_sides_drinks_09",
+        "name": "Sides & Drinks",
+        "nameAr": "الإضافات والمشروبات",
+        "description": "أرز، سلطات، عيش، مخلل، ومشروبات باردة",
+        "order": 9,
+        "createdAt": "2026-10-25T14:50:38.572Z",
+        "updatedAt": "2026-10-25T14:50:38.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny3rii000j13g8w9v52dgt",
+      "name": "Mix Grills Charcoal Sandwich",
+      "nameAr": "ميكس مشويات",
+      "description": "ساندوتش ميكس مشويات على الفحم",
+      "price": 45,
+      "categoryId": "cat_sandwiches_charcoal_02",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:07.147Z",
+      "updatedAt": "2026-10-25T15:23:17.377Z",
+      "category": {
+        "id": "cat_sandwiches_charcoal_02",
+        "name": "Charcoal Sandwiches",
+        "nameAr": "ساندوتشات على الفحم",
+        "description": "طعم الفحم الأصلي ريحة تفتح النفس",
+        "order": 2,
+        "createdAt": "2026-10-25T14:50:27.572Z",
+        "updatedAt": "2026-10-25T14:50:27.572Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny4o68001f13g8p1l8skpc",
+      "name": "Shabaan Meal",
+      "nameAr": "وجبة الشبعان",
+      "description": "ربع كيلو سجق + عيش + سلطة + رز هدية",
+      "price": 100,
+      "categoryId": "cat_labor_meals_06",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:49.472Z",
+      "updatedAt": "2026-10-25T15:20:10.806Z",
+      "category": {
+        "id": "cat_labor_meals_06",
+        "name": "Labor Meals",
+        "nameAr": "وجبات العمالة",
+        "description": "جميع وجبات العمالة معها طبق رز هدية ★",
+        "order": 6,
+        "createdAt": "2026-10-25T14:50:33.042Z",
+        "updatedAt": "2026-10-25T14:50:33.042Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny4m92001d13g8oxj21bpd",
+      "name": "Sanaiay Meal",
+      "nameAr": "وجبة الصنايعي",
+      "description": "ربع كيلو كفتة + عيش + سلطة + رز هدية",
+      "price": 99,
+      "categoryId": "cat_labor_meals_06",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:46.982Z",
+      "updatedAt": "2026-10-25T15:20:04.429Z",
+      "category": {
+        "id": "cat_labor_meals_06",
+        "name": "Labor Meals",
+        "nameAr": "وجبات العمالة",
+        "description": "جميع وجبات العمالة معها طبق رز هدية ★",
+        "order": 6,
+        "createdAt": "2026-10-25T14:50:33.042Z",
+        "updatedAt": "2026-10-25T14:50:33.042Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny4t9m001j13g86ac7dp7c",
+      "name": "Mualemeen Meal",
+      "nameAr": "وجبة المعلمين",
+      "description": "ربع كيلو مشكل + عيش + سلطة + رز هدية",
+      "price": 119,
+      "categoryId": "cat_labor_meals_06",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:56.074Z",
+      "updatedAt": "2026-10-25T14:51:56.074Z",
+      "category": {
+        "id": "cat_labor_meals_06",
+        "name": "Labor Meals",
+        "nameAr": "وجبات العمالة",
+        "description": "جميع وجبات العمالة معها طبق رز هدية ★",
+        "order": 6,
+        "createdAt": "2026-10-25T14:50:33.042Z",
+        "updatedAt": "2026-10-25T14:50:33.042Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny4r9j001h13g83zzenelr",
+      "name": "Warsha Meal",
+      "nameAr": "وجبة الورشة",
+      "description": "نصف فرخة + عيش + طحينة + رز هدية",
+      "price": 150,
+      "categoryId": "cat_labor_meals_06",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:53.480Z",
+      "updatedAt": "2026-10-25T15:19:49.718Z",
+      "category": {
+        "id": "cat_labor_meals_06",
+        "name": "Labor Meals",
+        "nameAr": "وجبات العمالة",
+        "description": "جميع وجبات العمالة معها طبق رز هدية ★",
+        "order": 6,
+        "createdAt": "2026-10-25T14:50:33.042Z",
+        "updatedAt": "2026-10-25T14:50:33.042Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    },
+    {
+      "id": "cmvny4ue3001l13g8qxyms1wx",
+      "name": "Quarter Chicken Meal",
+      "nameAr": "وجبة ربع الفرخة",
+      "description": "ربع فرخة + عيش + طحينة + رز هدية",
+      "price": 100,
+      "categoryId": "cat_labor_meals_06",
+      "active": true,
+      "imageUrl": null,
+      "createdAt": "2026-10-25T14:51:57.531Z",
+      "updatedAt": "2026-10-25T15:19:39.202Z",
+      "category": {
+        "id": "cat_labor_meals_06",
+        "name": "Labor Meals",
+        "nameAr": "وجبات العمالة",
+        "description": "جميع وجبات العمالة معها طبق رز هدية ★",
+        "order": 6,
+        "createdAt": "2026-10-25T14:50:33.042Z",
+        "updatedAt": "2026-10-25T14:50:33.042Z"
+      },
+      "_count": {
+        "orderItems": 0
+      }
+    }
+  ]
+}

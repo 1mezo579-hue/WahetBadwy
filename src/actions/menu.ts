@@ -46,6 +46,7 @@ export async function createCategory(formData: FormData) {
     });
 
     revalidatePath("/dashboard/menu");
+    revalidatePath("/pos");
     return { success: true };
   } catch (error: any) {
     console.error("Error creating category:", error);

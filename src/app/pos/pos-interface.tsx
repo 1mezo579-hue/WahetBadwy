@@ -17,7 +17,39 @@ import {
   buildThermalReceiptHtml,
   silentPrintHtml,
 } from "@/utils/printer/silent-print";
-import { OFFICIAL_CATEGORIES, OFFICIAL_MENU_ITEMS, MenuItemData } from "@/data/official-menu";
+// Real-time Database-driven catalog
+function getMenuItemImage(nameAr: string, categoryId?: string): string {
+  const n = nameAr.toLowerCase();
+  if (n.includes("كفتة")) return "/items/kofta.jpg";
+  if (n.includes("طرب")) return "/items/tarb.jpg";
+  if (n.includes("سجق")) return "/items/sogok.jpg";
+  if (n.includes("شيش")) return "/items/shish.jpg";
+  if (n.includes("مشكل")) return "/items/meshakel.jpg";
+  if (n.includes("فرخة") || n.includes("فراخ") || n.includes("دجاج")) return "/items/chicken.jpg";
+  if (n.includes("صينية")) return "/items/tray.jpg";
+  if (n.includes("وجبة")) return "/items/meal.jpg";
+  if (n.includes("سوري")) return "/items/syrian.jpg";
+  if (n.includes("فرنساوي") || n.includes("ساندوتش")) return "/items/sandwich.jpg";
+  if (n.includes("ممبار") || n.includes("كرشة") || n.includes("فشة") || n.includes("سقط")) return "/items/offal.jpg";
+  if (n.includes("بيبسي") || n.includes("ميرندا") || n.includes("سفن") || n.includes("مياه") || n.includes("كانز")) return "/items/drink.jpg";
+  if (n.includes("طحينة") || n.includes("سلطة") || n.includes("أرز") || n.includes("ارز") || n.includes("عيش") || n.includes("مخلل")) return "/items/sides.jpg";
+  return "/items/kofta.jpg";
+}
+
+function getCategoryIcon(nameAr: string): string {
+  const n = nameAr.toLowerCase();
+  if (n.includes("مشويات")) return "🍖";
+  if (n.includes("سوري")) return "🌯";
+  if (n.includes("فرنساوي")) return "🥖";
+  if (n.includes("ساندوتش")) return "🥪";
+  if (n.includes("فراخ")) return "🍗";
+  if (n.includes("صواني")) return "👑";
+  if (n.includes("وجبات") || n.includes("عمالة")) return "🍱";
+  if (n.includes("سقط") || n.includes("حلويات اللحمة")) return "🫀";
+  if (n.includes("عروض")) return "🔥";
+  if (n.includes("إضافات") || n.includes("مشروبات")) return "🥤";
+  return "🍽️";
+}
 import WeightModal from "@/components/pos/weight-modal";
 import CustomerGrillingForm from "@/components/pos/customer-grilling-form";
 import GrillingTrackerModal from "@/components/pos/grilling-tracker-modal";
@@ -388,70 +420,27 @@ export default function PosInterface({
     return () => clearInterval(interval);
   }, []);
 
-  // Filter out any shisha or drink items from DB or catalog (Meat & Grills Restaurant Only)
+  // Single Source of Truth: 100% powered by real DB menu items
   const allMenuItems = useMemo(() => {
-    const map = new Map<string, PosMenuItem>();
-
-    // 1. Populate with official grills menu items
-    OFFICIAL_MENU_ITEMS.forEach((item) => {
-      map.set(item.id, {
-        id: item.id,
-        nameAr: item.nameAr,
-        price: item.price,
-        categoryId: item.categoryId,
-        description: item.description,
-        image: item.image,
-      });
-    });
-
-    // 2. Merge DB menu items if any, strictly excluding shisha and drinks
-    menuItems.forEach((dbItem) => {
-      const name = dbItem.nameAr.toLowerCase();
-      if (
-        name.includes("شيشة") ||
-        name.includes("معسل") ||
-        name.includes("قص") ||
-        name.includes("سلوم") ||
-        name.includes("شاي") ||
-        name.includes("قهوة") ||
-        name.includes("عصير") ||
-        name.includes("مشروب") ||
-        name.includes("بيبسي") ||
-        name.includes("بار")
-      ) {
-        return; // Exclude
-      }
-
-      const official = OFFICIAL_MENU_ITEMS.find((o) => o.nameAr === dbItem.nameAr);
-      map.set(dbItem.id, {
-        id: dbItem.id,
-        nameAr: dbItem.nameAr,
-        price: dbItem.price,
-        categoryId: official ? official.categoryId : (dbItem.categoryId || "GRILLS"),
-        description: dbItem.description || official?.description,
-        image: official?.image || "/items/kofta.jpg",
-      });
-    });
-
-    return Array.from(map.values());
+    return menuItems.map((dbItem) => ({
+      id: dbItem.id,
+      nameAr: dbItem.nameAr,
+      price: dbItem.price,
+      categoryId: dbItem.categoryId,
+      description: dbItem.description,
+      image: (dbItem as any).imageUrl || dbItem.image || getMenuItemImage(dbItem.nameAr, dbItem.categoryId),
+    }));
   }, [menuItems]);
 
-  // Filtered menu items
+  // Filtered menu items by active category and search
   const filteredItems = useMemo(() => {
     return allMenuItems.filter((item) => {
-      const matchCat =
-        selectedCategory === "ALL" ||
-        item.categoryId === selectedCategory ||
-        (selectedCategory === "GRILLS" && (item.categoryId === "cat_grills_01" || item.categoryId === "GRILLS")) ||
-        (selectedCategory === "SANDWICHES" && (item.categoryId === "cat_sandwiches_03" || item.categoryId === "cat_syrian_04" || item.categoryId === "SANDWICHES")) ||
-        (selectedCategory === "TRAYS" && (item.categoryId === "cat_trays_02" || item.categoryId === "TRAYS")) ||
-        (selectedCategory === "MEALS" && item.categoryId === "MEALS") ||
-        (selectedCategory === "SIDES" && (item.categoryId === "cat_delicacies_05" || item.categoryId === "SIDES")) ||
-        (selectedCategory === "DESSERTS" && (item.categoryId === "cat_desserts_09" || item.categoryId === "DESSERTS"));
-
+      const matchCat = selectedCategory === "ALL" || item.categoryId === selectedCategory;
+      const q = searchQuery.trim().toLowerCase();
       const matchSearch =
-        !searchQuery ||
-        item.nameAr.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        item.nameAr.toLowerCase().includes(q) ||
+        (item.description && item.description.toLowerCase().includes(q));
 
       return matchCat && matchSearch;
     });
@@ -1078,23 +1067,37 @@ export default function PosInterface({
       {/* 2. MAIN WORKSPACE (Flex Row) */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* A. FAR LEFT: CATEGORIES COLUMN */}
-        <aside className="w-24 sm:w-28 bg-[#0a0a0c] border-l border-orange-500/20 flex flex-col py-2 px-1.5 shrink-0 z-20">
+        {/* A. FAR LEFT: CATEGORIES COLUMN (100% Dynamic from Database) */}
+        <aside className="w-24 sm:w-28 bg-[#0a0a0c] border-l border-orange-500/20 flex flex-col py-2 px-1.5 shrink-0 z-20 overflow-y-auto">
           <div className="flex flex-col gap-1">
-            {OFFICIAL_CATEGORIES.map((cat) => {
+            <button
+              onClick={() => setSelectedCategory("ALL")}
+              className={`flex items-center justify-between px-2 py-2 rounded-xl text-xs font-bold transition text-right ${
+                selectedCategory === "ALL"
+                  ? "bg-gradient-to-r from-orange-500 to-amber-500 text-stone-950 font-black shadow-lg shadow-orange-500/30"
+                  : "text-stone-300 hover:text-white hover:bg-stone-900 border border-stone-800/40"
+              }`}
+            >
+              <span className="truncate font-black">الكل</span>
+              <span className="text-[10px] font-mono text-orange-400">({allMenuItems.length})</span>
+            </button>
+            {categories.map((cat) => {
               const isSelected = selectedCategory === cat.id;
+              const catItemCount = allMenuItems.filter((i) => i.categoryId === cat.id).length;
+              const icon = getCategoryIcon(cat.nameAr);
               return (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`flex items-center justify-between px-2 py-2 rounded-xl text-xs font-bold transition text-right ${
+                  className={`flex items-center justify-between px-1.5 py-2 rounded-xl text-xs font-bold transition text-right ${
                     isSelected
                       ? "bg-gradient-to-r from-orange-500 to-amber-500 text-stone-950 font-black shadow-lg shadow-orange-500/30"
                       : "text-stone-300 hover:text-white hover:bg-stone-900 border border-stone-800/40"
                   }`}
+                  title={cat.nameAr}
                 >
-                  <span className="truncate">{cat.nameAr}</span>
-                  <span className="text-xs">{cat.icon}</span>
+                  <span className="truncate text-[11px] leading-tight">{cat.nameAr.trim()}</span>
+                  <span className="text-xs shrink-0 mr-1">{icon}</span>
                 </button>
               );
             })}
