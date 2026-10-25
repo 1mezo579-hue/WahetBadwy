@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { askAmoBasiony, AssistantResponse } from "@/actions/assistant";
+import {
+  askAmoBasiony,
+  confirmExpenseRegistration,
+  AssistantResponse,
+  PendingExpense,
+} from "@/actions/assistant";
 
 interface Message {
   id: string;
@@ -10,12 +15,15 @@ interface Message {
   time: string;
   category?: string;
   snapshot?: AssistantResponse["statsSnapshot"];
+  pendingExpense?: PendingExpense;
+  isConfirmed?: boolean;
 }
 
 export default function AmoBasionyWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
@@ -27,8 +35,10 @@ export default function AmoBasionyWidget() {
         id: "msg-welcome",
         sender: "basiony",
         text: `يا مرحب بيك يا بطل في مشويات بسيوني! 🔥🥩
-أنا «عمو بسيوني»، معاك دايماً في طالع ونازل المطعم: مبيعات، دروج، مخزون، وجريل.
-اختار سؤال سريع من تحت أو اكتبلي أي حاجة في بالك!`,
+أنا «عمو بسيوني»، معاك لحظة بلحظة:
+• سجل المصروفات بالعامية المصرية (مثلاً: «سجل 350 جنيه منظفات نقدي»).
+• استعلم عن مبيعات اليوم، والدرج، ونواقص المخزون.
+اختار أمر سريع من تحت أو اكتبلي أي حاجة في بالك!`,
         time: greetingTime,
       },
     ]);
@@ -66,6 +76,7 @@ export default function AmoBasionyWidget() {
         time: basionyTime,
         category: res.category,
         snapshot: res.statsSnapshot,
+        pendingExpense: res.pendingExpenseConfirmation,
       };
       setMessages((prev) => [...prev, basionyMsg]);
     } catch (err) {
@@ -84,11 +95,58 @@ export default function AmoBasionyWidget() {
     }
   };
 
+  const handleConfirmExpense = async (msgId: string, pending: PendingExpense) => {
+    setConfirmingId(msgId);
+    try {
+      const res = await confirmExpenseRegistration(pending);
+      const confirmTime = new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+
+      // Mark the original pending message as confirmed
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, isConfirmed: true } : m))
+      );
+
+      // Add success message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: "b-conf-" + Date.now(),
+          sender: "basiony",
+          text: res.answer,
+          time: confirmTime,
+          category: "expenses",
+        },
+      ]);
+    } catch (err: any) {
+      alert("حدث خطأ أثناء اعتماد المصروف: " + (err.message || "فشل الاتصال"));
+    } finally {
+      setConfirmingId(null);
+    }
+  };
+
+  const handleCancelExpense = (msgId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, isConfirmed: true, pendingExpense: undefined } : m))
+    );
+    const cancelTime = new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: "b-cancel-" + Date.now(),
+        sender: "basiony",
+        text: "تم إلغاء أمر تسجيل المصروف بناءً على طلبك يا فنان. الدفاتر زي ما هي! 👌",
+        time: cancelTime,
+        category: "expenses",
+      },
+    ]);
+  };
+
   const quickPrompts = [
-    { label: "📊 مبيعات اليوم", query: "طمّني على مبيعات وردية النهاردة والدرج" },
-    { label: "🥩 نواقص اللحوم والمخزون", query: "إيه أخبار نواقص المخزون واللحوم والجريل؟" },
+    { label: "💸 سجل 350 جنيه منظفات", query: "سجل 350 جنيه منظفات نقدي" },
+    { label: "🥩 سجل 500 جنيه لحمة", query: "سجل 500 جنيه لحمة بلدي كاش" },
+    { label: "📊 مصروفات النهاردة", query: "مصروفات النهاردة كام؟" },
+    { label: "📈 مبيعات اليوم والدرج", query: "طمّني على مبيعات وردية النهاردة والدرج" },
     { label: "🔥 الأصناف الأكثر طلباً", query: "مين أكتر أصناف مشويات مسمّعة ومطلوبة النهاردة؟" },
-    { label: "💡 ضبط الدرج ومنع العجز", query: "نصيحة عمو بسيوني لقفل الوردية وضبط الدرج" },
   ];
 
   return (
@@ -106,7 +164,7 @@ export default function AmoBasionyWidget() {
           </div>
           <div className="text-right">
             <div className="text-xs font-black text-orange-400 leading-tight">عمو بسيوني AI</div>
-            <div className="text-[10px] text-neutral-300">مساعد الكاشير الذكي</div>
+            <div className="text-[10px] text-neutral-300">المصروفات والمساعد الذكي</div>
           </div>
         </button>
       )}
@@ -115,7 +173,7 @@ export default function AmoBasionyWidget() {
       {isOpen && (
         <div
           dir="rtl"
-          className="w-[92vw] sm:w-[410px] h-[560px] max-h-[85vh] bg-neutral-950 text-white rounded-2xl shadow-2xl border border-neutral-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-6 duration-200"
+          className="w-[92vw] sm:w-[420px] h-[580px] max-h-[85vh] bg-neutral-950 text-white rounded-2xl shadow-2xl border border-neutral-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-6 duration-200"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-neutral-900 via-neutral-900 to-neutral-950 p-3.5 border-b border-neutral-800 flex items-center justify-between">
@@ -127,7 +185,7 @@ export default function AmoBasionyWidget() {
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-sm text-orange-400">عمو بسيوني AI</h3>
                   <span className="text-[9px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/30">
-                    مستشار المشويات
+                    مستشار المشويات والمصروفات
                   </span>
                 </div>
                 <p className="text-[10px] text-neutral-400">مشويات بسيوني • إدارة: أ/ أحمد بسيوني</p>
@@ -153,7 +211,7 @@ export default function AmoBasionyWidget() {
                 className={`flex flex-col ${m.sender === "user" ? "items-start" : "items-end"}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
+                  className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
                     m.sender === "user"
                       ? "bg-orange-600 text-white rounded-br-none shadow-md"
                       : "bg-neutral-900 text-neutral-100 rounded-bl-none border border-neutral-800 shadow-md"
@@ -171,11 +229,71 @@ export default function AmoBasionyWidget() {
                         </span>
                       </div>
                       <div className="bg-neutral-950/60 p-2 rounded border border-neutral-800">
-                        <span className="text-neutral-400 block">عدد الطلبات:</span>
-                        <span className="font-mono font-bold text-neutral-200 text-xs">
-                          {m.snapshot.todayOrdersCount} طلب
+                        <span className="text-neutral-400 block">مصروفات اليوم:</span>
+                        <span className="font-mono font-bold text-red-400 text-xs">
+                          {m.snapshot.todayExpenses.toLocaleString()} ج.م
                         </span>
                       </div>
+                    </div>
+                  )}
+
+                  {/* INTERACTIVE EXPENSE CONFIRMATION CARD */}
+                  {m.pendingExpense && !m.isConfirmed && (
+                    <div className="mt-3 p-3 rounded-xl bg-orange-950/40 border border-orange-500/40 text-neutral-200 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs font-bold text-orange-400 border-b border-orange-500/20 pb-1.5">
+                        <span>إذن صرف مقترح</span>
+                        <span className="font-mono text-white text-sm bg-orange-600/60 px-2 py-0.5 rounded">
+                          {m.pendingExpense.amount.toLocaleString()} ج.م
+                        </span>
+                      </div>
+                      <div className="text-[11px] space-y-1">
+                        <div>
+                          <span className="text-neutral-400">البند: </span>
+                          <strong className="text-white">{m.pendingExpense.categoryName}</strong>
+                        </div>
+                        <div>
+                          <span className="text-neutral-400">طريقة الدفع: </span>
+                          <span className="text-amber-300">
+                            {m.pendingExpense.paymentMethod === "CASH"
+                              ? "نقدي (من الدرج)"
+                              : m.pendingExpense.paymentMethod === "VISA"
+                              ? "فيزا / كارت"
+                              : "تحويل بنكي"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => handleConfirmExpense(m.id, m.pendingExpense!)}
+                          disabled={confirmingId === m.id}
+                          className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow"
+                        >
+                          {confirmingId === m.id ? (
+                            <span>جاري الحفظ...</span>
+                          ) : (
+                            <>
+                              <span>✓</span>
+                              <span>تأكيد تسجيل المصروف</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleCancelExpense(m.id)}
+                          disabled={confirmingId === m.id}
+                          className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 py-1.5 px-2.5 rounded-lg text-xs transition"
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {m.isConfirmed && (
+                    <div className="mt-2 text-[10px] text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-1 rounded-md flex items-center gap-1">
+                      <span>✓</span>
+                      <span>تمت معالجة أمر المصروف</span>
                     </div>
                   )}
                 </div>
@@ -218,7 +336,7 @@ export default function AmoBasionyWidget() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="اسأل عمو بسيوني عن أي حاجة في المطعم..."
+              placeholder="اكتب لعمو بسيوني (مثلاً: سجل 350 جنيه منظفات نقدي)..."
               disabled={loading}
               className="flex-1 bg-neutral-950 text-white text-xs px-3 py-2 rounded-xl border border-neutral-700 focus:outline-none focus:border-orange-500 placeholder-neutral-500"
             />

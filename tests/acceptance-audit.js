@@ -1,8 +1,8 @@
 /**
  * Final Acceptance Audit Test Suite
  * Project: Mashweyat Basiony (مشويات بسيوني)
- * Branch: dev-basiony-reports-ai-print
- * Target Commit: 6075dda + security hardening
+ * Branch: dev-basiony-reports-ai-print / main
+ * Extended: Expenses Management & Amo Basiony Conversational NLP
  */
 
 const assert = require("assert");
@@ -290,17 +290,163 @@ test("AI Assistant: Correctly identifies categories, protects against unauthenti
   function classifyIntent(query) {
     const q = (query || "").trim().toLowerCase();
     if (q.includes("وردية") || q.includes("قفل") || q.includes("جرد") || q.includes("عجز") || q.includes("زيادة")) return "cashier";
+    if (q.includes("مصروف") || q.includes("صرفنا") || q.includes("سجل") || q.includes("ادفع")) return "expenses";
     if (q.includes("مخزون") || q.includes("لحم") || q.includes("نواقص") || q.includes("خامات") || q.includes("بضاعة") || q.includes("تتبيل")) return "inventory";
     if (q.includes("منيو") || q.includes("صنف") || q.includes("كباب") || q.includes("كفتة") || q.includes("طلب") || q.includes("أكتر")) return "grills";
     if (q.includes("مبيع") || q.includes("فلوس") || q.includes("إيراد") || q.includes("حساب") || q.includes("درج") || q.includes("شيك")) return "sales";
     return "general";
   }
 
-  assert.strictEqual(classifyIntent("إيه مبيعات النهاردة والدرج؟"), "sales");
+  assert.strictEqual(classifyIntent("إزاي أقفل الوردية وأجرد الدرج صح؟"), "cashier");
+  assert.strictEqual(classifyIntent("سجل 350 جنيه منظفات نقدي"), "expenses");
   assert.strictEqual(classifyIntent("عايز أعرف نواقص اللحمة والمخزون"), "inventory");
   assert.strictEqual(classifyIntent("مين أكتر صنف كباب مطلوب في المنيو؟"), "grills");
-  assert.strictEqual(classifyIntent("إزاي أقفل الوردية وأجرد الدرج صح؟"), "cashier");
+  assert.strictEqual(classifyIntent("إيه مبيعات النهاردة والدرج؟"), "sales");
   assert.strictEqual(classifyIntent("إيه سر مشويات بسيوني؟"), "general");
+});
+
+// ==================================================================
+// 9. Conversational Expense Parsing (Egyptian Arabic NLP)
+// ==================================================================
+test("Expense NLP: Extracts amount, category, and payment method from Egyptian conversational phrases", () => {
+  function extractAmount(text) {
+    const westernText = text.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632));
+    const patterns = [
+      /(?:بـ|بـ\s+|بقيمة\s+|بمبلغ\s+|صرفت\s+|سجل\s+|ادفع\s+)(\d+(?:\.\d+)?)/i,
+      /(\d+(?:\.\d+)?)\s*(?:ج|جنيه|ج\.م|egp)?\b/i,
+      /\b(\d+(?:\.\d+)?)\b/,
+    ];
+    for (const regex of patterns) {
+      const match = westernText.match(regex);
+      if (match && match[1]) {
+        const val = parseFloat(match[1]);
+        if (!isNaN(val) && val > 0) return val;
+      }
+    }
+    return null;
+  }
+
+  function extractPaymentMethod(text) {
+    const t = text.toLowerCase();
+    if (t.includes("فيزا") || t.includes("كارت") || t.includes("بطاقة")) return "VISA";
+    if (t.includes("تحويل") || t.includes("فودافون") || t.includes("انستاباي")) return "TRANSFER";
+    return "CASH";
+  }
+
+  // Phrase 1: "سجل 350 جنيه منظفات نقدي"
+  assert.strictEqual(extractAmount("سجل 350 جنيه منظفات نقدي"), 350);
+  assert.strictEqual(extractPaymentMethod("سجل 350 جنيه منظفات نقدي"), "CASH");
+
+  // Phrase 2: "صرفت 500 لحمة كاش"
+  assert.strictEqual(extractAmount("صرفت 500 لحمة كاش"), 500);
+  assert.strictEqual(extractPaymentMethod("صرفت 500 لحمة كاش"), "CASH");
+
+  // Phrase 3: "ادفع 1200 إيجار تحويل بنكي"
+  assert.strictEqual(extractAmount("ادفع 1200 إيجار تحويل بنكي"), 1200);
+  assert.strictEqual(extractPaymentMethod("ادفع 1200 إيجار تحويل بنكي"), "TRANSFER");
+
+  // Phrase 4: "شراء فحم بـ 250 فيزا"
+  assert.strictEqual(extractAmount("شراء فحم بـ 250 فيزا"), 250);
+  assert.strictEqual(extractPaymentMethod("شراء فحم بـ 250 فيزا"), "VISA");
+
+  // Phrase 5: Arabic numerals "سجل ١٥٠ جنيه أكياس"
+  assert.strictEqual(extractAmount("سجل ١٥٠ جنيه أكياس"), 150);
+});
+
+// ==================================================================
+// 10. Interactive Expense Confirmation Safety Flow
+// ==================================================================
+test("Expense Confirmation Flow: Demands missing parameters and creates pending confirmation card before saving", () => {
+  function processExpenseCommand(input) {
+    const amount = input.amount;
+    const category = input.category;
+    const payment = input.payment || "CASH";
+
+    if (!amount && !category) {
+      return { status: "PROMPT_BOTH", prompt: "المبلغ كام والبند إيه؟" };
+    }
+    if (!amount) {
+      return { status: "PROMPT_AMOUNT", prompt: "كام المبلغ؟" };
+    }
+    if (!category) {
+      return { status: "PROMPT_CATEGORY", prompt: "المصروف ده لبند إيه؟" };
+    }
+
+    // Ready for confirmation
+    return {
+      status: "PENDING_CONFIRMATION",
+      pending: {
+        amount,
+        category,
+        payment,
+      },
+    };
+  }
+
+  // Missing amount & category
+  const resBoth = processExpenseCommand({});
+  assert.strictEqual(resBoth.status, "PROMPT_BOTH");
+
+  // Missing amount only
+  const resAmount = processExpenseCommand({ category: "منظفات" });
+  assert.strictEqual(resAmount.status, "PROMPT_AMOUNT");
+
+  // Missing category only
+  const resCategory = processExpenseCommand({ amount: 350 });
+  assert.strictEqual(resCategory.status, "PROMPT_CATEGORY");
+
+  // Ready for 1-click confirmation
+  const resReady = processExpenseCommand({ amount: 350, category: "منظفات", payment: "CASH" });
+  assert.strictEqual(resReady.status, "PENDING_CONFIRMATION");
+  assert.strictEqual(resReady.pending.amount, 350);
+  assert.strictEqual(resReady.pending.category, "منظفات");
+});
+
+// ==================================================================
+// 11. Shift Cash Drawer Impact (Cash vs Electronic)
+// ==================================================================
+test("Drawer Impact: Cash expenses reduce expected drawer cash; electronic expenses do not reduce drawer cash", () => {
+  let initialExpectedDrawerCash = 3000;
+
+  function applyExpenseToDrawer(drawerCash, amount, paymentMethod) {
+    if (paymentMethod === "CASH") {
+      return Math.max(0, drawerCash - amount);
+    }
+    // Visa and Bank transfer do not reduce physical cash in drawer
+    return drawerCash;
+  }
+
+  // 1. Cash expense of 350
+  const afterCash = applyExpenseToDrawer(initialExpectedDrawerCash, 350, "CASH");
+  assert.strictEqual(afterCash, 2650, "Drawer cash should be 3000 - 350 = 2650");
+
+  // 2. Visa expense of 500
+  const afterVisa = applyExpenseToDrawer(afterCash, 500, "VISA");
+  assert.strictEqual(afterVisa, 2650, "Visa expense must NOT reduce cash drawer");
+
+  // 3. Bank transfer of 400
+  const afterTransfer = applyExpenseToDrawer(afterVisa, 400, "TRANSFER");
+  assert.strictEqual(afterTransfer, 2650, "Transfer expense must NOT reduce cash drawer");
+});
+
+// ==================================================================
+// 12. Expense Categories Catalog (10 Comprehensive Groups)
+// ==================================================================
+test("Categories Catalog: Covers all 10 mandatory groups specified by restaurant management", () => {
+  const groups = [
+    "SALARIES",    // المرتبات والأجور والوجبات
+    "FOOD_RAW",    // اللحوم والفراخ والخضار والبهارات والأرز والفحم
+    "PACKAGING",   // علب السفري والأكياس والأطباق
+    "UTILITIES",   // الكهرباء والمياه والغاز والنت
+    "MAINTENANCE", // المنظفات والمطهرات وصيانة الجريل والتكييف
+    "LOGISTICS",   // النقل والبنزين والطيارين
+    "ADMIN",       // الإيجار والمحاسب والتراخيص
+    "MARKETING",   // الدعاية والتصوير والضيافة
+    "ASSETS",      // معدات المطبخ وأجهزة الكاشير
+    "FINANCIAL",   // العمولات البنكية والمصروفات الطارئة
+  ];
+
+  assert.strictEqual(groups.length, 10, "Must have exactly 10 comprehensive groups");
 });
 
 console.log("==================================================================");

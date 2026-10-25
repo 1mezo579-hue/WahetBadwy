@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getSystemLockState, logSecurityEvent } from "@/lib/system-lock";
+import { getCentralExpenseLedger } from "@/actions/expenses";
+import { getExpenseCategories } from "@/lib/expenses-catalog";
 
 export interface ReportFilters {
   from?: string; // YYYY-MM-DD
@@ -67,6 +69,8 @@ export async function getAdminReportsData(filters?: ReportFilters) {
       menuItemsWithRecipes,
       staffList,
       lockState,
+      centralExpenses,
+      categoriesCatalog,
     ] = await Promise.all([
       // Orders
       prisma.order.findMany({
@@ -164,6 +168,8 @@ export async function getAdminReportsData(filters?: ReportFilters) {
 
       // System Lock & Audit Log
       getSystemLockState(),
+      getCentralExpenseLedger(),
+      getExpenseCategories(),
     ]);
 
     // 4. Sales Metrics Computation
@@ -332,18 +338,44 @@ export async function getAdminReportsData(filters?: ReportFilters) {
     const totalInventoryValue = inventoryItems.reduce((sum, i) => sum + i.totalValue, 0);
     const lowStockAlerts = inventoryItems.filter((i) => i.isLow);
 
-    // 9. Expenses Breakdown from Shift Records
+    // 9. Expenses Breakdown from Shift Records & Central Expenses Ledger
+    const seenExpenseIds = new Set<string>();
     const expensesList: Array<{
+      id?: string;
       date: string;
-      shiftNumber: number;
+      shiftNumber?: number | string;
       cashierName: string;
       amount: number;
       item: string;
+      category?: string;
+      paymentMethod?: string;
       receiver?: string;
       responsible?: string;
       notes?: string;
     }> = [];
 
+    // Central Expenses Ledger
+    (centralExpenses || []).forEach((c: any) => {
+      const cDate = new Date(c.timestamp);
+      if (dateWhere.gte && cDate < dateWhere.gte) return;
+      if (dateWhere.lte && cDate > dateWhere.lte) return;
+      seenExpenseIds.add(c.id);
+      expensesList.push({
+        id: c.id,
+        date: cDate.toLocaleDateString("ar-EG"),
+        shiftNumber: c.shiftNumber ? "#" + c.shiftNumber : "عام",
+        cashierName: c.responsible || "الإدارة",
+        amount: c.amount,
+        item: c.item,
+        category: c.categoryName || "مصروف عام",
+        paymentMethod: c.paymentMethod === "VISA" ? "فيزا/كارت" : c.paymentMethod === "TRANSFER" ? "تحويل بنكي" : "نقدي (من الدرج)",
+        receiver: c.receiver || "-",
+        responsible: c.responsible || "-",
+        notes: c.notes || "",
+      });
+    });
+
+    // Shift Records (deduplicated)
     shifts.forEach((s) => {
       const sNum = s.shiftNumber;
       const cName = s.user?.name || "كاشير";
@@ -358,20 +390,41 @@ export async function getAdminReportsData(filters?: ReportFilters) {
       }
 
       details.forEach((exp: any) => {
+        if (exp.id && seenExpenseIds.has(exp.id)) return;
+        if (exp.id) seenExpenseIds.add(exp.id);
+
         expensesList.push({
+          id: exp.id,
           date: sDate,
-          shiftNumber: sNum,
-          cashierName: cName,
+          shiftNumber: "#" + sNum,
+          cashierName: exp.responsible || cName,
           amount: parseFloat(exp.amount) || 0,
           item: exp.item || "مصروف عام",
+          category: exp.category || "عام",
+          paymentMethod: exp.paymentMethod === "VISA" ? "فيزا/كارت" : exp.paymentMethod === "TRANSFER" ? "تحويل بنكي" : "نقدي (من الدرج)",
           receiver: exp.receiver || "-",
-          responsible: exp.responsible || "-",
+          responsible: exp.responsible || cName,
           notes: exp.notes || "",
         });
       });
     });
 
-    const totalRecordedExpenses = shifts.reduce((sum, s) => sum + (s.expensesTotal || 0), 0);
+    const totalRecordedExpenses = expensesList.reduce((sum, e) => sum + e.amount, 0);
+
+    // Categories and Payment Breakdown
+    const expCatMap = new Map<string, number>();
+    const expPayMap = { CASH: 0, VISA: 0, TRANSFER: 0 };
+    expensesList.forEach((e) => {
+      const cat = e.category || "عام";
+      expCatMap.set(cat, (expCatMap.get(cat) || 0) + e.amount);
+      if (e.paymentMethod && e.paymentMethod.includes("فيزا")) expPayMap.VISA += e.amount;
+      else if (e.paymentMethod && e.paymentMethod.includes("تحويل")) expPayMap.TRANSFER += e.amount;
+      else expPayMap.CASH += e.amount;
+    });
+
+    const topExpenseCategories = Array.from(expCatMap.entries())
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total);
 
     // 10. Shifts Reconciliation (Drawer Cash vs Card vs Shortage/Overage)
     const shiftsReport = shifts.map((s) => {
@@ -459,6 +512,9 @@ export async function getAdminReportsData(filters?: ReportFilters) {
       expensesReport: {
         expenses: expensesList,
         totalRecordedExpenses,
+        categoriesCatalog: categoriesCatalog || [],
+        topCategories: topExpenseCategories,
+        paymentBreakdown: expPayMap,
       },
       shiftsReport,
       ordersReport: {

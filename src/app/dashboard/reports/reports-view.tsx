@@ -1139,33 +1139,69 @@ export default function ReportsView({ data }: ReportsViewProps) {
       {/* ======================================================== */}
       {activeTab === "EXPENSES" && (
         <div className="space-y-6">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm max-w-sm space-y-1">
-            <span className="text-[11px] font-bold text-slate-500">إجمالي المصروفات المنصرفة من الدرج</span>
-            <div className="text-2xl font-black text-rose-600 font-mono">
-              {expenses.totalRecordedExpenses.toLocaleString()} <span className="text-xs">ج.م</span>
+          {/* Summary KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-[11px] font-bold text-slate-500">إجمالي المصروفات المسجلة</span>
+              <div className="text-2xl font-black text-rose-600 font-mono">
+                {expenses.totalRecordedExpenses.toLocaleString()} <span className="text-xs">ج.م</span>
+              </div>
+              <p className="text-[11px] text-slate-400">إجمالي المصروفات المنصرفة في الفترة المحددة</p>
             </div>
-            <p className="text-[11px] text-slate-400">موثقة تفصيلياً مع اسم المستلم والمسؤول</p>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-[11px] font-bold text-slate-500">نقدية من الدرج (كاش)</span>
+              <div className="text-2xl font-black text-amber-600 font-mono">
+                {(expenses.paymentBreakdown?.CASH || 0).toLocaleString()} <span className="text-xs">ج.م</span>
+              </div>
+              <p className="text-[11px] text-slate-400">تم خصمها من رصيد درج النقدية بالوردية</p>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-[11px] font-bold text-slate-500">إلكتروني (فيزا / تحويل بنكي)</span>
+              <div className="text-2xl font-black text-blue-600 font-mono">
+                {((expenses.paymentBreakdown?.VISA || 0) + (expenses.paymentBreakdown?.TRANSFER || 0)).toLocaleString()} <span className="text-xs">ج.م</span>
+              </div>
+              <p className="text-[11px] text-slate-400">مدفوعات لا تؤثر على نقدية الدرج</p>
+            </div>
           </div>
 
+          {/* Top Expense Categories Breakdown */}
+          {expenses.topCategories && expenses.topCategories.length > 0 && (
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+              <h4 className="text-xs font-black text-slate-700">أعلى بنود المصروفات تكلفة في الفترة:</h4>
+              <div className="flex flex-wrap gap-2">
+                {expenses.topCategories.map((c: any, idx: number) => (
+                  <div key={idx} className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs flex items-center gap-2">
+                    <span className="font-bold text-slate-800">{c.name}:</span>
+                    <span className="font-mono font-black text-rose-600">{c.total.toLocaleString()} ج.م</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Expenses Ledger Table */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-black text-slate-800">بيان المصروفات النثرية والسحوبات</h3>
-                <p className="text-xs text-slate-500 mt-0.5">تفصيل كافة بنود الصرف المسجلة من قِبل الكاشير</p>
+                <h3 className="text-base font-black text-slate-800">بيان المصروفات النثرية والخامات</h3>
+                <p className="text-xs text-slate-500 mt-0.5">موثقة لحظياً عبر شيت الورديات ومحادثة «عمو بسيوني AI»</p>
               </div>
               <button
                 onClick={() =>
                   exportToCsv(
                     "سجل_المصروفات_مشويات_بسيوني",
-                    ["التاريخ", "الوردية", "الكاشير", "بند المصروف", "المبلغ", "المستلم", "ملاحظات"],
+                    ["التاريخ", "الوردية", "المسؤول", "بند المصروف", "طريقة الدفع", "المبلغ", "المستلم", "ملاحظات"],
                     expenses.expenses.map((e: any) => [
                       e.date,
-                      `#${e.shiftNumber}`,
-                      e.cashierName,
-                      e.item,
+                      e.shiftNumber || "-",
+                      e.cashierName || e.responsible || "الإدارة",
+                      e.category ? `${e.item} (${e.category})` : e.item,
+                      e.paymentMethod || "نقدي",
                       e.amount,
-                      e.receiver,
-                      e.notes,
+                      e.receiver || "-",
+                      e.notes || "-",
                     ])
                   )
                 }
@@ -1180,7 +1216,7 @@ export default function ReportsView({ data }: ReportsViewProps) {
               <div className="p-12 text-center space-y-2">
                 <span className="text-4xl block">💸</span>
                 <p className="text-sm font-bold text-slate-700">لا توجد مصروفات مسجلة في هذه الفترة</p>
-                <p className="text-xs text-slate-400">تُسجل المصروفات أثناء الوردية في شيت التقفيل.</p>
+                <p className="text-xs text-slate-400">يمكنك تسجيل أي مصروف في ثوانٍ بكتابة: «سجل 350 جنيه منظفات نقدي» لعمو بسيوني!</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -1189,10 +1225,11 @@ export default function ReportsView({ data }: ReportsViewProps) {
                     <tr>
                       <th className="p-3.5">التاريخ</th>
                       <th className="p-3.5">الوردية</th>
-                      <th className="p-3.5">الكاشير</th>
-                      <th className="p-3.5">بند المصروف</th>
+                      <th className="p-3.5">المسؤول</th>
+                      <th className="p-3.5">بند المصروف / التصنيف</th>
+                      <th className="p-3.5">طريقة الدفع</th>
                       <th className="p-3.5">المبلغ</th>
-                      <th className="p-3.5">المستلم / المسؤول</th>
+                      <th className="p-3.5">المستلم</th>
                       <th className="p-3.5">ملاحظات</th>
                     </tr>
                   </thead>
@@ -1200,11 +1237,25 @@ export default function ReportsView({ data }: ReportsViewProps) {
                     {expenses.expenses.map((e: any, idx: number) => (
                       <tr key={idx} className="hover:bg-slate-50/60 transition">
                         <td className="p-3.5 font-bold text-slate-800">{e.date}</td>
-                        <td className="p-3.5 font-mono text-slate-700">#{e.shiftNumber}</td>
-                        <td className="p-3.5 text-slate-700">{e.cashierName}</td>
-                        <td className="p-3.5 font-bold text-slate-800">{e.item}</td>
+                        <td className="p-3.5 font-mono text-slate-700">{e.shiftNumber || "-"}</td>
+                        <td className="p-3.5 text-slate-700">{e.cashierName || e.responsible || "الإدارة"}</td>
+                        <td className="p-3.5">
+                          <span className="font-bold text-slate-800 block">{e.item}</span>
+                          {e.category && <span className="text-[10px] text-slate-500 font-normal">📁 {e.category}</span>}
+                        </td>
+                        <td className="p-3.5">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            e.paymentMethod?.includes("فيزا")
+                              ? "bg-blue-100 text-blue-700"
+                              : e.paymentMethod?.includes("تحويل")
+                              ? "bg-purple-100 text-purple-700"
+                              : "bg-amber-100 text-amber-800"
+                          }`}>
+                            {e.paymentMethod || "نقدي"}
+                          </span>
+                        </td>
                         <td className="p-3.5 font-mono font-black text-rose-600">{e.amount.toLocaleString()} ج.م</td>
-                        <td className="p-3.5 text-slate-600">{e.receiver}</td>
+                        <td className="p-3.5 text-slate-600">{e.receiver || "-"}</td>
                         <td className="p-3.5 text-slate-500">{e.notes || "-"}</td>
                       </tr>
                     ))}
@@ -1212,6 +1263,33 @@ export default function ReportsView({ data }: ReportsViewProps) {
                 </table>
               </div>
             )}
+          </div>
+
+          {/* Expense Categories Directory (دليل بنود المصروفات المعتمد) */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-800">دليل بنود المصروفات المعتمد (10 مجموعات)</h3>
+                <p className="text-xs text-slate-500 mt-0.5">الدليل المنظم الذي يتعرف عليه عمو بسيوني ذكياً بالمحادثة</p>
+              </div>
+              <span className="text-xs bg-orange-100 text-orange-800 font-bold px-3 py-1 rounded-full border border-orange-200">
+                {(expenses.categoriesCatalog || []).length} بند نشط ومتاح
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(expenses.categoriesCatalog || []).map((cat: any) => (
+                <div key={cat.id} className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-xs text-slate-800">{cat.nameAr}</div>
+                    <div className="text-[10px] text-slate-500">{cat.groupAr}</div>
+                  </div>
+                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${cat.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"}`}>
+                    {cat.active ? "مفعل" : "معطل"}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
