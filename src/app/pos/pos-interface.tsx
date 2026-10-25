@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useTransition, useMemo, useRef } from "react";
 import { TableType, TableStatus, OrderStatus } from "@prisma/client";
-import { sendOrderToPrep, collectOrderPayment } from "@/actions/pos";
+import {
+  sendOrderToPrep,
+  collectOrderPayment,
+  checkOrderStatus,
+  cancelOrderAction,
+  getOrderForReprint,
+} from "@/actions/pos";
 import { startShift, endShift, getActiveShift } from "@/actions/shifts";
 import { createCustomer } from "@/actions/customers";
 import Link from "next/link";
@@ -178,6 +184,9 @@ export default function PosInterface({
   const [amountPaidInput, setAmountPaidInput] = useState<string>("");
   const [lastCompletedReceipt, setLastCompletedReceipt] = useState<any>(null);
   const [draftNotice, setDraftNotice] = useState<boolean>(false);
+  const [clientOrderId, setClientOrderId] = useState<string>(
+    () => "basiony_ord_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7)
+  );
 
   // Channels: TAKEAWAY (Default & Priority), DELIVERY, DINE_IN, CUSTOMER_GRILL
   const [orderType, setOrderType] = useState<"TAKEAWAY" | "DELIVERY" | "DINE_IN" | "CUSTOMER_GRILL">("TAKEAWAY");
@@ -610,14 +619,64 @@ export default function PosInterface({
     setCart((prev) => prev.filter((i) => i.menuItemId !== menuItemId));
   };
 
-  const handleClearOrder = () => {
-    if (cart.length === 0) return;
+  const handleClearOrder = async () => {
+    if (cart.length === 0 && !activeOrderId) return;
+
+    if (activeOrderId) {
+      const reason = prompt("يرجى إدخال سبب إلغاء هذا الطلب المسجل بالنظام:");
+      if (!reason || !reason.trim()) {
+        alert("إلغاء الطلب المسجل يتطلب توضيح السبب للرقابة");
+        return;
+      }
+
+      startTransition(async () => {
+        let res = await cancelOrderAction({
+          orderId: activeOrderId,
+          reason: reason.trim(),
+          cashierName: userName,
+          userId,
+          userRole,
+        });
+
+        if (res?.requiresManagerAuth) {
+          const pin = prompt("هذه العملية تتطلب موافقة المدير. يرجى إدخال رمز المدير (PIN):");
+          if (!pin) return;
+          res = await cancelOrderAction({
+            orderId: activeOrderId,
+            reason: reason.trim(),
+            cashierName: userName,
+            userId,
+            userRole,
+            managerPin: pin,
+          });
+        }
+
+        if (res?.error) {
+          alert(res.error);
+          return;
+        }
+
+        alert(res?.message || "تم إلغاء الطلب وتسجيل العملية في سجل الرقابة ✓");
+        setCart([]);
+        setActiveOrderId(undefined);
+        setIsCheckPrinted(false);
+        setAmountPaidInput("");
+        setDraftNotice(false);
+        setClientOrderId("basiony_ord_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7));
+        try {
+          localStorage.removeItem("basiony_pos_active_cart");
+        } catch (e) {}
+      });
+      return;
+    }
+
     if (confirm("هل تريد إلغاء الطلب الحالي وتفريغ الأصناف؟")) {
       setCart([]);
       setActiveOrderId(undefined);
       setIsCheckPrinted(false);
       setAmountPaidInput("");
       setDraftNotice(false);
+      setClientOrderId("basiony_ord_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7));
       try {
         localStorage.removeItem("basiony_pos_active_cart");
       } catch (e) {}
@@ -664,6 +723,7 @@ export default function PosInterface({
 
     startTransition(async () => {
       const res = await sendOrderToPrep({
+        clientOrderId,
         orderId: activeOrderId,
         tableId: selectedTable?.id,
         orderType,
@@ -674,6 +734,9 @@ export default function PosInterface({
         deliveryFee: deliveryFeeNumber,
         items: cart,
         notes: orderNotes,
+        cashierName: userName,
+        userId,
+        userRole,
       });
 
       if (res?.error) {
@@ -772,49 +835,80 @@ export default function PosInterface({
     }
 
     startTransition(async () => {
-      const res = await collectOrderPayment({
-        orderId: activeOrderId,
-        tableId: selectedTable?.id,
-        orderType,
-        customerId: selectedCustomerId || undefined,
-        customerName: customerName || undefined,
-        customerPhone: customerPhone || undefined,
-        deliveryAddress: deliveryAddress || undefined,
-        deliveryFee: deliveryFeeNumber,
-        items: cart,
-        notes: orderNotes,
-      });
+      let res: any;
+      try {
+        res = await collectOrderPayment({
+          clientOrderId,
+          orderId: activeOrderId,
+          tableId: selectedTable?.id,
+          orderType,
+          customerId: selectedCustomerId || undefined,
+          customerName: customerName || undefined,
+          customerPhone: customerPhone || undefined,
+          deliveryAddress: deliveryAddress || undefined,
+          deliveryFee: deliveryFeeNumber,
+          items: cart,
+          notes: orderNotes,
+          paymentMethod,
+          amountPaid: parsedAmountPaid,
+          cashierName: userName,
+          userId,
+          userRole,
+        });
+      } catch (networkError) {
+        console.warn("Network hiccup during payment, checking status on server...", networkError);
+        // Verify with server before displaying error or re-attempting
+        try {
+          const statusCheck = await checkOrderStatus(clientOrderId);
+          if (statusCheck?.exists && statusCheck.status === OrderStatus.PAID) {
+            res = {
+              success: true,
+              order: statusCheck.order,
+              message: "تم التحقق وتأكيد حفظ وسداد الفاتورة بنجاح على الخادم بعد استعادة الاتصال ✓",
+            };
+          }
+        } catch (e) {}
+      }
 
       if (res?.error) {
         alert(res.error);
         return;
       }
 
+      if (!res?.success || !res?.order) {
+        alert("تعذر تأكيد استلام الحساب من الخادم. يرجى التحقق من الشبكة.");
+        return;
+      }
+
+      const verifiedOrder = res.order;
       const finalAmountPaid = paymentMethod === "CASH"
-        ? (parsedAmountPaid > 0 ? parsedAmountPaid : totalAmount)
-        : totalAmount;
-      const finalChange = paymentMethod === "CASH" ? Math.max(0, finalAmountPaid - totalAmount) : 0;
+        ? (parsedAmountPaid > 0 ? parsedAmountPaid : (res.verifiedTotalAmount || totalAmount))
+        : (res.verifiedTotalAmount || totalAmount);
+      const finalChange = res.changeAmount !== undefined
+        ? res.changeAmount
+        : (paymentMethod === "CASH" ? Math.max(0, finalAmountPaid - totalAmount) : 0);
       const paymentMethodArabic = paymentMethod === "CASH" ? "كاش (نقدي)" : paymentMethod === "CARD" ? "فيزا / بطاقة" : "محفظة إلكترونية";
 
       const receiptData = {
+        orderId: verifiedOrder.id,
         title: "فاتورة سداد نقدي (PAID RECEIPT)",
         receiptType: "RECEIPT" as const,
         tableName: selectedTable?.name || (orderType === "DELIVERY" ? "طلب دليفري" : "تيك أواي"),
-        orderNumber: res.order?.orderNumber || (activeOrderId ? parseInt(activeOrderId.slice(-4)) : undefined),
+        orderNumber: verifiedOrder.orderNumber || (activeOrderId ? parseInt(activeOrderId.slice(-4)) : undefined),
         orderType,
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
         deliveryAddress: deliveryAddress || undefined,
-        deliveryFee: deliveryFeeNumber || undefined,
+        deliveryFee: verifiedOrder.deliveryFee || deliveryFeeNumber || undefined,
         items: cart.map((i) => ({
           nameAr: i.nameAr,
           quantity: i.quantity,
           price: i.price,
           notes: i.notes || null,
         })),
-        subtotal,
-        discount: discount || undefined,
-        totalAmount,
+        subtotal: verifiedOrder.subtotal || subtotal,
+        discount: verifiedOrder.discount || discount || undefined,
+        totalAmount: verifiedOrder.totalAmount || totalAmount,
         paymentMethod: paymentMethodArabic,
         amountPaid: finalAmountPaid,
         changeAmount: finalChange,
@@ -856,13 +950,14 @@ export default function PosInterface({
       setDeliveryFee("");
       setOrderNotes("");
       setAmountPaidInput("");
+      setClientOrderId("basiony_ord_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7));
 
       if (userId) {
         const updated = await getActiveShift(userId);
         if (updated.activeShift) setActiveShift(updated.activeShift);
       }
 
-      alert("تم إتمام الطلب وسداد الحساب بنجاح ✓");
+      alert(res.message || "تم إتمام الطلب وسداد الحساب بنجاح ✓");
     });
   };
 
@@ -881,7 +976,20 @@ export default function PosInterface({
       return;
     }
 
-    const updatedCount = (receipt.reprintCount || 0) + 1;
+    let updatedCount = (receipt.reprintCount || 0) + 1;
+
+    // Call server to increment reprint count and log audit entry (strictly read-only)
+    if (receipt.orderId) {
+      try {
+        const serverReprint = await getOrderForReprint(receipt.orderId, userName);
+        if (serverReprint?.reprintCount) {
+          updatedCount = serverReprint.reprintCount;
+        }
+      } catch (e) {
+        console.warn("Server reprint sync warning:", e);
+      }
+    }
+
     const reprintPayload = {
       ...receipt,
       isReprint: true,
