@@ -27,6 +27,7 @@ import {
 import WeightModal from "@/components/pos/weight-modal";
 import CustomerGrillingForm from "@/components/pos/customer-grilling-form";
 import GrillingTrackerModal from "@/components/pos/grilling-tracker-modal";
+import ShiftModal from "@/components/pos/shift-modal";
 import { getGrillingRates, getActiveGrillingOrders } from "@/actions/grilling-service";
 import { GrillingRates } from "@/lib/grilling-calculator";
 import { buildGrillingKitchenTicketHtml, buildGrillingHandoverTicketHtml } from "@/utils/printer/silent-print";
@@ -351,6 +352,7 @@ export default function PosInterface({
   const [showTablesModal, setShowTablesModal] = useState(false);
   const [isCheckPrinted, setIsCheckPrinted] = useState(false);
   const [activeShift, setActiveShift] = useState<any>(initialShift);
+  const [showShiftModal, setShowShiftModal] = useState<boolean>(false);
 
   // System Lock State
   const [isSystemLocked, setIsSystemLocked] = useState<boolean>(initialSystemLocked);
@@ -1057,6 +1059,27 @@ export default function PosInterface({
               <p className="text-[9px] text-stone-400 font-semibold">كاشير</p>
             </div>
           </div>
+
+          {/* Shift Status Badge */}
+          <button
+            onClick={() => setShowShiftModal(true)}
+            className={`flex items-center gap-2 border rounded-xl px-3 py-1 text-xs transition cursor-pointer ${
+              activeShift && activeShift.status === "OPEN"
+                ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/20"
+                : "bg-rose-500/15 border-rose-500/50 text-rose-300 animate-pulse hover:bg-rose-500/25"
+            }`}
+            title="إدارة وتقفيل الوردية والخزينة"
+          >
+            <span className="text-sm">{activeShift && activeShift.status === "OPEN" ? "💼" : "⚠️"}</span>
+            <div className="text-right">
+              <p className="font-bold text-[11px] leading-tight">
+                {activeShift && activeShift.status === "OPEN" ? `وردية #${activeShift.shiftNumber}` : "الوردية مغلقة"}
+              </p>
+              <p className="text-[9px] opacity-80">
+                {activeShift && activeShift.status === "OPEN" ? "تقفيل الوردية" : "اضغط للفتح"}
+              </p>
+            </div>
+          </button>
         </div>
 
         {/* Left side in RTL: 4 Order Channel Buttons */}
@@ -1587,6 +1610,14 @@ export default function PosInterface({
                     <span>🔥</span>
                     <span>شاشة المطبخ (KDS)</span>
                   </Link>
+
+                  <button
+                    onClick={() => setShowShiftModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-amber-500 text-stone-300 font-bold flex items-center gap-1.5 transition"
+                  >
+                    <span>💼</span>
+                    <span>تقفيل الخزنة والوردية</span>
+                  </button>
                 </div>
 
                 <div className="text-[11px] text-stone-500 hidden sm:flex items-center gap-1 font-medium">
@@ -1837,6 +1868,17 @@ export default function PosInterface({
           currentUser={userName}
           onRefresh={refreshGrillingOrders}
           onClose={() => setShowGrillingTracker(false)}
+        />
+      )}
+
+      {/* MODAL: SHIFT & SAFE CLOSURE */}
+      {showShiftModal && (
+        <ShiftModal
+          currentShift={activeShift}
+          userId={userId}
+          userName={userName}
+          onClose={() => setShowShiftModal(false)}
+          onShiftUpdated={(updatedShift) => setActiveShift(updatedShift)}
         />
       )}
 

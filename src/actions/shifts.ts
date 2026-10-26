@@ -4,6 +4,7 @@ import { getSystemLockState } from "@/lib/system-lock";
 import { prisma } from "@/lib/prisma";
 import { OrderStatus, ShiftStatus, TableType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { recordAuditLog } from "@/lib/audit-logger";
 
 const MAX_SHIFT_HOURS = 12;
 
@@ -134,6 +135,19 @@ export async function startShift({
       include: {
         user: true,
       },
+    });
+
+    await recordAuditLog({
+      action: "SHIFT_STARTED",
+      userId: shift.userId,
+      userName: shift.user?.name || "كاشير",
+      userRole: shift.user?.role || "CASHIER",
+      details: {
+        shiftId: shift.id,
+        shiftNumber: shift.shiftNumber,
+        initialCash,
+      },
+      reason: `فتح وردية جديدة بعهدة افتتاحية ${initialCash.toFixed(2)} ج.م`,
     });
 
     revalidatePath("/pos");
@@ -352,6 +366,24 @@ export async function endShift(payload: EndShiftPayload) {
 
     revalidatePath("/pos");
     revalidatePath("/dashboard/reports");
+
+    await recordAuditLog({
+      action: "SHIFT_ENDED",
+      userId: updatedShift.userId,
+      userName: updatedShift.user?.name || "كاشير",
+      userRole: updatedShift.user?.role || "CASHIER",
+      details: {
+        shiftId: updatedShift.id,
+        shiftNumber: updatedShift.shiftNumber,
+        initialCash: shift.initialCash,
+        grossSales: finalGrossSales,
+        actualCash,
+        expectedCash,
+        shortageOverage,
+        receivedBy: receivedBy || null,
+      },
+      reason: `تقفيل الوردية رقم #${updatedShift.shiftNumber} (عجز/زيادة: ${shortageOverage.toFixed(2)} ج.م)`,
+    });
 
     return {
       success: true,
