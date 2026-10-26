@@ -166,6 +166,11 @@ async function deductInventoryForItems(items: CartItemInput[]) {
     });
 
     for (const orderItem of items) {
+      // Do not deduct stock if it's the customer's own meat (شوي للغير)
+      if ((orderItem as any).isCustomerMeat) {
+        continue;
+      }
+
       const foundItem = menuItemsWithRecipes.find(
         (m) => m.id === orderItem.menuItemId
       );
