@@ -250,6 +250,20 @@ model Order {
   reprintCount    Int?        @default(0) @map("reprint_count")
   workflowStatus  String?     @default("NEW") @map("workflow_status")
   statusHistory   Json?       @default("[]") @map("status_history")
+  riderId                 String?     @map("rider_id")
+  riderName               String?     @map("rider_name")
+  deliveryStatus          String?     @default("NEW") @map("delivery_status")
+  remittanceStatus        String?     @default("PENDING") @map("remittance_status")
+  riderCashDue            Float?      @default(0) @map("rider_cash_due")
+  riderCashRemitted       Float?      @default(0) @map("rider_cash_remitted")
+  riderRemittedAt         DateTime?   @map("rider_remitted_at")
+  paymentMethod           String?     @default("CASH") @map("payment_method")
+  cashPortion             Float?      @default(0) @map("cash_portion")
+  electronicPortion       Float?      @default(0) @map("electronic_portion")
+  hospitalityValue        Float?      @default(0) @map("hospitality_value")
+  hospitalityReason       String?     @map("hospitality_reason")
+  hospitalityApprovedBy   String?     @map("hospitality_approved_by")
+  hospitalityApprovedAt   DateTime?   @map("hospitality_approved_at")
   items           OrderItem[]
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
@@ -284,6 +298,9 @@ model Shift {
   managementWithdrawalsDetails Json?     @default("[]") @map("management_withdrawals_details")
   endOfDayBalance            Float?      @default(0) @map("end_of_day_balance")
   receivedBy                 String?     @map("received_by")
+  riderRemittancesTotal      Float?      @default(0) @map("rider_remittances_total")
+  riderPendingDebtTotal      Float?      @default(0) @map("rider_pending_debt_total")
+  riderRemittances           RiderRemittance[]
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
@@ -363,4 +380,42 @@ model AuditLog {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("audit_logs")
+}
+
+model RiderRemittance {
+  id              String   @id @default(cuid())
+  remittanceNumber Int     @default(autoincrement()) @map("remittance_number")
+  riderId         String?  @map("rider_id")
+  riderName       String   @map("rider_name")
+  shiftId         String?  @map("shift_id")
+  shift           Shift?   @relation(fields: [shiftId], references: [id])
+  cashierId       String?  @map("cashier_id")
+  cashierName     String   @map("cashier_name")
+  amountExpected  Float    @default(0) @map("amount_expected")
+  amountReceived  Float    @default(0) @map("amount_received")
+  variance        Float    @default(0)
+  varianceReason  String?  @map("variance_reason")
+  orderIds        Json?    @map("order_ids")
+  paymentMethod   String   @default("CASH") @map("payment_method")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("rider_remittances")
+}
+
+model HospitalityRecord {
+  id              String   @id @default(cuid())
+  orderId         String?  @map("order_id")
+  orderNumber     Int?     @map("order_number")
+  type            String   @default("FULL") // "FULL" | "ITEM" | "DISCOUNT"
+  amount          Float
+  reason          String
+  managerId       String?  @map("manager_id")
+  managerName     String   @map("manager_name")
+  cashierName     String   @map("cashier_name")
+  shiftId         String?  @map("shift_id")
+  details         Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("hospitality_records")
 }

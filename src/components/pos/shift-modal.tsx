@@ -503,6 +503,48 @@ export default function ShiftModal({
               )}
             </div>
 
+            {/* Step 5: عهدة الدليفري والطيارين (Delivery & Rider Ledger Reconciliation) */}
+            <div className="bg-[#141b2d] border border-[#222d4a] rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between border-b border-stone-800 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base text-teal-400">🛵</span>
+                  <h4 className="text-xs font-black text-teal-300">عهدة الدليفري والطيارين بالوردية</h4>
+                </div>
+                <span className="text-[10px] text-stone-400">تسويات النقدية خارج الدرج</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                <div className="bg-[#0d121f] p-2.5 rounded-xl border border-emerald-500/30">
+                  <p className="text-[10px] text-stone-400">نقدية وردها الطيارون للدرج</p>
+                  <p className="font-mono font-black text-emerald-400 text-sm mt-0.5">
+                    +{(currentShift?.riderRemittancesTotal || 0).toFixed(2)} ج.م
+                  </p>
+                </div>
+                <div className="bg-[#0d121f] p-2.5 rounded-xl border border-amber-500/30">
+                  <p className="text-[10px] text-stone-400">مبالغ لا تزال معلقة مع الطيارين</p>
+                  <p className="font-mono font-black text-amber-400 text-sm mt-0.5">
+                    {(currentShift?.riderPendingDebtTotal || 0).toFixed(2)} ج.م
+                  </p>
+                </div>
+              </div>
+
+              {/* Rider breakdown if any debts */}
+              {currentShift?.riderDebtsBreakdown && currentShift.riderDebtsBreakdown.length > 0 && (
+                <div className="bg-[#0d121f] p-2.5 rounded-xl border border-amber-500/20 space-y-1">
+                  <p className="text-[10px] font-bold text-amber-300 mb-1">تفاصيل العهد المعلقة على كل طيار:</p>
+                  {currentShift.riderDebtsBreakdown.map((r: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between text-[11px] py-0.5 border-b border-stone-800 last:border-0">
+                      <span className="text-stone-300">{r.riderName}</span>
+                      <span className="font-mono font-bold text-amber-400">{r.pendingDebt.toFixed(2)} ج.م معلق</span>
+                    </div>
+                  ))}
+                  <p className="text-[9px] text-stone-400 pt-1">
+                    ⚠️ تنبيه: المبالغ المعلقة أعلاه لم تدخل درج الكاشير بعد، وتظل مسجلة كعهدة تشغيلية على الطيار حتى يتم توريدها.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Step 5: Receiver name & Notes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>

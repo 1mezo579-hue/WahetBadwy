@@ -92,8 +92,55 @@ export async function getActiveShift(userId?: string) {
     const cashExpensesTotal = cashExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const nonCashExpensesTotal = nonCashExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-    // Expected Drawer Cash = Initial Float + Regular Cash Sales - Approved Cash Expenses
-    const liveExpectedCash = Math.max(0, activeShift.initialCash + paidOrdersTotal - cashExpensesTotal);
+    // Fetch actual Rider Remittances received into this shift's drawer
+    const shiftRemittances = await prisma.riderRemittance.findMany({
+      where: { shiftId: activeShift.id },
+      orderBy: { createdAt: "desc" },
+    });
+    const riderRemittancesTotal = shiftRemittances.reduce((sum, r) => sum + r.amountReceived, 0);
+
+    // Fetch pending cash debt still held by delivery riders (unremitted operational debt)
+    const pendingDeliveryOrders = await prisma.order.findMany({
+      where: {
+        orderType: "DELIVERY",
+        workflowStatus: { not: "CANCELLED" },
+        remittanceStatus: { in: ["PENDING", "PARTIAL"] },
+        riderCashDue: { gt: 0 },
+      },
+      select: {
+        riderName: true,
+        deliveredBy: true,
+        riderCashDue: true,
+        riderCashRemitted: true,
+      },
+    });
+    const riderPendingDebtTotal = pendingDeliveryOrders.reduce((sum, o) => {
+      const due = o.riderCashDue || 0;
+      const remitted = o.riderCashRemitted || 0;
+      return sum + Math.max(0, due - remitted);
+    }, 0);
+
+    // Build per-rider debt breakdown for shift view
+    const riderDebtsMap: Record<string, number> = {};
+    for (const p of pendingDeliveryOrders) {
+      const name = (p.riderName || p.deliveredBy || "طيار غير محدد").trim();
+      const debt = Math.max(0, (p.riderCashDue || 0) - (p.riderCashRemitted || 0));
+      riderDebtsMap[name] = (riderDebtsMap[name] || 0) + debt;
+    }
+    const riderDebtsBreakdown = Object.entries(riderDebtsMap).map(([name, amount]) => ({
+      riderName: name,
+      pendingDebt: amount,
+    }));
+
+    // Counter paid sales (non-delivery)
+    const counterPaidOrders = regularPaidOrders.filter((o) => o.orderType !== "DELIVERY");
+    const counterPaidSalesTotal = counterPaidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+
+    // Expected Drawer Cash = Initial Float + Counter Cash Sales + Physical Rider Remittances - Cash Expenses
+    const liveExpectedCash = Math.max(
+      0,
+      activeShift.initialCash + counterPaidSalesTotal + riderRemittancesTotal - cashExpensesTotal
+    );
 
     return {
       activeShift: {
@@ -103,6 +150,11 @@ export async function getActiveShift(userId?: string) {
         remainingHours,
         liveExpectedCash,
         paidOrdersTotal,
+        counterPaidSalesTotal,
+        riderRemittancesTotal,
+        riderPendingDebtTotal,
+        riderDebtsBreakdown,
+        shiftRemittances,
         paidOrdersCount: regularPaidOrders.length,
         complimentaryOrdersCount: complimentaryOrders.length,
         complimentaryWaivedTotal,
@@ -358,6 +410,27 @@ export async function endShift(payload: EndShiftPayload) {
     const shortageOverage = actualCash - expectedCash;
     const endOfDayBalance = expectedCash;
 
+    // Calculate actual rider remittances in this shift
+    const shiftRemittances = await prisma.riderRemittance.findMany({
+      where: { shiftId },
+    });
+    const finalRiderRemittancesTotal = shiftRemittances.reduce((sum, r) => sum + r.amountReceived, 0);
+
+    // Calculate pending operational cash debt still held by delivery riders
+    const pendingDeliveryOrders = await prisma.order.findMany({
+      where: {
+        orderType: "DELIVERY",
+        workflowStatus: { not: "CANCELLED" },
+        remittanceStatus: { in: ["PENDING", "PARTIAL"] },
+        riderCashDue: { gt: 0 },
+      },
+    });
+    const finalRiderPendingDebtTotal = pendingDeliveryOrders.reduce((sum, o) => {
+      const due = o.riderCashDue || 0;
+      const remitted = o.riderCashRemitted || 0;
+      return sum + Math.max(0, due - remitted);
+    }, 0);
+
     // Link unlinked shift orders
     await prisma.order.updateMany({
       where: {
@@ -391,6 +464,8 @@ export async function endShift(payload: EndShiftPayload) {
         managementWithdrawalsDetails: managementWithdrawalsDetails as any,
         endOfDayBalance,
         receivedBy: receivedBy || null,
+        riderRemittancesTotal: finalRiderRemittancesTotal,
+        riderPendingDebtTotal: finalRiderPendingDebtTotal,
       },
       include: {
         user: true,

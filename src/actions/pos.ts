@@ -486,6 +486,14 @@ export async function sendOrderToPrep(payload: OrderPayload) {
           deliveryFee: verifiedDeliveryFee,
           shiftId: activeShift?.id || null,
           status: OrderStatus.OPEN,
+          paymentMethod: payload.paymentMethod || "CASH",
+          ...(orderType === "DELIVERY"
+            ? {
+                deliveryStatus: "NEW",
+                riderCashDue: payload.paymentMethod === "CARD" || payload.paymentMethod === "WALLET" ? 0 : verifiedTotalAmount,
+                remittanceStatus: payload.paymentMethod === "CARD" || payload.paymentMethod === "WALLET" ? "NOT_APPLICABLE" : "PENDING",
+              }
+            : {}),
           notes: auditNotes,
           items: {
             create: verifiedItems.map((i) => ({
@@ -726,6 +734,10 @@ export async function collectOrderPayment(payload: OrderPayload) {
           deliveryFee: verifiedDeliveryFee,
           shiftId: activeShift?.id || null,
           status: OrderStatus.PAID,
+          paymentMethod: normalizedMethod,
+          deliveryStatus: orderType === "DELIVERY" ? "NEW" : undefined,
+          riderCashDue: orderType === "DELIVERY" ? (normalizedMethod === "CASH" ? verifiedTotalAmount : 0) : 0,
+          remittanceStatus: orderType === "DELIVERY" ? (normalizedMethod === "CASH" ? "PENDING" : "NOT_APPLICABLE") : "NOT_APPLICABLE",
           notes: auditNotes,
           items: {
             create: verifiedItems.map((i) => ({
@@ -762,11 +774,19 @@ export async function collectOrderPayment(payload: OrderPayload) {
         where: { id: targetOrderId },
         data: {
           status: OrderStatus.PAID,
+          paymentMethod: normalizedMethod,
           subtotal: verifiedSubtotal,
           discount: verifiedDiscount,
           totalAmount: verifiedTotalAmount,
           deliveryFee: verifiedDeliveryFee,
           shiftId: activeShift?.id || undefined,
+          ...(orderType === "DELIVERY"
+            ? {
+                deliveryStatus: payload.workflowStatus || "NEW",
+                riderCashDue: normalizedMethod === "CASH" ? verifiedTotalAmount : 0,
+                remittanceStatus: normalizedMethod === "CASH" ? "PENDING" : "NOT_APPLICABLE",
+              }
+            : {}),
           workflowStatus: payload.workflowStatus || (isGrillOrder ? "DELIVERED" : "DELIVERED"),
           deliveredBy: payload.deliveredBy || undefined,
           statusHistory: [...history, paymentLogEntry],

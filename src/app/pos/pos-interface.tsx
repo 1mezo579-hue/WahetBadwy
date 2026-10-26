@@ -28,6 +28,8 @@ import WeightModal from "@/components/pos/weight-modal";
 import CustomerGrillingForm from "@/components/pos/customer-grilling-form";
 import GrillingTrackerModal from "@/components/pos/grilling-tracker-modal";
 import ShiftModal from "@/components/pos/shift-modal";
+import DeliveryManagerModal from "@/components/pos/delivery-manager-modal";
+import OrderSearchModal from "@/components/pos/order-search-modal";
 import { getGrillingRates, getActiveGrillingOrders } from "@/actions/grilling-service";
 import { GrillingRates } from "@/lib/grilling-calculator";
 import { buildGrillingKitchenTicketHtml, buildGrillingHandoverTicketHtml } from "@/utils/printer/silent-print";
@@ -379,6 +381,8 @@ export default function PosInterface({
   const [isCheckPrinted, setIsCheckPrinted] = useState(false);
   const [activeShift, setActiveShift] = useState<any>(initialShift);
   const [showShiftModal, setShowShiftModal] = useState<boolean>(false);
+  const [showDeliveryModal, setShowDeliveryModal] = useState<boolean>(false);
+  const [showOrderSearchModal, setShowOrderSearchModal] = useState<boolean>(false);
 
   // Offline State & Local Queue
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -1219,6 +1223,26 @@ export default function PosInterface({
 
         {/* Left side in RTL: 4 Order Channel Buttons */}
         <div className="flex items-center gap-2">
+          {/* Quick Order / Invoice Search Button */}
+          <button
+            onClick={() => setShowOrderSearchModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-amber-500 hover:text-amber-400 text-stone-200 font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
+            title="بحث سريع عن طلب أو فاتورة برقم الهاتف، رقم الفاتورة، أو اسم العميل"
+          >
+            <span className="text-sm">🔍</span>
+            <span className="hidden sm:inline">بحث عن طلب / فاتورة</span>
+          </button>
+
+          {/* Delivery & Rider Ledger Button */}
+          <button
+            onClick={() => setShowDeliveryModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-teal-500/15 border border-teal-500/40 hover:bg-teal-500/25 text-teal-300 font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
+            title="إدارة طلبات الدليفري ودفتر عهدة الطيارين"
+          >
+            <span className="text-sm">🛵</span>
+            <span className="hidden sm:inline">إدارة الدليفري</span>
+          </button>
+
           {/* 1. CUSTOMER GRILL (Special Golden Filled Button) */}
           <button
             onClick={() => {
@@ -1781,6 +1805,22 @@ export default function PosInterface({
                   </Link>
 
                   <button
+                    onClick={() => setShowDeliveryModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-teal-950/30 border border-teal-500/40 hover:border-teal-500 text-teal-300 font-bold flex items-center gap-1.5 transition"
+                  >
+                    <span>🛵</span>
+                    <span>إدارة الدليفري</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowOrderSearchModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-amber-500 text-amber-300 font-bold flex items-center gap-1.5 transition"
+                  >
+                    <span>🔍</span>
+                    <span>بحث الفواتير</span>
+                  </button>
+
+                  <button
                     onClick={() => setShowShiftModal(true)}
                     className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-amber-500 text-stone-300 font-bold flex items-center gap-1.5 transition"
                   >
@@ -2103,6 +2143,22 @@ export default function PosInterface({
           onShiftUpdated={(updatedShift) => setActiveShift(updatedShift)}
         />
       )}
+
+      {/* MODAL: DELIVERY MANAGEMENT & RIDER CASH LEDGER */}
+      <DeliveryManagerModal
+        isOpen={showDeliveryModal}
+        onClose={() => setShowDeliveryModal(false)}
+        currentUser={userName}
+        userRole={userRole}
+      />
+
+      {/* MODAL: FAST ORDER & INVOICE SEARCH */}
+      <OrderSearchModal
+        isOpen={showOrderSearchModal}
+        onClose={() => setShowOrderSearchModal(false)}
+        currentUser={userName}
+        userRole={userRole}
+      />
 
     </div>
   );

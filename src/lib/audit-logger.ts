@@ -12,7 +12,12 @@ export interface AuditLogInput {
     | "SHIFT_STARTED"
     | "SHIFT_ENDED"
     | "SYSTEM_LOCKED"
-    | "SYSTEM_UNLOCKED";
+    | "SYSTEM_UNLOCKED"
+    | "RIDER_ASSIGNED"
+    | "RIDER_REMITTANCE"
+    | "DELIVERY_STATUS_UPDATED"
+    | "HOSPITALITY_RECORDED"
+    | string;
   orderId?: string | null;
   userId?: string | null;
   userName?: string | null;
