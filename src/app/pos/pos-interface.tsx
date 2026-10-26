@@ -354,6 +354,74 @@ export default function PosInterface({
   const [activeShift, setActiveShift] = useState<any>(initialShift);
   const [showShiftModal, setShowShiftModal] = useState<boolean>(false);
 
+  // Offline State & Local Queue
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [offlineQueueCount, setOfflineQueueCount] = useState<number>(0);
+
+  const updateOfflineQueueCount = () => {
+    if (typeof window === "undefined") return;
+    try {
+      const q = JSON.parse(localStorage.getItem("basiony_pos_offline_queue") || "[]");
+      setOfflineQueueCount(Array.isArray(q) ? q.length : 0);
+    } catch (e) {
+      setOfflineQueueCount(0);
+    }
+  };
+
+  const queueOfflineOrder = (orderPayload: any) => {
+    if (typeof window === "undefined") return;
+    try {
+      const q = JSON.parse(localStorage.getItem("basiony_pos_offline_queue") || "[]");
+      q.push(orderPayload);
+      localStorage.setItem("basiony_pos_offline_queue", JSON.stringify(q));
+      setOfflineQueueCount(q.length);
+      alert("⚠️ تم حفظ الفاتورة محلياً على الجهاز لعدم توفر إنترنت، وسيتم مزامنتها تلقائياً مع الخادم فور عودة الاتصال.");
+    } catch (e) {
+      console.error("Failed to queue offline order", e);
+    }
+  };
+
+  const syncOfflineOrders = async () => {
+    if (typeof window === "undefined" || !navigator.onLine) return;
+    try {
+      const q = JSON.parse(localStorage.getItem("basiony_pos_offline_queue") || "[]");
+      if (!Array.isArray(q) || q.length === 0) return;
+      const remaining: any[] = [];
+      for (const ord of q) {
+        try {
+          await collectOrderPayment(ord);
+        } catch (err) {
+          remaining.push(ord);
+        }
+      }
+      localStorage.setItem("basiony_pos_offline_queue", JSON.stringify(remaining));
+      setOfflineQueueCount(remaining.length);
+    } catch (e) {
+      console.error("Offline sync error", e);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setIsOnline(navigator.onLine);
+    updateOfflineQueueCount();
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncOfflineOrders();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   // System Lock State
   const [isSystemLocked, setIsSystemLocked] = useState<boolean>(initialSystemLocked);
   const [systemLockedBy, setSystemLockedBy] = useState<string | null>(initialLockedBy || null);
@@ -878,6 +946,28 @@ export default function PosInterface({
       }
 
       if (!res?.success || !res?.order) {
+        if (typeof window !== "undefined" && (!navigator.onLine || !res)) {
+          queueOfflineOrder({
+            clientOrderId,
+            orderId: activeOrderId,
+            tableId: selectedTable?.id,
+            orderType,
+            customerId: selectedCustomerId || undefined,
+            customerName: customerName || undefined,
+            customerPhone: customerPhone || undefined,
+            deliveryAddress: deliveryAddress || undefined,
+            deliveryFee: deliveryFeeNumber,
+            items: cart,
+            notes: orderNotes,
+            paymentMethod,
+            amountPaid: parsedAmountPaid,
+            cashierName: userName,
+            userId,
+            userRole,
+          });
+          handleClearOrder();
+          return;
+        }
         alert("تعذر تأكيد استلام الحساب من الخادم. يرجى التحقق من الشبكة.");
         return;
       }
@@ -1080,6 +1170,25 @@ export default function PosInterface({
               </p>
             </div>
           </button>
+
+          {/* Offline / Sync Status Indicator */}
+          {!isOnline && (
+            <div className="flex items-center gap-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/50 rounded-xl px-2.5 py-1 text-xs font-bold animate-pulse">
+              <span>⚡</span>
+              <span>غير متصل (أوفلاين)</span>
+            </div>
+          )}
+
+          {offlineQueueCount > 0 && (
+            <button
+              onClick={syncOfflineOrders}
+              className="flex items-center gap-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 rounded-xl px-2.5 py-1 text-xs font-bold transition"
+              title="اضغط للمزامنة اليدوية الآن"
+            >
+              <span>🔄</span>
+              <span>{offlineQueueCount} طلب معلق</span>
+            </button>
+          )}
         </div>
 
         {/* Left side in RTL: 4 Order Channel Buttons */}
