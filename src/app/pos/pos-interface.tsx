@@ -1578,6 +1578,15 @@ export default function PosInterface({
                     <span>🔄</span>
                     <span>تحديث المنيو</span>
                   </button>
+
+                  <Link
+                    href="/kitchen"
+                    target="_blank"
+                    className="px-3 py-1.5 rounded-xl bg-orange-950/40 border border-orange-500/40 hover:border-orange-500 text-orange-300 font-bold flex items-center gap-1.5 transition"
+                  >
+                    <span>🔥</span>
+                    <span>شاشة المطبخ (KDS)</span>
+                  </Link>
                 </div>
 
                 <div className="text-[11px] text-stone-500 hidden sm:flex items-center gap-1 font-medium">

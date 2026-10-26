@@ -8,6 +8,7 @@ export interface AuditLogInput {
     | "DISCOUNT_APPLIED"
     | "ORDER_REPRINTED"
     | "ITEM_VOIDED"
+    | "STATUS_CHANGED"
     | "SHIFT_STARTED"
     | "SHIFT_ENDED"
     | "SYSTEM_LOCKED"
