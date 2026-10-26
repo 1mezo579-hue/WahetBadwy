@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -108,15 +109,22 @@ model MenuItem {
 }
 
 model RawMaterial {
-  id            String       @id @default(cuid())
-  name          String
-  unit          UnitType     @default(KG)
-  costPerUnit   Float        @default(0) @map("cost_per_unit")
-  currentStock  Float        @default(0) @map("current_stock")
-  minStockLevel Float        @default(10) @map("min_stock_level")
-  recipeItems   RecipeItem[]
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  id               String                 @id @default(cuid())
+  name             String
+  category         String                 @default("اللحوم والدواجن")
+  type             String                 @default("FOOD") // "FOOD" | "PACKAGING" | "CLEANING"
+  unit             UnitType               @default(KG)
+  purchaseUnit     String                 @default("كجم") @map("purchase_unit")
+  issueUnit        String                 @default("جرام") @map("issue_unit")
+  conversionFactor Float                  @default(1000) @map("conversion_factor")
+  costPerUnit      Float                  @default(0) @map("cost_per_unit")
+  currentStock     Float                  @default(0) @map("current_stock")
+  minStockLevel    Float                  @default(10) @map("min_stock_level")
+  status           String                 @default("OUT_OF_STOCK") // "AVAILABLE" | "OUT_OF_STOCK" | "LOW_STOCK"
+  recipeItems      RecipeItem[]
+  transactions     InventoryTransaction[]
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
 
   @@map("raw_materials")
 }
@@ -127,13 +135,33 @@ model RecipeItem {
   menuItem      MenuItem    @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
   rawMaterialId String      @map("raw_material_id")
   rawMaterial   RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Cascade)
-  quantity      Float
+  quantity      Float       @default(0)
   unit          UnitType    @default(GRAM)
+  isComplete    Boolean     @default(false) @map("is_complete")
+  status        String      @default("NEEDS_QUANTITY") @map("status") // "NEEDS_QUANTITY" | "APPROVED"
+  notes         String?
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 
   @@unique([menuItemId, rawMaterialId])
   @@map("recipe_items")
+}
+
+model InventoryTransaction {
+  id            String      @id @default(cuid())
+  rawMaterialId String      @map("raw_material_id")
+  rawMaterial   RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Cascade)
+  type          String      @default("PURCHASE") // "PURCHASE" | "CONSUMPTION" | "WASTE" | "ADJUSTMENT"
+  quantity      Float
+  unit          String?
+  unitCost      Float?      @default(0) @map("unit_cost")
+  totalCost     Float?      @default(0) @map("total_cost")
+  supplierName  String?     @map("supplier_name")
+  notes         String?
+  performedBy   String?     @map("performed_by")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  @@map("inventory_transactions")
 }
 
 model Equipment {
@@ -322,3 +350,17 @@ model StaffAttendance {
   @@map("staff_attendances")
 }
 
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  orderId   String?  @map("order_id")
+  userId    String?  @map("user_id")
+  userName  String?  @map("user_name")
+  userRole  String?  @map("user_role")
+  details   Json?
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}

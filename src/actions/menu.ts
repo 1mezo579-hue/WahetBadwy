@@ -334,6 +334,9 @@ export async function addRecipeItem(
   unit: UnitType
 ) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     if (!menuItemId || !rawMaterialId || quantity <= 0) {
       return { error: "يرجى تحديد الصنف والمادة الخام والكمية بشكل صحيح" };
     }
@@ -367,6 +370,9 @@ export async function addRecipeItem(
 
 export async function removeRecipeItem(recipeItemId: string) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     await prisma.recipeItem.delete({
       where: { id: recipeItemId },
     });
