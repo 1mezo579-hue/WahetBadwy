@@ -1,6 +1,7 @@
 "use server";
 import { getSystemLockState } from "@/lib/system-lock";
 import { OFFICIAL_CATEGORIES, OFFICIAL_MENU_ITEMS } from "@/data/official-menu";
+import { assertAdminOrManager } from "@/lib/auth-guard";
 
 import { prisma } from "@/lib/prisma";
 import { UnitType } from "@prisma/client";
@@ -26,6 +27,9 @@ export async function getCategories() {
 
 export async function createCategory(formData: FormData) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     const lockState = await getSystemLockState();
     if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
 
@@ -56,6 +60,9 @@ export async function createCategory(formData: FormData) {
 
 export async function updateCategory(formData: FormData) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     const lockState = await getSystemLockState();
     if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
 
@@ -89,6 +96,9 @@ export async function updateCategory(formData: FormData) {
 
 export async function deleteCategory(id: string) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     const lockState = await getSystemLockState();
     if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
 
@@ -175,6 +185,9 @@ export async function getMenuItems(categoryId?: string) {
 
 export async function createMenuItem(formData: FormData) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     const lockState = await getSystemLockState();
     if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
 
@@ -210,6 +223,9 @@ export async function createMenuItem(formData: FormData) {
 
 export async function updateMenuItem(formData: FormData) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     const lockState = await getSystemLockState();
     if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
 
@@ -248,6 +264,9 @@ export async function updateMenuItem(formData: FormData) {
 
 export async function toggleMenuItemStatus(id: string, active: boolean) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     await prisma.menuItem.update({
       where: { id },
       data: { active },
@@ -263,6 +282,9 @@ export async function toggleMenuItemStatus(id: string, active: boolean) {
 
 export async function deleteMenuItem(id: string) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     const lockState = await getSystemLockState();
     if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
 

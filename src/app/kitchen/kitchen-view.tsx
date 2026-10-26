@@ -30,9 +30,12 @@ interface KitchenOrder {
   expectedPickupTime?: string | null;
   notes?: string | null;
   receivedBy?: string | null;
+  deliveredBy?: string | null;
+  deliveryAddress?: string | null;
   createdAt: string | Date;
+  statusHistory?: any;
   table?: { id: string; name: string; number: number | null } | null;
-  customer?: { id: string; name: string; phone: string } | null;
+  customer?: { id: string; name: string; phone: string; address?: string | null } | null;
   customerName?: string | null;
   customerPhone?: string | null;
   items: KitchenItem[];
@@ -107,32 +110,97 @@ export default function KitchenView({
     return () => clearInterval(timer);
   }, []);
 
+  // Overall elapsed time since creation
   const getElapsedTimeInfo = (createdAt: string | Date) => {
     const elapsedMinutes = Math.floor((now - new Date(createdAt).getTime()) / 60000);
-    if (elapsedMinutes < 10) {
-      return {
-        text: `${elapsedMinutes} دقيقة`,
-        color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/40",
-        badge: "سريع ⏱️",
-      };
-    }
-    if (elapsedMinutes < 20) {
-      return {
-        text: `${elapsedMinutes} دقيقة`,
-        color: "bg-amber-500/20 text-amber-400 border-amber-500/40",
-        badge: "جاري ⏳",
-      };
-    }
     return {
+      minutes: elapsedMinutes,
       text: `${elapsedMinutes} دقيقة`,
-      color: "bg-rose-500/20 text-rose-400 border-rose-500/50 animate-pulse",
-      badge: "متأخر ⚠️",
+      color: elapsedMinutes < 15 ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40" : elapsedMinutes < 30 ? "bg-amber-500/20 text-amber-400 border-amber-500/40" : "bg-rose-500/20 text-rose-400 border-rose-500/50",
     };
+  };
+
+  // Target Prep Time: 45 Minutes from Actual Start of Preparation (Requirement 1)
+  const getPrepTiming = (order: KitchenOrder) => {
+    const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+    const prepEntry = history.find((h: any) => h.to === "PREPARING");
+    if (!prepEntry || !prepEntry.timestamp) {
+      return {
+        hasStarted: false,
+        prepDurationMinutes: 0,
+        remainingMinutes: 45,
+        isOverdue: false,
+        delayMinutes: 0,
+      };
+    }
+
+    const prepStartMs = new Date(prepEntry.timestamp).getTime();
+    const prepDurationMinutes = Math.floor((now - prepStartMs) / 60000);
+    const targetMinutes = 45;
+    const remainingMinutes = Math.max(0, targetMinutes - prepDurationMinutes);
+    const isOverdue = prepDurationMinutes > targetMinutes;
+    const delayMinutes = isOverdue ? prepDurationMinutes - targetMinutes : 0;
+
+    return {
+      hasStarted: true,
+      prepDurationMinutes,
+      remainingMinutes,
+      isOverdue,
+      delayMinutes,
+      startedAtStr: new Date(prepStartMs).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
+    };
+  };
+
+  // Scheduled Order 30-Minute Early Warning (Requirement 1)
+  const getScheduledAlert = (order: KitchenOrder) => {
+    if (!order.expectedPickupTime) return null;
+    const pickupStr = order.expectedPickupTime.trim();
+    if (!pickupStr) return null;
+
+    // Check if prep already started
+    const currentSt = order.workflowStatus || "NEW";
+    const hasStarted = currentSt === "PREPARING" || currentSt === "READY" || currentSt === "HANDED_TO_CASHIER" || currentSt === "OUT_FOR_DELIVERY";
+
+    // Attempt to parse "HH:MM" or full date
+    let pickupDate: Date | null = null;
+    const timeMatch = pickupStr.match(/^(\d{1,2}):(\d{2})/);
+    if (timeMatch) {
+      const orderDate = new Date(order.createdAt);
+      pickupDate = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate(), parseInt(timeMatch[1]), parseInt(timeMatch[2]));
+    } else {
+      const parsed = new Date(pickupStr);
+      if (!isNaN(parsed.getTime())) pickupDate = parsed;
+    }
+
+    if (!pickupDate) return { scheduledTime: pickupStr, alert: false };
+
+    const diffMinutes = Math.round((pickupDate.getTime() - now) / 60000);
+
+    // If within 30 minutes and prep has not started yet, trigger urgent warning!
+    if (!hasStarted && diffMinutes <= 30 && diffMinutes >= -60) {
+      return {
+        scheduledTime: pickupStr,
+        alert: true,
+        diffMinutes,
+        message: diffMinutes <= 0
+          ? `⚠️ حان موعد الاستلام المجدول (${pickupStr}) والتجهيز لم يبدأ بعد!`
+          : `🚨 موعد الاستلام بعد ${diffMinutes} دقيقة (${pickupStr}) — يجب بدء التجهيز فوراً!`,
+      };
+    }
+
+    return { scheduledTime: pickupStr, alert: false, diffMinutes };
   };
 
   const handleUpdateStatus = async (
     orderId: string,
-    nextStatus: "NEW" | "PREPARING" | "READY" | "DELIVERED"
+    nextStatus:
+      | "NEW"
+      | "RECEIVED_CUSTOMER_MEAT"
+      | "PREPARING"
+      | "READY"
+      | "HANDED_TO_CASHIER"
+      | "OUT_FOR_DELIVERY"
+      | "DELIVERED"
   ) => {
     setIsUpdating(orderId);
     try {
@@ -402,6 +470,8 @@ export default function KitchenView({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 items-start">
             {filteredOrders.map((order) => {
               const elapsed = getElapsedTimeInfo(order.createdAt);
+              const prepInfo = getPrepTiming(order);
+              const schedAlert = getScheduledAlert(order);
               const isGrill = order.orderKind === "CUSTOMER_GRILL";
               const currentSt = order.workflowStatus || "NEW";
               const isBusy = isUpdating === order.id;
@@ -412,6 +482,8 @@ export default function KitchenView({
                   className={`rounded-2xl border flex flex-col overflow-hidden shadow-xl transition-all ${
                     currentSt === "READY"
                       ? "bg-[#0b1b14] border-emerald-500 shadow-emerald-500/10"
+                      : currentSt === "OUT_FOR_DELIVERY" || currentSt === "HANDED_TO_CASHIER"
+                      ? "bg-[#18132e] border-purple-500 shadow-purple-500/10"
                       : currentSt === "PREPARING"
                       ? "bg-[#0e172a] border-sky-500 shadow-sky-500/10"
                       : isGrill
@@ -427,8 +499,9 @@ export default function KitchenView({
                       </span>
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${elapsed.color}`}
+                        title="الوقت منذ إنشاء الطلب"
                       >
-                        {elapsed.text}
+                        ⏱️ {elapsed.text}
                       </span>
                     </div>
 
@@ -455,6 +528,51 @@ export default function KitchenView({
                       </span>
                     </div>
                   </div>
+
+                  {/* Scheduled Order Warning (Requirement 1: 30-min alert) */}
+                  {schedAlert?.alert && (
+                    <div className="bg-rose-500/20 border-b border-rose-500/40 p-2 text-rose-300 font-bold text-xs animate-pulse flex items-center gap-1.5">
+                      <span>{schedAlert.message}</span>
+                    </div>
+                  )}
+
+                  {/* Target 45-Minute Prep Counter (Requirement 1) */}
+                  {prepInfo.hasStarted && (
+                    <div
+                      className={`px-3 py-1.5 border-b text-xs flex items-center justify-between font-bold ${
+                        prepInfo.isOverdue
+                          ? "bg-rose-950/60 text-rose-300 border-rose-500/50 animate-pulse"
+                          : "bg-sky-950/40 text-sky-300 border-sky-500/30"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1">
+                        <span>🔥 في التجهيز منذ:</span>
+                        <strong className="font-mono text-white">{prepInfo.prepDurationMinutes} د</strong>
+                      </span>
+                      {prepInfo.isOverdue ? (
+                        <span className="bg-rose-600 text-white px-2 py-0.5 rounded-full text-[10px] font-black">
+                          تأخير: +{prepInfo.delayMinutes} د ⚠️
+                        </span>
+                      ) : (
+                        <span className="bg-sky-500/20 text-sky-200 border border-sky-500/40 px-2 py-0.5 rounded-full text-[10px]">
+                          متبقي للهدف: {prepInfo.remainingMinutes} د
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Delivery Specific Info Box */}
+                  {order.orderType === "DELIVERY" && (
+                    <div className="bg-teal-950/40 border-b border-teal-500/30 p-2.5 space-y-1 text-xs">
+                      <div className="flex justify-between items-center text-teal-300 font-bold">
+                        <span>العميل: {order.customerName || order.customer?.name || "عميل دليفري"}</span>
+                        <span className="font-mono">{order.customerPhone || order.customer?.phone || ""}</span>
+                      </div>
+                      <div className="text-[11px] text-stone-300">
+                        📍 {order.deliveryAddress || order.customer?.address || "العنوان غير مسجل"}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Customer Grilling Special Info Box */}
                   {isGrill && (
@@ -517,18 +635,48 @@ export default function KitchenView({
                     )}
                   </div>
 
-                  {/* Card Action Controls */}
+                  {/* Card Action Controls (Requirement 1: Complete state machine) */}
                   <div className="p-2.5 bg-black/40 border-t border-white/10 space-y-1.5">
-                    {/* Status Step Action */}
-                    {currentSt === "READY" ? (
+                    {/* State Actions */}
+                    {currentSt === "OUT_FOR_DELIVERY" || currentSt === "HANDED_TO_CASHIER" ? (
                       <button
                         onClick={() => handleUpdateStatus(order.id, "DELIVERED")}
                         disabled={isBusy}
                         className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/30 transition"
                       >
                         <span>✓</span>
-                        <span>تم التسليم للعميل (إنهاء)</span>
+                        <span>تم التسليم للعميل بالكامل (إنهاء)</span>
                       </button>
+                    ) : currentSt === "READY" ? (
+                      <div className="flex gap-1.5">
+                        {order.orderType === "DELIVERY" ? (
+                          <button
+                            onClick={() => handleUpdateStatus(order.id, "OUT_FOR_DELIVERY")}
+                            disabled={isBusy}
+                            className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-black py-2 rounded-xl text-xs flex items-center justify-center gap-1 shadow transition"
+                          >
+                            <span>🛵</span>
+                            <span>خرج مع الديليفري</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleUpdateStatus(order.id, "HANDED_TO_CASHIER")}
+                            disabled={isBusy}
+                            className="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-black py-2 rounded-xl text-xs flex items-center justify-center gap-1 shadow transition"
+                          >
+                            <span>📦</span>
+                            <span>تسليم للكاشير</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleUpdateStatus(order.id, "DELIVERED")}
+                          disabled={isBusy}
+                          className="px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl text-xs flex items-center justify-center gap-1 shadow transition"
+                          title="تسليم مباشر للعميل"
+                        >
+                          <span>✓ استلام</span>
+                        </button>
+                      </div>
                     ) : currentSt === "PREPARING" ? (
                       <button
                         onClick={() => handleUpdateStatus(order.id, "READY")}
@@ -545,7 +693,7 @@ export default function KitchenView({
                         className="w-full bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-sky-600/30 transition"
                       >
                         <span>🍳</span>
-                        <span>بدء التجهيز والطهي</span>
+                        <span>بدء التجهيز والطهي (45 د)</span>
                       </button>
                     )}
 

@@ -1,5 +1,6 @@
 "use server";
 import { getSystemLockState } from "@/lib/system-lock";
+import { assertAdminOrManager } from "@/lib/auth-guard";
 
 import { prisma } from "@/lib/prisma";
 import { TableType, TableStatus } from "@prisma/client";
@@ -37,6 +38,9 @@ export async function updateTable(
   }
 ) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     const lockState = await getSystemLockState();
     if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
 
@@ -55,6 +59,9 @@ export async function updateTable(
 
 export async function createTable(formData: FormData) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     const lockState = await getSystemLockState();
     if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
 
@@ -99,6 +106,9 @@ export async function updateTableStatus(id: string, status: TableStatus) {
 
 export async function deleteTable(id: string) {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) return { error: auth.error };
+
     const lockState = await getSystemLockState();
     if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
 

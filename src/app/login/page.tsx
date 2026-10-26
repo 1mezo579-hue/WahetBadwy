@@ -27,7 +27,7 @@ export default function LoginPage() {
         setError("اسم المستخدم أو كلمة المرور غير صحيحة");
         setLoading(false);
       } else {
-        router.push("/dashboard");
+        router.push("/pos");
         router.refresh();
       }
     } catch {

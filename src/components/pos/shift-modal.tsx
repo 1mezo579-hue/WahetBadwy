@@ -8,6 +8,7 @@ interface ShiftModalProps {
   currentShift: any | null;
   userId: string;
   userName: string;
+  userRole?: string;
   onClose: () => void;
   onShiftUpdated: (shift: any | null) => void;
 }
@@ -16,10 +17,12 @@ export default function ShiftModal({
   currentShift,
   userId,
   userName,
+  userRole = "CASHIER",
   onClose,
   onShiftUpdated,
 }: ShiftModalProps) {
   const isShiftOpen = currentShift && currentShift.status === "OPEN";
+  const canCloseShift = userRole === "ADMIN" || userRole === "MANAGER";
 
   // State for Opening Shift
   const [openingFloat, setOpeningFloat] = useState<string>("500");
@@ -34,8 +37,22 @@ export default function ShiftModal({
   const [receivedBy, setReceivedBy] = useState<string>("");
   const [closeNotes, setCloseNotes] = useState<string>("");
 
-  // Detailed Expense items
-  const [expenses, setExpenses] = useState<ClosingItem[]>([]);
+  // Detailed Expense items - Automatically populated from Shift records
+  const [expenses, setExpenses] = useState<ClosingItem[]>(() => {
+    const list = currentShift?.expensesList || currentShift?.expensesDetails;
+    if (Array.isArray(list)) {
+      return list.map((e: any) => ({
+        id: e.id,
+        item: e.item || e.category || "مصروف",
+        amount: Number(e.amount) || 0,
+        notes: e.notes || (e.paymentMethod === "CASH" ? "نقدي من الدرج" : e.paymentMethod),
+        receiver: e.receiver || "غير محدد",
+        responsible: e.responsible || "",
+        paymentMethod: e.paymentMethod || "CASH",
+      }));
+    }
+    return [];
+  });
   const [expName, setExpName] = useState("");
   const [expAmount, setExpAmount] = useState("");
 
@@ -50,16 +67,23 @@ export default function ShiftModal({
   // Calculations
   const initialCash = currentShift?.initialCash || 0;
   const paidSales = currentShift?.paidOrdersTotal || 0;
+  
+  // Distinguish cash vs non-cash expenses (Requirement 3: strictly deduct only cash expenses from drawer)
+  const cashExpenses = expenses.filter((e: any) => !e.paymentMethod || e.paymentMethod === "CASH");
+  const cashExpensesTotal = cashExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const nonCashExpenses = expenses.filter((e: any) => e.paymentMethod && e.paymentMethod !== "CASH");
+  const nonCashExpensesTotal = nonCashExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
   const totalWithdrawals = withdrawals.reduce((sum, w) => sum + (Number(w.amount) || 0), 0);
   const visaAmount = Number(visaAmountInput) || 0;
   const otherBalance = Number(otherBalanceInput) || 0;
   const managementChecks = Number(managementChecksInput) || 0;
 
-  // Expected Cash in Drawer = Initial + Paid Sales - Visa - Other - Expenses - Management Checks - Withdrawals
+  // Expected Cash in Drawer = Initial + Paid Sales - Visa - Other - Cash Expenses - Management Checks - Withdrawals
   const expectedCash = Math.max(
     0,
-    initialCash + paidSales - visaAmount - otherBalance - totalExpenses - managementChecks - totalWithdrawals
+    initialCash + paidSales - visaAmount - otherBalance - cashExpensesTotal - managementChecks - totalWithdrawals
   );
 
   const actualCash = Number(actualCashInput) || 0;
@@ -509,14 +533,23 @@ export default function ShiftModal({
             </div>
 
             {/* Actions: End Shift & Print Z-Report */}
+            {!canCloseShift && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-center text-xs text-amber-300 font-bold">
+                ⚠️ تقفيل واعتماد الوردية نهائياً متاح فقط لمدير المطعم أو الأدمن. كاشير الوردية يمكنه مراجعة الأرقام فقط ولا يملك صلاحية الإغلاق.
+              </div>
+            )}
             <div className="flex gap-3 pt-3 border-t border-[#1c2438]">
               <button
                 onClick={handleEndShift}
-                disabled={isClosing}
-                className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 rounded-xl text-sm transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 active:scale-[0.99]"
+                disabled={isClosing || !canCloseShift}
+                className={`flex-1 font-black py-3 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2 ${
+                  canCloseShift
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30 active:scale-[0.99]"
+                    : "bg-stone-800 text-stone-500 cursor-not-allowed border border-stone-700"
+                }`}
               >
                 <span>🖨️</span>
-                <span>{isClosing ? "جاري التقفيل والطباعة..." : "تقفيل الوردية وطباعة تقرير Z-Report"}</span>
+                <span>{isClosing ? "جاري التقفيل والطباعة..." : canCloseShift ? "تقفيل الوردية وطباعة تقرير Z-Report" : "مغلق (يتطلب صلاحية مدير)"}</span>
               </button>
               <button
                 onClick={onClose}

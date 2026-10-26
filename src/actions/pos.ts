@@ -2,9 +2,10 @@
 
 import { getSystemLockState } from "@/lib/system-lock";
 import { prisma } from "@/lib/prisma";
-import { OrderStatus, TableStatus, TableType } from "@prisma/client";
+import { OrderStatus, TableStatus, TableType, Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { recordAuditLog } from "@/lib/audit-logger";
+import bcrypt from "bcryptjs";
 
 export interface CartItemInput {
   menuItemId: string;
@@ -118,39 +119,53 @@ export async function getPosData() {
 // Helper to ensure any ordered item exists in database without foreign key failure
 async function ensureMenuItemsExist(items: CartItemInput[]) {
   try {
-    const defaultCategory = await prisma.category.findFirst({
+    let defaultCategory = await prisma.category.findFirst({
       orderBy: { order: "asc" },
     });
-    const defaultCatId = defaultCategory?.id;
+    if (!defaultCategory) {
+      defaultCategory = await prisma.category.create({
+        data: {
+          name: "General",
+          nameAr: "عام وخدمات",
+          order: 0,
+        },
+      });
+    }
+    const defaultCatId = defaultCategory.id;
 
     for (const item of items) {
-      if (!item.menuItemId) continue;
-      const existing = await prisma.menuItem.findUnique({
-        where: { id: item.menuItemId },
-      });
-      if (!existing) {
-        const byName = await prisma.menuItem.findFirst({
+      if (!item.menuItemId && !item.nameAr) continue;
+
+      let existing = null;
+      if (item.menuItemId) {
+        existing = await prisma.menuItem.findUnique({
+          where: { id: item.menuItemId },
+        });
+      }
+
+      if (!existing && item.nameAr) {
+        existing = await prisma.menuItem.findFirst({
           where: { nameAr: item.nameAr },
         });
-        if (byName) {
-          item.menuItemId = byName.id;
-        } else if (defaultCatId) {
-          const created = await prisma.menuItem.create({
-            data: {
-              id: item.menuItemId,
-              name: item.nameAr,
-              nameAr: item.nameAr,
-              price: item.price,
-              categoryId: defaultCatId,
-              active: true,
-            },
-          });
-          item.menuItemId = created.id;
-        }
+      }
+
+      if (existing) {
+        item.menuItemId = existing.id;
+      } else {
+        const created = await prisma.menuItem.create({
+          data: {
+            name: item.nameAr || "صنف خدمة",
+            nameAr: item.nameAr || "صنف خدمة",
+            price: Number(item.price) || 0,
+            categoryId: defaultCatId,
+            active: true,
+          },
+        });
+        item.menuItemId = created.id;
       }
     }
   } catch (e) {
-    console.warn("ensureMenuItemsExist note:", e);
+    console.error("ensureMenuItemsExist note:", e);
   }
 }
 
@@ -640,6 +655,10 @@ export async function collectOrderPayment(payload: OrderPayload) {
       (payload.grillingFee !== undefined && Number(payload.grillingFee) > 0);
 
     // 4. Server-Side Verification of Items, Prices, and Amounts
+    if (items && items.length > 0) {
+      await ensureMenuItemsExist(items);
+    }
+
     const {
       verifiedItems,
       verifiedSubtotal,
@@ -679,6 +698,8 @@ export async function collectOrderPayment(payload: OrderPayload) {
 
     if (!targetOrderId && ((verifiedItems && verifiedItems.length > 0) || isGrillOrder)) {
       // Create new PAID order directly (e.g. Fast Takeaway / Delivery)
+      // Workflow status for kitchen prep starts at NEW or RECEIVED_CUSTOMER_MEAT (never DELIVERED immediately upon paying!)
+      const initialWorkflow = payload.workflowStatus || (isGrillOrder ? "RECEIVED_CUSTOMER_MEAT" : "NEW");
       const created = await prisma.order.create({
         data: {
           tableId: resolvedTableId,
@@ -696,7 +717,7 @@ export async function collectOrderPayment(payload: OrderPayload) {
           expectedPickupTime: payload.expectedPickupTime || null,
           receivedBy: payload.receivedBy || payload.cashierName || null,
           deliveredBy: payload.deliveredBy || null,
-          workflowStatus: payload.workflowStatus || (isGrillOrder ? "DELIVERED" : "DELIVERED"),
+          workflowStatus: initialWorkflow,
           statusHistory: [paymentLogEntry],
           customerId: customerId || null,
           customerName: customerName || null,
@@ -919,6 +940,239 @@ export async function cancelOrderAction({
     };
   } catch (e: any) {
     return { error: e.message || "فشل إلغاء الطلب" };
+  }
+}
+
+export interface ManagerApprovalVoidPayload {
+  orderId: string;
+  actionType: "CANCEL_FULL_ORDER" | "VOID_ORDER_ITEM";
+  orderItemId?: string;
+  reason: string;
+  cashierName: string;
+  managerUsername: string;
+  managerPassword: string;
+}
+
+/**
+ * Cancel Order or Void Item with Server-Side Manager Password Verification (Requirement 5)
+ * Securely compares manager's password using bcrypt without logging credentials.
+ */
+export async function cancelOrVoidWithManagerApproval(payload: ManagerApprovalVoidPayload) {
+  try {
+    const {
+      orderId,
+      actionType,
+      orderItemId,
+      reason,
+      cashierName,
+      managerUsername,
+      managerPassword,
+    } = payload;
+
+    if (!orderId || !reason || !reason.trim()) {
+      return { success: false, error: "يرجى تحديد الطلب وكتابة سبب الإلغاء بوضوح." };
+    }
+
+    if (!managerUsername || !managerPassword) {
+      return { success: false, error: "اسم المدير وكلمة مرور المدير مطلوبة للاعتماد." };
+    }
+
+    // 1. Verify Manager Credentials securely on server using bcrypt
+    const manager = await prisma.user.findUnique({
+      where: { username: managerUsername.trim().toLowerCase() },
+    });
+
+    if (!manager || !manager.active || (manager.role !== Role.ADMIN && manager.role !== Role.MANAGER)) {
+      return { success: false, error: "اسم المدير غير صحيح أو الحساب ليس له صلاحيات إدارية (ADMIN/MANAGER)." };
+    }
+
+    const isMatch = await bcrypt.compare(managerPassword, manager.password);
+    if (!isMatch) {
+      return { success: false, error: "كلمة مرور المدير غير صحيحة. تم رفض العملية ومنع التعديل." };
+    }
+
+    // 2. Fetch the target order with its items, shift, and table
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: { include: { menuItem: true } },
+        table: true,
+        shift: true,
+        customer: true,
+      },
+    });
+
+    if (!order) {
+      return { success: false, error: "الطلب غير موجود في قاعدة البيانات." };
+    }
+
+    const isPaid = order.status === OrderStatus.PAID;
+    const nowIso = new Date().toISOString();
+
+    if (actionType === "VOID_ORDER_ITEM") {
+      if (!orderItemId) {
+        return { success: false, error: "يرجى تحديد الصنف المراد حذفه من الطلب." };
+      }
+
+      const itemToVoid = order.items.find((i) => i.id === orderItemId);
+      if (!itemToVoid) {
+        return { success: false, error: "الصنف المحدد غير موجود في هذا الطلب." };
+      }
+
+      const voidAmount = itemToVoid.totalPrice;
+      const itemName = itemToVoid.menuItem?.nameAr || "صنف";
+
+      // Delete the order item
+      await prisma.orderItem.delete({
+        where: { id: orderItemId },
+      });
+
+      // Recalculate order totals
+      const newSubtotal = Math.max(0, (order.subtotal || 0) - voidAmount);
+      const newTotalAmount = Math.max(0, (order.totalAmount || 0) - voidAmount);
+
+      const auditNote = `[حذف صنف: ${itemName} (${voidAmount} ج.م) بواسطة ${cashierName} باعتماد المدير ${manager.name} - السبب: ${reason.trim()}]`;
+
+      const updatedHistory = [
+        ...(Array.isArray(order.statusHistory) ? (order.statusHistory as any[]) : []),
+        {
+          action: "ITEM_VOIDED",
+          itemId: orderItemId,
+          itemName,
+          amount: voidAmount,
+          wasPaid: isPaid,
+          cashier: cashierName,
+          manager: manager.name,
+          reason: reason.trim(),
+          timestamp: nowIso,
+        },
+      ];
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          subtotal: newSubtotal,
+          totalAmount: newTotalAmount,
+          notes: order.notes ? `${order.notes} ${auditNote}` : auditNote,
+          statusHistory: updatedHistory,
+        },
+        include: {
+          items: { include: { menuItem: true } },
+          table: true,
+          customer: true,
+        },
+      });
+
+      // Audit Log
+      await recordAuditLog({
+        action: "ITEM_VOIDED",
+        orderId: order.id,
+        userId: manager.id,
+        userName: manager.name,
+        userRole: manager.role,
+        reason: `حذف الصنف (${itemName}) من الطلب #${order.orderNumber} - طلب الكاشير (${cashierName}): ${reason.trim()}`,
+        details: {
+          orderNumber: order.orderNumber,
+          itemName,
+          voidAmount,
+          wasPaid: isPaid,
+          previousTotal: order.totalAmount,
+          newTotal: newTotalAmount,
+          cashier: cashierName,
+          manager: manager.name,
+        },
+      });
+
+      revalidatePath("/pos");
+      revalidatePath("/kitchen");
+      revalidatePath("/dashboard");
+
+      return {
+        success: true,
+        message: `تم حذف صنف (${itemName}) بقيمة ${voidAmount} ج.م باعتماد المدير (${manager.name}) بنجاح ✓`,
+        order: updatedOrder,
+        actionExecuted: "VOID_ORDER_ITEM",
+        voidedItemName: itemName,
+        voidAmount,
+        managerName: manager.name,
+      };
+    } else {
+      // CANCEL_FULL_ORDER
+      if (order.workflowStatus === "CANCELLED") {
+        return { success: false, error: "هذا الطلب ملغي بالفعل مسبقاً." };
+      }
+
+      // Release table if Dine-in
+      if (order.tableId) {
+        await prisma.diningTable.update({
+          where: { id: order.tableId },
+          data: { status: TableStatus.AVAILABLE },
+        });
+      }
+
+      const cancellationNote = `[إلغاء كامل للطلب #${order.orderNumber} (${isPaid ? "فاتورة مسددة مستردة" : "فاتورة غير مسددة"}) بواسطة الكاشير ${cashierName} باعتماد المدير ${manager.name} - السبب: ${reason.trim()}]`;
+
+      const updatedHistory = [
+        ...(Array.isArray(order.statusHistory) ? (order.statusHistory as any[]) : []),
+        {
+          action: "ORDER_CANCELLED",
+          wasPaid: isPaid,
+          refundAmount: isPaid ? order.totalAmount : 0,
+          cashier: cashierName,
+          manager: manager.name,
+          reason: reason.trim(),
+          timestamp: nowIso,
+        },
+      ];
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          workflowStatus: "CANCELLED",
+          notes: order.notes ? `${order.notes} ${cancellationNote}` : cancellationNote,
+          statusHistory: updatedHistory,
+        },
+        include: {
+          items: { include: { menuItem: true } },
+          table: true,
+          customer: true,
+        },
+      });
+
+      // Audit Log
+      await recordAuditLog({
+        action: "ORDER_CANCELLED",
+        orderId: order.id,
+        userId: manager.id,
+        userName: manager.name,
+        userRole: manager.role,
+        reason: `إلغاء الطلب #${order.orderNumber} بالكامل - الكاشير (${cashierName}) - اعتماد المدير (${manager.name}) - السبب: ${reason.trim()}`,
+        details: {
+          orderNumber: order.orderNumber,
+          totalAmount: order.totalAmount,
+          wasPaid: isPaid,
+          refundIssued: isPaid,
+          cashier: cashierName,
+          manager: manager.name,
+        },
+      });
+
+      revalidatePath("/pos");
+      revalidatePath("/kitchen");
+      revalidatePath("/dashboard");
+
+      return {
+        success: true,
+        message: `تم إلغاء الطلب #${order.orderNumber} بالكامل (${isPaid ? `استرداد ${order.totalAmount} ج.م` : "غير مسدد"}) باعتماد المدير (${manager.name}) بنجاح ✓`,
+        order: updatedOrder,
+        actionExecuted: "CANCEL_FULL_ORDER",
+        refundAmount: isPaid ? order.totalAmount : 0,
+        managerName: manager.name,
+      };
+    }
+  } catch (error: any) {
+    console.error("Error in cancelOrVoidWithManagerApproval:", error);
+    return { success: false, error: error.message || "حدث خطأ غير متوقع أثناء معالجة الإلغاء." };
   }
 }
 

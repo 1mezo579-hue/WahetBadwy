@@ -146,7 +146,7 @@ export default function HomePage() {
             </Link>
 
             <Link
-              href="/dashboard/inventory"
+              href="/dashboard/procurement"
               className="group p-4 rounded-2xl bg-stone-900/80 border border-stone-800 hover:border-amber-500/50 hover:bg-stone-800/70 transition-all duration-200 shadow-lg flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
@@ -155,7 +155,7 @@ export default function HomePage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-white group-hover:text-emerald-300 transition-colors">
-                    المخزون والوصفات
+                    المخزون والمشتريات
                   </h3>
                   <p className="text-xs text-stone-400">
                     الخامات، المشتريات، وتكاليف الأطباق
@@ -163,6 +163,28 @@ export default function HomePage() {
                 </div>
               </div>
               <span className="text-stone-500 group-hover:text-emerald-400 text-lg transition-transform group-hover:-translate-x-1">
+                ←
+              </span>
+            </Link>
+
+            <Link
+              href="/kitchen"
+              className="group p-4 rounded-2xl bg-stone-900/80 border border-stone-800 hover:border-amber-500/50 hover:bg-stone-800/70 transition-all duration-200 shadow-lg flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-orange-500/20 text-orange-400 group-hover:bg-orange-500 group-hover:text-stone-950 transition-colors flex items-center justify-center text-xl font-bold">
+                  👨‍🍳
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white group-hover:text-orange-300 transition-colors">
+                    شاشة المطبخ والشواية (KDS)
+                  </h3>
+                  <p className="text-xs text-stone-400">
+                    متابعة التحضير، الطهي، ومواعيد الشواء
+                  </p>
+                </div>
+              </div>
+              <span className="text-stone-500 group-hover:text-orange-400 text-lg transition-transform group-hover:-translate-x-1">
                 ←
               </span>
             </Link>

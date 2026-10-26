@@ -12,6 +12,8 @@ import {
   AdminReportData,
   PendingExpense,
 } from "@/actions/assistant";
+import { cancelOrVoidWithManagerApproval } from "@/actions/pos";
+import { triggerSilentThermalPrint } from "@/utils/printer/silent-print";
 
 type TabMode = "SEARCH" | "CHAT" | "REPORTS" | "AUDIT";
 
@@ -30,6 +32,7 @@ const STORAGE_KEY = "amo_basiony_pos_v2";
 export default function AmoBasionyWidget() {
   const { data: session } = useSession();
   const userRole = (session?.user as any)?.role || "CASHIER";
+  const userName = session?.user?.name || "كاشير";
   const isAdmin = userRole === "ADMIN";
 
   // Widget Open State
@@ -71,6 +74,95 @@ export default function AmoBasionyWidget() {
     exceptions: any;
   } | null>(null);
   const [loadingAudit, setLoadingAudit] = useState(false);
+
+  // Manager Approval Void Modal State (Requirement 5)
+  const [voidTarget, setVoidTarget] = useState<{
+    orderId: string;
+    orderNumber: number;
+    actionType: "CANCEL_FULL_ORDER" | "VOID_ORDER_ITEM";
+    orderItemId?: string;
+    itemName?: string;
+    itemAmount?: number;
+    totalAmount: number;
+    isPaid: boolean;
+  } | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [managerUsername, setManagerUsername] = useState("admin");
+  const [managerPassword, setManagerPassword] = useState("");
+  const [voidSubmitting, setVoidSubmitting] = useState(false);
+  const [voidError, setVoidError] = useState<string | null>(null);
+  const [voidSuccess, setVoidSuccess] = useState<string | null>(null);
+
+  const handleExecuteManagerVoid = async () => {
+    if (!voidTarget) return;
+    if (!voidReason.trim()) {
+      setVoidError("يرجى كتابة سبب الإلغاء بوضوح");
+      return;
+    }
+    if (!managerUsername.trim() || !managerPassword.trim()) {
+      setVoidError("يرجى إدخال اسم المستخدم وكلمة المرور للمدير");
+      return;
+    }
+
+    setVoidSubmitting(true);
+    setVoidError(null);
+    setVoidSuccess(null);
+
+    try {
+      const res = await cancelOrVoidWithManagerApproval({
+        orderId: voidTarget.orderId,
+        actionType: voidTarget.actionType,
+        orderItemId: voidTarget.orderItemId,
+        reason: voidReason.trim(),
+        cashierName: userName,
+        managerUsername: managerUsername.trim(),
+        managerPassword: managerPassword.trim(),
+      });
+
+      if (!res.success) {
+        setVoidError(res.error || "فشل تنفيذ الإلغاء");
+      } else {
+        setVoidSuccess(res.message || "تم اعتماد الإلغاء بنجاح");
+        if (res.order) {
+          try {
+            await triggerSilentThermalPrint({
+              title: voidTarget.actionType === "VOID_ORDER_ITEM" ? "إيصال إلغاء صنف معتمد" : "إيصال إلغاء فاتورة معتمد (إشعار دائن)",
+              receiptType: "RECEIPT",
+              tableName: (res.order as any).table?.name || (res.order as any).tableName || "-",
+              orderNumber: res.order.orderNumber,
+              orderType: res.order.orderType,
+              customerName: res.order.customerName || undefined,
+              items: res.order.items?.map((i: any) => ({
+                nameAr: i.menuItem?.nameAr || "صنف",
+                quantity: i.quantity,
+                price: i.unitPrice,
+              })) || [],
+              subtotal: res.order.subtotal,
+              totalAmount: res.order.totalAmount,
+              cashierName: userName,
+              timestamp: new Date(),
+              notes: `تم الإلغاء بواسطة ${userName} باعتِماد المدير ${res.managerName} - السبب: ${voidReason.trim()}`,
+            });
+          } catch (pe) {
+            console.warn("Cancellation print error:", pe);
+          }
+        }
+        if (searchQuery.trim()) {
+          handleExecuteSearch(searchQuery);
+        }
+        setTimeout(() => {
+          setVoidTarget(null);
+          setManagerPassword("");
+          setVoidReason("");
+          setVoidSuccess(null);
+        }, 1500);
+      }
+    } catch (e: any) {
+      setVoidError(e.message || "حدث خطأ غير متوقع");
+    } finally {
+      setVoidSubmitting(false);
+    }
+  };
 
   // Load Saved Position on Mount
   useEffect(() => {
@@ -639,8 +731,29 @@ export default function AmoBasionyWidget() {
                       <div className="bg-[#0b0f1a] rounded-xl p-2 space-y-1">
                         {order.items.map((it, idx) => (
                           <div key={idx} className="flex items-center justify-between text-[11px]">
-                            <span className="text-stone-200">
-                              • {it.nameAr} <span className="text-stone-500">×{it.quantity}</span>
+                            <span className="text-stone-200 flex items-center gap-1">
+                              {order.workflowStatus !== "CANCELLED" && (
+                                <button
+                                  onClick={() =>
+                                    setVoidTarget({
+                                      orderId: order.id,
+                                      orderNumber: order.orderNumber,
+                                      actionType: "VOID_ORDER_ITEM",
+                                      orderItemId: it.id,
+                                      itemName: it.nameAr,
+                                      itemAmount: it.totalPrice,
+                                      totalAmount: order.totalAmount,
+                                      isPaid: order.paymentStatus === "PAID",
+                                    })
+                                  }
+                                  className="text-stone-500 hover:text-rose-400 text-[10px] ml-1 transition"
+                                  title="طلب حذف الصنف بموافقة المدير"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                              <span>• {it.nameAr}</span>
+                              <span className="text-stone-500">×{it.quantity}</span>
                             </span>
                             <span className="font-mono text-stone-300">{it.totalPrice.toFixed(2)} ج.م</span>
                           </div>
@@ -662,6 +775,25 @@ export default function AmoBasionyWidget() {
                           </span>
                         </div>
                       </div>
+
+                      {/* Cancel Order Request Button (Requirement 5) */}
+                      {order.workflowStatus !== "CANCELLED" && (
+                        <button
+                          onClick={() =>
+                            setVoidTarget({
+                              orderId: order.id,
+                              orderNumber: order.orderNumber,
+                              actionType: "CANCEL_FULL_ORDER",
+                              totalAmount: order.totalAmount,
+                              isPaid: order.paymentStatus === "PAID",
+                            })
+                          }
+                          className="w-full mt-1.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition active:scale-[0.99]"
+                        >
+                          <span>🔒</span>
+                          <span>طلب إلغاء الفاتورة بالكامل (بموافقة المدير)</span>
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1000,6 +1132,157 @@ export default function AmoBasionyWidget() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------- */}
+      {/* 3. MANAGER APPROVAL VOID / CANCELLATION MODAL */}
+      {/* ----------------------------------------------------------- */}
+      {voidTarget && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[11000] flex items-center justify-center p-4">
+          <div
+            dir="rtl"
+            className="bg-[#111624] border-2 border-rose-500/60 rounded-3xl w-full max-w-md p-5 shadow-2xl text-stone-100 animate-in fade-in zoom-in-95"
+          >
+            <div className="flex items-center justify-between border-b border-rose-500/30 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-lg font-bold">
+                  🔒
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-rose-400">
+                    {voidTarget.actionType === 'VOID_ORDER_ITEM'
+                      ? 'طلب إلغاء صنف (بموافقة المدير)'
+                      : 'طلب إلغاء فاتورة كاملة (بموافقة المدير)'}
+                  </h3>
+                  <p className="text-[11px] text-stone-400">
+                    أوردر رقم #{voidTarget.orderNumber}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setVoidTarget(null);
+                  setVoidError(null);
+                  setVoidSuccess(null);
+                }}
+                className="text-stone-500 hover:text-white p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Target details */}
+            <div className="bg-[#0b0f1a] border border-[#1e263d] rounded-2xl p-3 mb-3 text-xs space-y-1.5">
+              {voidTarget.actionType === 'VOID_ORDER_ITEM' ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-stone-400">الصنف المطلوب إلغاؤه:</span>
+                    <strong className="text-amber-400">{voidTarget.itemName}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-stone-400">قيمة الصنف:</span>
+                    <span className="font-mono text-stone-200">{voidTarget.itemAmount?.toFixed(2)} ج.م</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-stone-400">نوع الإلغاء:</span>
+                    <strong className="text-rose-400">إلغاء الفاتورة بالكامل</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-stone-400">إجمالي الفاتورة:</span>
+                    <span className="font-mono text-amber-400 font-bold">{voidTarget.totalAmount?.toFixed(2)} ج.م</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-stone-400">حالة السداد:</span>
+                    <span className={voidTarget.isPaid ? 'text-emerald-400 font-bold' : 'text-amber-400'}>
+                      {voidTarget.isPaid ? 'مدفوعة (سيتم رد المبلغ للعميل وتسجيل حركة دائنة)' : 'غير مدفوعة'}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Inputs */}
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="text-stone-300 block mb-1 font-bold">
+                  سبب الإلغاء <span className="text-rose-400">*</span> (إلزامي للرقابة والتدقيق)
+                </label>
+                <input
+                  type="text"
+                  value={voidReason}
+                  onChange={(e) => setVoidReason(e.target.value)}
+                  placeholder="مثال: خطأ في إدخال الصنف / العميل اعتذر عن الطلب"
+                  className="w-full bg-[#182033] border border-stone-700 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-rose-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-stone-400 block mb-1 text-[11px]">
+                    اسم مستخدم المدير <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={managerUsername}
+                    onChange={(e) => setManagerUsername(e.target.value)}
+                    placeholder="admin"
+                    className="w-full bg-[#182033] border border-stone-700 rounded-xl px-2.5 py-2 text-stone-100 outline-none focus:border-rose-500 font-mono text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-stone-400 block mb-1 text-[11px]">
+                    كلمة مرور المدير <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={managerPassword}
+                    onChange={(e) => setManagerPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-[#182033] border border-stone-700 rounded-xl px-2.5 py-2 text-stone-100 outline-none focus:border-rose-500 font-mono text-xs"
+                  />
+                </div>
+              </div>
+
+              {voidError && (
+                <div className="bg-rose-500/15 border border-rose-500/40 rounded-xl p-2.5 text-xs text-rose-300 font-medium">
+                  ⚠️ {voidError}
+                </div>
+              )}
+
+              {voidSuccess && (
+                <div className="bg-emerald-500/15 border border-emerald-500/40 rounded-xl p-2.5 text-xs text-emerald-300 font-medium">
+                  ✅ {voidSuccess}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={voidSubmitting}
+                  onClick={handleExecuteManagerVoid}
+                  className="flex-1 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-rose-600/30 transition disabled:opacity-50 text-xs"
+                >
+                  {voidSubmitting ? 'جاري التحقق والاعتماد...' : 'اعتماد الإلغاء وتحديث النظام'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVoidTarget(null);
+                    setVoidError(null);
+                    setVoidSuccess(null);
+                  }}
+                  className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl transition text-xs"
+                >
+                  تراجع
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

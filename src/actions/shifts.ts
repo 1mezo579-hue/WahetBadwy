@@ -1,6 +1,7 @@
 "use server";
 import { getSystemLockState } from "@/lib/system-lock";
-
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { OrderStatus, ShiftStatus, TableType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -10,14 +11,14 @@ const MAX_SHIFT_HOURS = 12;
 
 /**
  * 1. Get currently active OPEN shift
- * Computes elapsed hours and checks for the 12-hour limit.
+ * Returns the restaurant's active open shift (single active shift model).
+ * Includes detailed cash orders, cash expenses breakdown, and user status.
  */
 export async function getActiveShift(userId?: string) {
   try {
     const activeShift = await prisma.shift.findFirst({
       where: {
         status: ShiftStatus.OPEN,
-        ...(userId ? { userId } : {}),
       },
       include: {
         user: { select: { id: true, name: true, username: true, role: true } },
@@ -75,7 +76,24 @@ export async function getActiveShift(userId?: string) {
       0
     );
 
-    const liveExpectedCash = activeShift.initialCash + paidOrdersTotal;
+    // Parse shift expenses
+    let expensesList: any[] = [];
+    if (Array.isArray(activeShift.expensesDetails)) {
+      expensesList = activeShift.expensesDetails;
+    } else if (typeof activeShift.expensesDetails === "string") {
+      try {
+        expensesList = JSON.parse(activeShift.expensesDetails);
+      } catch {}
+    }
+
+    // Cash expenses deducted from drawer
+    const cashExpenses = expensesList.filter((e) => !e.paymentMethod || e.paymentMethod === "CASH");
+    const nonCashExpenses = expensesList.filter((e) => e.paymentMethod && e.paymentMethod !== "CASH");
+    const cashExpensesTotal = cashExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const nonCashExpensesTotal = nonCashExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+    // Expected Drawer Cash = Initial Float + Regular Cash Sales - Approved Cash Expenses
+    const liveExpectedCash = Math.max(0, activeShift.initialCash + paidOrdersTotal - cashExpensesTotal);
 
     return {
       activeShift: {
@@ -88,6 +106,10 @@ export async function getActiveShift(userId?: string) {
         paidOrdersCount: regularPaidOrders.length,
         complimentaryOrdersCount: complimentaryOrders.length,
         complimentaryWaivedTotal,
+        expensesList,
+        cashExpensesTotal,
+        nonCashExpensesTotal,
+        isOpenedByCurrentUser: userId ? activeShift.userId === userId : false,
       },
     };
   } catch (error: any) {
@@ -116,11 +138,12 @@ export async function startShift({
     // Check if user or system already has an open shift
     const existing = await prisma.shift.findFirst({
       where: { status: ShiftStatus.OPEN },
+      include: { user: { select: { name: true, role: true } } },
     });
 
     if (existing) {
       return {
-        error: `يوجد وردية مفتوحة بالفعل (رقم #${existing.shiftNumber}). يرجى تقفيلها أولاً قبل فتح وردية جديدة.`,
+        error: `يوجد وردية نشطة بالفعل (رقم #${existing.shiftNumber}) تم فتحها بواسطة (${existing.user?.name || "الموظف"}) في ${new Date(existing.startTime).toLocaleTimeString("ar-EG")}. يرجى من الإدارة تقفيلها أولاً قبل فتح وردية جديدة.`,
       };
     }
 
@@ -205,6 +228,16 @@ export async function endShift(payload: EndShiftPayload) {
     const lockState = await getSystemLockState();
     if (lockState.isLocked) return { error: `النظام مقفول حالياً بواسطة الإدارة (${lockState.lockedBy || "المدير"})` };
 
+    // RBAC: Only Admin or Manager can close and finalize shifts
+    const session = await getServerSession(authOptions);
+    const userRole = (session?.user as any)?.role || "CASHIER";
+    const managerName = session?.user?.name || "المدير";
+    if (userRole !== "ADMIN" && userRole !== "MANAGER") {
+      return {
+        error: "غير مصرح للكاشير بإغلاق الوردية نهائياً. تقفيل واعتماد الوردية مقتصر على صلاحية المدير أو الأدمن فقط.",
+      };
+    }
+
     const {
       shiftId,
       actualCash,
@@ -234,7 +267,7 @@ export async function endShift(payload: EndShiftPayload) {
     });
 
     if (!shift || shift.status !== ShiftStatus.OPEN) {
-      return { error: "الوردية غير موجودة أو مقفلة بالفعل" };
+      return { error: "الوردية غير موجودة أو تم إغلاقها مسبقاً بالفعل" };
     }
 
     const endTime = new Date();

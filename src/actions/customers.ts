@@ -58,6 +58,15 @@ export async function getCustomers(search?: string) {
   }
 }
 
+function normalizeEgyptianPhone(phone: string): string {
+  if (!phone) return "";
+  let p = phone.replace(/[^\d+]/g, "").trim();
+  if (p.startsWith("+20")) p = "0" + p.slice(3);
+  else if (p.startsWith("0020")) p = "0" + p.slice(4);
+  else if (p.startsWith("20") && p.length > 10) p = "0" + p.slice(2);
+  return p;
+}
+
 export async function createCustomer(data: CustomerInput) {
   try {
     const lockState = await getSystemLockState();
@@ -67,8 +76,15 @@ export async function createCustomer(data: CustomerInput) {
       return { success: false, error: "اسم العميل ورقم الهاتف مطلوبان" };
     }
 
-    const existing = await prisma.customer.findUnique({
-      where: { phone: data.phone.trim() },
+    const cleanPhone = normalizeEgyptianPhone(data.phone);
+
+    const existing = await prisma.customer.findFirst({
+      where: {
+        OR: [
+          { phone: cleanPhone },
+          { phone: data.phone.trim() },
+        ],
+      },
     });
 
     if (existing) {
@@ -78,7 +94,7 @@ export async function createCustomer(data: CustomerInput) {
     const customer = await prisma.customer.create({
       data: {
         name: data.name.trim(),
-        phone: data.phone.trim(),
+        phone: cleanPhone,
         address: data.address?.trim() || null,
         notes: data.notes?.trim() || null,
       },
@@ -137,16 +153,28 @@ export async function deleteCustomer(id: string) {
 export async function searchCustomerByPhone(phone: string) {
   try {
     if (!phone || phone.trim().length < 3) return null;
+    const raw = phone.trim();
+    const clean = normalizeEgyptianPhone(raw);
+
     const customer = await prisma.customer.findFirst({
       where: {
-        phone: {
-          contains: phone.trim(),
-        },
+        OR: [
+          { phone: clean },
+          { phone: { contains: clean } },
+          { phone: { contains: raw } },
+        ],
       },
       include: {
         orders: {
           take: 3,
           orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            orderNumber: true,
+            totalAmount: true,
+            status: true,
+            createdAt: true,
+          },
         },
       },
     });

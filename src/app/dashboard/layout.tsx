@@ -21,6 +21,11 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  const role = (session.user as any)?.role || "CASHIER";
+  if (role === "CASHIER") {
+    redirect("/pos");
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row" dir="rtl">
       {/* Sidebar (Desktop + Mobile) */}

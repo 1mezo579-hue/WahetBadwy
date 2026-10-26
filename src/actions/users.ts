@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { assertAdminOnly, assertAdminOrManager } from "@/lib/auth-guard";
 
 export interface UserInput {
   name: string;
@@ -15,6 +16,11 @@ export interface UserInput {
 
 export async function getUsers() {
   try {
+    const auth = await assertAdminOrManager();
+    if (!auth.authorized) {
+      return { success: false, error: auth.error, users: [] };
+    }
+
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -42,6 +48,11 @@ export async function getUsers() {
 
 export async function createUser(data: UserInput) {
   try {
+    const auth = await assertAdminOnly();
+    if (!auth.authorized) {
+      return { success: false, error: auth.error };
+    }
+
     if (!data.name || !data.username || !data.password) {
       return { success: false, error: "الاسم واسم الدخول وكلمة المرور مطلوبة" };
     }
@@ -76,6 +87,11 @@ export async function createUser(data: UserInput) {
 
 export async function updateUser(id: string, data: Partial<UserInput>) {
   try {
+    const auth = await assertAdminOnly();
+    if (!auth.authorized) {
+      return { success: false, error: auth.error };
+    }
+
     const updateData: any = {};
     if (data.name) updateData.name = data.name.trim();
     if (data.role) updateData.role = data.role;
@@ -109,6 +125,11 @@ export async function updateUser(id: string, data: Partial<UserInput>) {
 
 export async function toggleUserStatus(id: string) {
   try {
+    const auth = await assertAdminOnly();
+    if (!auth.authorized) {
+      return { success: false, error: auth.error };
+    }
+
     const current = await prisma.user.findUnique({ where: { id } });
     if (!current) return { success: false, error: "المستخدم غير موجود" };
 
@@ -130,6 +151,11 @@ export async function toggleUserStatus(id: string) {
 
 export async function deleteUser(id: string) {
   try {
+    const auth = await assertAdminOnly();
+    if (!auth.authorized) {
+      return { success: false, error: auth.error };
+    }
+
     // Check if user is admin
     const user = await prisma.user.findUnique({ where: { id } });
     if (user?.username === "admin") {

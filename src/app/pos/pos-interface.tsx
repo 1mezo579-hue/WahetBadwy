@@ -10,7 +10,7 @@ import {
   getOrderForReprint,
 } from "@/actions/pos";
 import { startShift, endShift, getActiveShift } from "@/actions/shifts";
-import { createCustomer } from "@/actions/customers";
+import { createCustomer, searchCustomerByPhone } from "@/actions/customers";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import {
@@ -278,7 +278,7 @@ export default function PosInterface({
         pricingMode: params.pricingMode,
         expectedPickupTime: params.expectedPickupTime,
         receivedBy: userName,
-        workflowStatus: isPay ? "DELIVERED" : "RECEIVED_CUSTOMER_MEAT",
+        workflowStatus: "RECEIVED_CUSTOMER_MEAT",
         notes: params.notes,
         items: itemsPayload,
       };
@@ -347,6 +347,32 @@ export default function PosInterface({
   const [quickName, setQuickName] = useState<string>("");
   const [quickPhone, setQuickPhone] = useState<string>("");
   const [quickAddress, setQuickAddress] = useState<string>("");
+  const [customerLookupResult, setCustomerLookupResult] = useState<any>(null);
+  const [isSearchingPhone, setIsSearchingPhone] = useState<boolean>(false);
+
+  const handlePhoneInputChange = async (val: string) => {
+    setQuickPhone(val);
+    const cleaned = val.trim();
+    if (cleaned.length >= 8) {
+      setIsSearchingPhone(true);
+      try {
+        const res = await searchCustomerByPhone(cleaned);
+        if (res) {
+          setCustomerLookupResult(res);
+          setQuickName(res.name);
+          if (res.address) setQuickAddress(res.address);
+        } else {
+          setCustomerLookupResult("NOT_FOUND");
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        setIsSearchingPhone(false);
+      }
+    } else {
+      setCustomerLookupResult(null);
+    }
+  };
 
   // Modals
   const [showTablesModal, setShowTablesModal] = useState(false);
@@ -1290,6 +1316,40 @@ export default function PosInterface({
             </div>
           </div>
 
+          {/* Delivery Channel Info Banner */}
+          {orderType === "DELIVERY" && (
+            <div className="bg-[#111728] border border-amber-500/40 rounded-xl p-2.5 mt-2 flex items-center justify-between text-xs">
+              <div className="space-y-0.5 min-w-0 pr-1">
+                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                  <span>🛵 دليفري:</span>
+                  <span className="truncate">{customerName ? `${customerName} (${customerPhone})` : "لم يتم تحديد عميل"}</span>
+                </div>
+                {deliveryAddress ? (
+                  <div className="text-[11px] text-stone-300 truncate">
+                    📍 {deliveryAddress}
+                  </div>
+                ) : (
+                  <div className="text-[10px] text-amber-400/80">
+                    ⚠️ اضغط هنا لتحديد رقم الهاتف وعنوان التوصيل
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickName(customerName);
+                  setQuickPhone(customerPhone);
+                  setQuickAddress(deliveryAddress);
+                  setCustomerLookupResult(null);
+                  setShowQuickCustomerModal(true);
+                }}
+                className="bg-amber-500 hover:bg-amber-400 text-stone-950 px-2.5 py-1 rounded-lg text-[10px] font-black shrink-0 transition"
+              >
+                {customerName ? "تعديل" : "تحديد"}
+              </button>
+            </div>
+          )}
+
           {/* Draft Notice Banner */}
           {draftNotice && cart.length > 0 && (
             <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl px-2.5 py-1 mt-2 flex items-center justify-between text-[11px] text-amber-300">
@@ -1857,15 +1917,68 @@ export default function PosInterface({
       {/* MODAL: QUICK CUSTOMER */}
       {showQuickCustomerModal && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111116] border border-amber-500/40 rounded-3xl w-full max-w-md p-5 shadow-2xl">
-            <h3 className="text-base font-black text-amber-400 mb-3 flex items-center gap-2">
-              <span>👤</span>
-              <span>تسجيل بيانات العميل والدليفري</span>
-            </h3>
+          <div dir="rtl" className="bg-[#111116] border border-amber-500/50 rounded-3xl w-full max-w-md p-5 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1f293d] mb-3">
+              <h3 className="text-base font-black text-amber-400 flex items-center gap-2">
+                <span>🛵</span>
+                <span>بيانات عميل الدليفري والتوصيل</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowQuickCustomerModal(false)}
+                className="text-stone-400 hover:text-white p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
 
             <div className="space-y-3 text-xs">
+              {/* 1. Phone Input with Live Egyptian Lookup */}
               <div>
-                <label className="text-stone-400 block mb-1">اسم العميل</label>
+                <label className="text-amber-300 block mb-1 font-bold flex items-center justify-between">
+                  <span>رقم الهاتف (بحث فوري بالرقم المصري) *</span>
+                  {isSearchingPhone && (
+                    <span className="text-[10px] text-amber-400 animate-pulse">جاري البحث...</span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={quickPhone}
+                    onChange={(e) => handlePhoneInputChange(e.target.value)}
+                    placeholder="010... / 011... / 012... / 015... / +20..."
+                    className="w-full bg-[#16161e] border-2 border-stone-800 focus:border-amber-500 rounded-xl px-3 py-2 text-stone-100 outline-none font-mono text-sm"
+                    autoFocus
+                  />
+                  <span className="absolute left-3 top-2.5 text-stone-500 text-xs">📞</span>
+                </div>
+              </div>
+
+              {/* Instant Search Feedback Banner */}
+              {customerLookupResult && customerLookupResult !== "NOT_FOUND" && (
+                <div className="bg-emerald-500/15 border border-emerald-500/40 rounded-xl p-2.5 text-[11px] text-emerald-300 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <span>✅</span>
+                    <span>تم العثور على العميل: {customerLookupResult.name}</span>
+                  </div>
+                  {customerLookupResult.orders && customerLookupResult.orders.length > 0 && (
+                    <div className="text-[10px] text-emerald-400/80">
+                      عدد الطلبات السابقة: {customerLookupResult.orders.length} طلب
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {customerLookupResult === "NOT_FOUND" && (
+                <div className="bg-sky-500/15 border border-sky-500/40 rounded-xl p-2 text-[11px] text-sky-300 flex items-center gap-1.5">
+                  <span>✨</span>
+                  <span>عميل جديد: سيتم حفظه تلقائيًا في قاعدة البيانات مع الطلب</span>
+                </div>
+              )}
+
+              {/* 2. Customer Name */}
+              <div>
+                <label className="text-stone-300 block mb-1 font-medium">اسم العميل *</label>
                 <input
                   type="text"
                   value={quickName}
@@ -1875,28 +1988,19 @@ export default function PosInterface({
                 />
               </div>
 
+              {/* 3. Delivery Address */}
               <div>
-                <label className="text-stone-400 block mb-1">رقم الهاتف</label>
-                <input
-                  type="tel"
-                  value={quickPhone}
-                  onChange={(e) => setQuickPhone(e.target.value)}
-                  placeholder="010..."
-                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-amber-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="text-stone-400 block mb-1">عنوان التوصيل (للدليفري)</label>
+                <label className="text-stone-300 block mb-1 font-medium">عنوان التوصيل التفصيلي (يمكن تأكيده أو تعديله)</label>
                 <input
                   type="text"
                   value={quickAddress}
                   onChange={(e) => setQuickAddress(e.target.value)}
-                  placeholder="الشارع - رقم العمارة - الشقة"
+                  placeholder="الشارع - رقم العمارة - الشقة - علامة مميزة"
                   className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-amber-500"
                 />
               </div>
 
+              {/* 4. Delivery Fee */}
               <div>
                 <label className="text-stone-400 block mb-1">رسوم التوصيل (ج.م)</label>
                 <input
@@ -1908,38 +2012,46 @@ export default function PosInterface({
                 />
               </div>
 
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-2 border-t border-stone-800/80">
                 <button
+                  type="button"
                   onClick={async () => {
-                    if (!quickName || !quickPhone) {
+                    if (!quickName.trim() || !quickPhone.trim()) {
                       alert("يرجى إدخال اسم العميل ورقم هاتفه");
                       return;
                     }
-                    const res = await createCustomer({
-                      name: quickName,
-                      phone: quickPhone,
-                      address: quickAddress || undefined,
-                    });
-                    if (res?.customer) {
-                      setCustomersList((prev) => [res.customer, ...prev]);
-                      setSelectedCustomerId(res.customer.id);
-                      setCustomerName(res.customer.name);
-                      setCustomerPhone(res.customer.phone);
-                      if (res.customer.address) setDeliveryAddress(res.customer.address);
-                    } else {
-                      setCustomerName(quickName);
-                      setCustomerPhone(quickPhone);
-                      if (quickAddress) setDeliveryAddress(quickAddress);
+                    try {
+                      const res = await createCustomer({
+                        name: quickName.trim(),
+                        phone: quickPhone.trim(),
+                        address: quickAddress.trim() || undefined,
+                      });
+                      if (res?.customer) {
+                        setCustomersList((prev) => [res.customer, ...prev]);
+                        setSelectedCustomerId(res.customer.id);
+                        setCustomerName(res.customer.name);
+                        setCustomerPhone(res.customer.phone);
+                        if (quickAddress.trim()) setDeliveryAddress(quickAddress.trim());
+                      } else {
+                        setCustomerName(quickName.trim());
+                        setCustomerPhone(quickPhone.trim());
+                        if (quickAddress.trim()) setDeliveryAddress(quickAddress.trim());
+                      }
+                    } catch (e) {
+                      setCustomerName(quickName.trim());
+                      setCustomerPhone(quickPhone.trim());
+                      if (quickAddress.trim()) setDeliveryAddress(quickAddress.trim());
                     }
                     setShowQuickCustomerModal(false);
                   }}
-                  className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-bold py-2 rounded-xl shadow-lg shadow-amber-500/30"
+                  className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-bold py-2.5 rounded-xl shadow-lg shadow-amber-500/30 transition text-xs"
                 >
-                  اعتماد العميل
+                  اعتماد وتثبيت بيانات الدليفري
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowQuickCustomerModal(false)}
-                  className="px-4 py-2 bg-stone-800 text-stone-300 rounded-xl"
+                  className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl transition text-xs"
                 >
                   إلغاء
                 </button>
@@ -1986,6 +2098,7 @@ export default function PosInterface({
           currentShift={activeShift}
           userId={userId}
           userName={userName}
+          userRole={userRole}
           onClose={() => setShowShiftModal(false)}
           onShiftUpdated={(updatedShift) => setActiveShift(updatedShift)}
         />

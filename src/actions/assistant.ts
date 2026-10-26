@@ -47,6 +47,7 @@ export interface OrderSearchResult {
   customerMeatWeight?: number | null;
   itemsCount: number;
   items: Array<{
+    id?: string;
     nameAr: string;
     quantity: number;
     unitPrice: number;
@@ -325,6 +326,7 @@ export async function searchOrdersForCashier({
         customerMeatWeight: o.customerMeatWeight,
         itemsCount: o.items.length,
         items: o.items.map((it) => ({
+          id: it.id,
           nameAr: it.menuItem?.nameAr || "صنف مشويات",
           quantity: it.quantity,
           unitPrice: it.unitPrice,
