@@ -1151,6 +1151,18 @@ export default function PosInterface({
             </div>
           </div>
 
+          {/* Admin / Manager Dashboard Shortcut (Only visible to ADMIN & MANAGER) */}
+          {(userRole === "ADMIN" || userRole === "MANAGER") && (
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-1.5 bg-[#1A2C3F] hover:bg-[#D97706] border border-[#D97706] text-[#FDE68A] hover:text-white px-3 py-1.5 rounded-xl text-xs font-black transition shadow-sm"
+              title="الانتقال المباشر إلى لوحة الإدارة"
+            >
+              <span className="text-sm">📊</span>
+              <span>لوحة الإدارة</span>
+            </Link>
+          )}
+
           {/* Slogan */}
           <div className="hidden xl:block">
             <span className="text-xs font-bold text-[#FDE68A] tracking-wide border-r border-[#334E68] pr-4">
@@ -1171,12 +1183,14 @@ export default function PosInterface({
             </div>
           </div>
 
-          {/* Cashier Badge */}
+          {/* User / Cashier Badge */}
           <div className="flex items-center gap-2 bg-[#1A2C3F] border border-[#334E68] rounded-xl px-3 py-1 text-xs">
             <span className="text-[#D9E2EC] text-sm">👤</span>
             <div className="text-right">
-              <p className="font-bold text-white text-[11px] leading-tight">{userName || "أحمد محمد"}</p>
-              <p className="text-[9px] text-[#9FB3C8] font-semibold">كاشير</p>
+              <p className="font-bold text-white text-[11px] leading-tight">{userName || "المستخدم"}</p>
+              <p className="text-[9px] text-[#9FB3C8] font-semibold">
+                {userRole === "ADMIN" ? "مدير النظام" : userRole === "MANAGER" ? "مدير الفرع" : "كاشير"}
+              </p>
             </div>
           </div>
 
