@@ -3,8 +3,27 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --app-bg: #F4F6F8;
+    --app-card: #FFFFFF;
+    --app-border: #D9E0E7;
+    --app-text: #1F2937;
+    --app-text-muted: #5B6472;
+    --brand-navy: #243B53;
+    --brand-accent: #3B82A0;
+    --brand-gold: #D97706;
+    --status-success: #237A57;
+    --status-success-bg: #EBF7F0;
+    --status-warning: #946200;
+    --status-warning-bg: #FFFBEB;
+    --status-danger: #B42318;
+    --status-danger-bg: #FEF2F2;
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900;
+    background-color: var(--app-bg);
+    color: var(--app-text);
+    font-family: 'Cairo', 'Tajawal', sans-serif;
   }
 
   /* Smooth scrolling for the entire app */
@@ -12,21 +31,23 @@
     scroll-behavior: smooth;
   }
 
-  /* Custom scrollbar for POS kiosk feel */
+  /* Custom scrollbar for POS touch kiosk feel */
   ::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-gray-100;
+    background: #E8ECEF;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
+    background: #CBD5E1;
+    border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400;
+    background: #94A3B8;
   }
 }
 

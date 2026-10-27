@@ -66,34 +66,34 @@ export default function WeightModal({ item, onClose, onAdd }: WeightModalProps) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-sm" dir="rtl">
-      <div className="bg-[#121217] border border-orange-500/40 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/60 backdrop-blur-sm font-sans" dir="rtl">
+      <div className="bg-[#FFFFFF] border border-[#D9E0E7] rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in duration-150">
         
         {/* Header */}
-        <div className="p-4 bg-gradient-to-r from-orange-950/60 to-stone-900 border-b border-orange-500/30 flex items-center justify-between">
+        <div className="p-4 bg-[#243B53] text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="text-2xl">⚖️</span>
             <div>
               <h2 className="text-base font-black text-white">{item.nameAr}</h2>
-              <p className="text-xs text-orange-400 font-bold font-mono">
+              <p className="text-xs text-[#FDE68A] font-bold font-mono">
                 سعر الكيلو الأساسي: {item.price} ج.م / كجم
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full bg-[#1A2C3F] text-slate-300 hover:text-white flex items-center justify-center transition"
           >
             ✕
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
+        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto bg-[#F4F6F8]">
           
           {/* Presets Grid */}
           <div>
-            <label className="block text-xs font-bold text-stone-300 mb-2">
+            <label className="block text-xs font-bold text-[#1F2937] mb-2">
               اختر الوزن المطلوب (بالجرام):
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -106,12 +106,12 @@ export default function WeightModal({ item, onClose, onAdd }: WeightModalProps) 
                     onClick={() => handleSelectPreset(p.grams)}
                     className={`p-2.5 rounded-xl border text-center transition flex flex-col items-center justify-center gap-0.5 ${
                       isSelected
-                        ? "bg-gradient-to-r from-orange-500 to-amber-500 text-stone-950 font-black border-orange-400 shadow-md shadow-orange-500/20"
-                        : "bg-stone-900/90 text-stone-200 border-stone-800 hover:border-orange-500/50 font-bold"
+                        ? "bg-[#243B53] text-white font-black border-[#243B53] shadow-md"
+                        : "bg-[#FFFFFF] text-[#1F2937] border-[#D9E0E7] hover:border-[#3B82A0] font-bold"
                     }`}
                   >
                     <span className="text-xs">{p.label}</span>
-                    <span className="text-[10px] font-mono opacity-80">{p.grams} جم</span>
+                    <span className={`text-[10px] font-mono ${isSelected ? "text-[#D9E2EC]" : "text-[#5B6472]"}`}>{p.grams} جم</span>
                   </button>
                 );
               })}
@@ -119,9 +119,9 @@ export default function WeightModal({ item, onClose, onAdd }: WeightModalProps) 
           </div>
 
           {/* Custom Weight Input */}
-          <div className="bg-stone-900/80 p-3 rounded-2xl border border-stone-800 space-y-1.5">
-            <label className="block text-xs font-bold text-stone-300">
-              أو أدخل وزناً مخصصاً بالجرام (Custom Weight):
+          <div className="bg-[#FFFFFF] p-3 rounded-2xl border border-[#D9E0E7] space-y-1.5 shadow-sm">
+            <label className="block text-xs font-bold text-[#1F2937]">
+              أو أدخل وزناً مخصصاً بالجرام (وزن يدوي):
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -131,29 +131,29 @@ export default function WeightModal({ item, onClose, onAdd }: WeightModalProps) 
                 placeholder="مثلاً: 350، 420، 1250..."
                 value={customGramsInput}
                 onChange={handleCustomChange}
-                className="flex-1 bg-stone-950 border border-orange-500/40 focus:border-orange-500 text-white font-mono font-bold text-sm px-3 py-2 rounded-xl outline-none"
+                className="flex-1 bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#243B53] text-[#1F2937] font-mono font-bold text-sm px-3 py-2 rounded-xl outline-none"
               />
-              <span className="text-xs text-stone-400 font-bold">جرام</span>
+              <span className="text-xs text-[#5B6472] font-bold">جرام</span>
             </div>
           </div>
 
           {/* Live Price Calculation Box */}
-          <div className="bg-gradient-to-r from-stone-950 to-orange-950/40 p-3.5 rounded-2xl border border-orange-500/40 flex items-center justify-between">
+          <div className="bg-[#EBF7F0] p-3.5 rounded-2xl border border-[#A7F3D0] flex items-center justify-between shadow-sm">
             <div>
-              <p className="text-[11px] text-stone-400 font-bold">الوزن المعتمد: {activeGrams} جم ({(activeGrams / 1000).toFixed(3)} كجم)</p>
-              <p className="text-[10px] text-stone-500 font-mono">
+              <p className="text-[11px] text-[#237A57] font-bold">الوزن المعتمد: {activeGrams} جم ({(activeGrams / 1000).toFixed(3)} كجم)</p>
+              <p className="text-[10px] text-[#5B6472] font-mono">
                 ({activeGrams} ÷ 1000) × {item.price} ج.م
               </p>
             </div>
             <div className="text-left font-mono">
-              <span className="text-xl font-black text-amber-400">{calculatedPrice}</span>
-              <span className="text-xs text-orange-400 font-bold mr-1">ج.م</span>
+              <span className="text-2xl font-black text-[#237A57]">{calculatedPrice}</span>
+              <span className="text-xs text-[#237A57] font-bold mr-1">ج.م</span>
             </div>
           </div>
 
           {/* Special Notes */}
           <div>
-            <label className="block text-xs font-bold text-stone-300 mb-1">
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">
               ملاحظات تجهيز أو تسوية (اختياري):
             </label>
             <input
@@ -161,24 +161,24 @@ export default function WeightModal({ item, onClose, onAdd }: WeightModalProps) 
               placeholder="مثال: تسوية زيادة، بدون شطة، بهارات خفيفة..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-stone-950 border border-stone-800 focus:border-orange-500 text-stone-200 text-xs px-3 py-2 rounded-xl outline-none"
+              className="w-full bg-[#FFFFFF] border border-[#D9E0E7] focus:border-[#243B53] text-[#1F2937] text-xs px-3 py-2 rounded-xl outline-none"
             />
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="p-3 bg-stone-950 border-t border-stone-800 flex items-center gap-2">
+        <div className="p-3 bg-[#FFFFFF] border-t border-[#D9E0E7] flex items-center gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold rounded-xl text-xs transition"
+            className="flex-1 py-2.5 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#5B6472] font-bold rounded-xl text-xs transition"
           >
             إلغاء
           </button>
           <button
             type="button"
             onClick={handleConfirm}
-            className="flex-[2] py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-stone-950 font-black rounded-xl text-xs transition shadow-lg shadow-orange-500/20 flex items-center justify-center gap-1.5"
+            className="flex-[2] py-2.5 bg-[#237A57] hover:bg-[#1D6447] text-white font-black rounded-xl text-xs transition shadow-md flex items-center justify-center gap-1.5"
           >
             <span>+ إضافة للطلب ({calculatedPrice} ج.م)</span>
           </button>

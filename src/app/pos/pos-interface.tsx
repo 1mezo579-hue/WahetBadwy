@@ -1129,23 +1129,23 @@ export default function PosInterface({
   const cartTotalItemsCount = cart.reduce((s, i) => s + i.quantity, 0);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0b0f19] text-stone-100 select-none font-sans relative" dir="rtl">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F4F6F8] text-[#1F2937] select-none font-sans relative" dir="rtl">
       
-      {/* 1. TOP HEADER (Exact match to reference) */}
-      <header className="h-16 shrink-0 bg-[#0c101d] border-b border-[#1c2438] px-4 flex items-center justify-between relative z-30 shadow-2xl">
+      {/* 1. TOP HEADER (Ergonomic Mashweyat Basiony Theme) */}
+      <header className="h-16 shrink-0 bg-[#243B53] border-b border-[#1A2C3F] px-4 flex items-center justify-between relative z-30 shadow-md text-white">
         
         {/* Right side in RTL: Brand Logo, Slogan, Date/Time, Cashier */}
         <div className="flex items-center gap-4 lg:gap-6">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-tr from-amber-600 to-orange-500 shadow-md shadow-orange-600/30 text-2xl">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#D97706] shadow text-2xl text-white">
               🔥
             </div>
             <div>
-              <h1 className="text-xl font-black text-amber-500 leading-none tracking-tight">
+              <h1 className="text-xl font-black text-white leading-none tracking-tight">
                 مشويات بسيوني
               </h1>
-              <p className="text-[9px] font-mono font-bold tracking-wider text-stone-400 uppercase mt-0.5">
+              <p className="text-[9px] font-mono font-bold tracking-wider text-[#D9E2EC] uppercase mt-0.5">
                 MASHWEYAT BASIONY
               </p>
             </div>
@@ -1153,30 +1153,30 @@ export default function PosInterface({
 
           {/* Slogan */}
           <div className="hidden xl:block">
-            <span className="text-xs font-bold text-amber-300/80 tracking-wide border-r border-stone-800 pr-4">
+            <span className="text-xs font-bold text-[#FDE68A] tracking-wide border-r border-[#334E68] pr-4">
               طعم زمان على أصوله
             </span>
           </div>
 
           {/* Date & Time */}
-          <div className="hidden md:flex items-center gap-3 bg-[#111624] border border-[#1e2638] rounded-xl px-3 py-1.5 text-xs text-stone-300 font-mono">
-            <div className="flex items-center gap-1.5 text-stone-300 font-bold">
+          <div className="hidden md:flex items-center gap-3 bg-[#1A2C3F] border border-[#334E68] rounded-xl px-3 py-1.5 text-xs text-[#D9E2EC] font-mono">
+            <div className="flex items-center gap-1.5 text-white font-bold">
               <span>📅</span>
               <span>{currentDateTime.dateStr}</span>
             </div>
-            <div className="w-px h-3 bg-stone-700"></div>
-            <div className="flex items-center gap-1.5 text-amber-400 font-black">
+            <div className="w-px h-3 bg-[#334E68]"></div>
+            <div className="flex items-center gap-1.5 text-[#FDE68A] font-black">
               <span>⏰</span>
               <span>{currentDateTime.timeStr}</span>
             </div>
           </div>
 
           {/* Cashier Badge */}
-          <div className="flex items-center gap-2 bg-[#111624] border border-[#1e2638] rounded-xl px-3 py-1 text-xs">
-            <span className="text-stone-300 text-sm">👤</span>
+          <div className="flex items-center gap-2 bg-[#1A2C3F] border border-[#334E68] rounded-xl px-3 py-1 text-xs">
+            <span className="text-[#D9E2EC] text-sm">👤</span>
             <div className="text-right">
-              <p className="font-bold text-stone-100 text-[11px] leading-tight">{userName || "أحمد محمد"}</p>
-              <p className="text-[9px] text-stone-400 font-semibold">كاشير</p>
+              <p className="font-bold text-white text-[11px] leading-tight">{userName || "أحمد محمد"}</p>
+              <p className="text-[9px] text-[#9FB3C8] font-semibold">كاشير</p>
             </div>
           </div>
 
@@ -1185,8 +1185,8 @@ export default function PosInterface({
             onClick={() => setShowShiftModal(true)}
             className={`flex items-center gap-2 border rounded-xl px-3 py-1 text-xs transition cursor-pointer ${
               activeShift && activeShift.status === "OPEN"
-                ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/20"
-                : "bg-rose-500/15 border-rose-500/50 text-rose-300 animate-pulse hover:bg-rose-500/25"
+                ? "bg-[#237A57]/30 border-[#237A57] text-[#A7F3D0] hover:bg-[#237A57]/45"
+                : "bg-[#B42318]/30 border-[#B42318] text-[#FECACA] animate-pulse hover:bg-[#B42318]/45"
             }`}
             title="إدارة وتقفيل الوردية والخزينة"
           >
@@ -1203,7 +1203,7 @@ export default function PosInterface({
 
           {/* Offline / Sync Status Indicator */}
           {!isOnline && (
-            <div className="flex items-center gap-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/50 rounded-xl px-2.5 py-1 text-xs font-bold animate-pulse">
+            <div className="flex items-center gap-1.5 bg-[#B42318]/30 text-[#FECACA] border border-[#B42318] rounded-xl px-2.5 py-1 text-xs font-bold animate-pulse">
               <span>⚡</span>
               <span>غير متصل (أوفلاين)</span>
             </div>
@@ -1212,7 +1212,7 @@ export default function PosInterface({
           {offlineQueueCount > 0 && (
             <button
               onClick={syncOfflineOrders}
-              className="flex items-center gap-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 rounded-xl px-2.5 py-1 text-xs font-bold transition"
+              className="flex items-center gap-1.5 bg-[#946200]/30 text-[#FDE68A] border border-[#946200] hover:bg-[#946200]/50 rounded-xl px-2.5 py-1 text-xs font-bold transition"
               title="اضغط للمزامنة اليدوية الآن"
             >
               <span>🔄</span>
@@ -1226,7 +1226,7 @@ export default function PosInterface({
           {/* Quick Order / Invoice Search Button */}
           <button
             onClick={() => setShowOrderSearchModal(true)}
-            className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-amber-500 hover:text-amber-400 text-stone-200 font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
+            className="px-3 py-1.5 rounded-xl bg-[#1A2C3F] border border-[#334E68] hover:border-[#D97706] hover:text-[#FDE68A] text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
             title="بحث سريع عن طلب أو فاتورة برقم الهاتف، رقم الفاتورة، أو اسم العميل"
           >
             <span className="text-sm">🔍</span>
@@ -1236,23 +1236,23 @@ export default function PosInterface({
           {/* Delivery & Rider Ledger Button */}
           <button
             onClick={() => setShowDeliveryModal(true)}
-            className="px-3 py-1.5 rounded-xl bg-teal-500/15 border border-teal-500/40 hover:bg-teal-500/25 text-teal-300 font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
+            className="px-3 py-1.5 rounded-xl bg-[#3B82A0]/25 border border-[#3B82A0] hover:bg-[#3B82A0]/40 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
             title="إدارة طلبات الدليفري ودفتر عهدة الطيارين"
           >
             <span className="text-sm">🛵</span>
             <span className="hidden sm:inline">إدارة الدليفري</span>
           </button>
 
-          {/* 1. CUSTOMER GRILL (Special Golden Filled Button) */}
+          {/* 1. CUSTOMER GRILL (Special Warm Amber Filled Button) */}
           <button
             onClick={() => {
               setOrderType("CUSTOMER_GRILL");
               setSelectedTable(null);
             }}
-            className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition font-black text-xs shadow-md ${
+            className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition font-black text-xs shadow ${
               orderType === "CUSTOMER_GRILL"
-                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 shadow-orange-500/30 border-2 border-amber-300 scale-105"
-                : "bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30"
+                ? "bg-[#D97706] text-white border-2 border-[#FDE68A] scale-105"
+                : "bg-[#1A2C3F] text-[#FDE68A] border border-[#334E68] hover:bg-[#334E68]"
             }`}
           >
             <span className="text-base">🔥</span>
@@ -1267,14 +1267,14 @@ export default function PosInterface({
             onClick={handleStartDineIn}
             className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition font-bold text-xs border ${
               orderType === "DINE_IN"
-                ? "bg-[#182033] border-amber-500 text-amber-400 shadow-md font-black"
-                : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-600 hover:text-white"
+                ? "bg-[#FFFFFF] border-2 border-[#3B82A0] text-[#243B53] shadow-md font-black"
+                : "bg-[#1A2C3F] border-[#334E68] text-white hover:border-[#9FB3C8]"
             }`}
           >
-            <span className="text-base text-sky-400">🪑</span>
+            <span className="text-base text-[#38BDF8]">🪑</span>
             <div className="text-right">
               <p className="leading-tight">الصالة</p>
-              <p className="text-[9px] text-stone-400 truncate max-w-[70px]">
+              <p className="text-[9px] text-[#9FB3C8] truncate max-w-[70px]">
                 {selectedTable ? selectedTable.name : "طاولة"}
               </p>
             </div>
@@ -1285,14 +1285,14 @@ export default function PosInterface({
             onClick={handleStartDelivery}
             className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition font-bold text-xs border ${
               orderType === "DELIVERY"
-                ? "bg-[#182033] border-amber-500 text-amber-400 shadow-md font-black"
-                : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-600 hover:text-white"
+                ? "bg-[#FFFFFF] border-2 border-[#3B82A0] text-[#243B53] shadow-md font-black"
+                : "bg-[#1A2C3F] border-[#334E68] text-white hover:border-[#9FB3C8]"
             }`}
           >
-            <span className="text-base text-teal-400">🛵</span>
+            <span className="text-base text-[#2DD4BF]">🛵</span>
             <div className="text-right">
               <p className="leading-tight">دليفري</p>
-              <p className="text-[9px] text-stone-400">توصيل</p>
+              <p className="text-[9px] text-[#9FB3C8]">توصيل</p>
             </div>
           </button>
 
@@ -1301,21 +1301,21 @@ export default function PosInterface({
             onClick={handleStartTakeaway}
             className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition font-bold text-xs border ${
               orderType === "TAKEAWAY"
-                ? "bg-[#182033] border-amber-500 text-amber-400 shadow-md font-black"
-                : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-600 hover:text-white"
+                ? "bg-[#FFFFFF] border-2 border-[#3B82A0] text-[#243B53] shadow-md font-black"
+                : "bg-[#1A2C3F] border-[#334E68] text-white hover:border-[#9FB3C8]"
             }`}
           >
-            <span className="text-base text-amber-400">🛍️</span>
+            <span className="text-base text-[#FDE68A]">🛍️</span>
             <div className="text-right">
               <p className="leading-tight">تيك أواي</p>
-              <p className="text-[9px] text-stone-400">سفري</p>
+              <p className="text-[9px] text-[#9FB3C8]">سفري</p>
             </div>
           </button>
 
           {/* Logout shortcut */}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="p-2 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-rose-500 text-stone-400 hover:text-rose-400 text-xs transition mr-1"
+            className="p-2 rounded-xl bg-[#1A2C3F] border border-[#334E68] hover:border-[#B42318] text-[#D9E2EC] hover:text-[#FCA5A5] text-xs transition mr-1"
             title="تسجيل الخروج"
           >
             🚪
@@ -1324,36 +1324,36 @@ export default function PosInterface({
       </header>
 
       {/* 2. MAIN WORKSPACE (Left: Cart, Right: Menu & Food Cards) */}
-      <div className="flex-1 flex overflow-hidden bg-[#090d16]">
+      <div className="flex-1 flex overflow-hidden bg-[#F4F6F8]">
         
         {/* LEFT COLUMN: CURRENT ORDER PANEL ("الطلب الحالي") */}
-        <section className="w-[340px] sm:w-[360px] lg:w-[380px] bg-[#0c101c] border-l border-[#1c2438] flex flex-col justify-between shrink-0 p-3 z-20">
+        <section className="w-[340px] sm:w-[360px] lg:w-[380px] bg-[#FFFFFF] border-l border-[#D9E0E7] flex flex-col justify-between shrink-0 p-3 z-20 shadow-sm">
           
           {/* Header of Cart */}
-          <div className="flex items-center justify-between pb-2 border-b border-[#1c2438]">
-            <div className="flex items-center gap-2 text-white font-black text-sm">
-              <span className="text-amber-400 text-base">🛒</span>
+          <div className="flex items-center justify-between pb-2 border-b border-[#D9E0E7]">
+            <div className="flex items-center gap-2 text-[#1F2937] font-black text-sm">
+              <span className="text-[#D97706] text-base">🛒</span>
               <span>الطلب الحالي</span>
             </div>
-            <div className="bg-sky-500/20 text-sky-400 border border-sky-500/40 rounded-lg px-2.5 py-0.5 text-xs font-mono font-black">
+            <div className="bg-[#F0F4F8] text-[#243B53] border border-[#CBD5E1] rounded-lg px-2.5 py-0.5 text-xs font-mono font-black">
               #{activeOrderId ? activeOrderId.slice(-4) : "1258"}
             </div>
           </div>
 
           {/* Delivery Channel Info Banner */}
           {orderType === "DELIVERY" && (
-            <div className="bg-[#111728] border border-amber-500/40 rounded-xl p-2.5 mt-2 flex items-center justify-between text-xs">
+            <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl p-2.5 mt-2 flex items-center justify-between text-xs">
               <div className="space-y-0.5 min-w-0 pr-1">
-                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                <div className="flex items-center gap-1.5 font-bold text-[#243B53]">
                   <span>🛵 دليفري:</span>
                   <span className="truncate">{customerName ? `${customerName} (${customerPhone})` : "لم يتم تحديد عميل"}</span>
                 </div>
                 {deliveryAddress ? (
-                  <div className="text-[11px] text-stone-300 truncate">
+                  <div className="text-[11px] text-[#5B6472] truncate">
                     📍 {deliveryAddress}
                   </div>
                 ) : (
-                  <div className="text-[10px] text-amber-400/80">
+                  <div className="text-[10px] text-[#946200]">
                     ⚠️ اضغط هنا لتحديد رقم الهاتف وعنوان التوصيل
                   </div>
                 )}
@@ -1367,7 +1367,7 @@ export default function PosInterface({
                   setCustomerLookupResult(null);
                   setShowQuickCustomerModal(true);
                 }}
-                className="bg-amber-500 hover:bg-amber-400 text-stone-950 px-2.5 py-1 rounded-lg text-[10px] font-black shrink-0 transition"
+                className="bg-[#243B53] hover:bg-[#1A2C3F] text-white px-2.5 py-1 rounded-lg text-[10px] font-black shrink-0 transition"
               >
                 {customerName ? "تعديل" : "تحديد"}
               </button>
@@ -1376,14 +1376,14 @@ export default function PosInterface({
 
           {/* Draft Notice Banner */}
           {draftNotice && cart.length > 0 && (
-            <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl px-2.5 py-1 mt-2 flex items-center justify-between text-[11px] text-amber-300">
+            <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-xl px-2.5 py-1 mt-2 flex items-center justify-between text-[11px] text-[#946200]">
               <div className="flex items-center gap-1.5">
                 <span>⚡</span>
                 <span className="font-bold">مسودة الطلب محفوظة ومسترجعة</span>
               </div>
               <button
                 onClick={() => setDraftNotice(false)}
-                className="text-stone-400 hover:text-white text-xs px-1"
+                className="text-[#946200] hover:text-[#1F2937] text-xs px-1"
               >
                 ✕
               </button>
@@ -1393,31 +1393,31 @@ export default function PosInterface({
           {/* Cart Items List */}
           <div className="flex-1 overflow-y-auto space-y-2 py-2 pr-0.5">
             {cart.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-stone-500 text-xs py-12">
-                <span className="text-4xl mb-2 text-stone-600">🛍️</span>
-                <span className="font-bold text-stone-400">لا توجد أصناف في الطلب</span>
-                <span className="text-[10px] text-stone-600 mt-1">اضغط على أي صنف لإضافته مباشرة</span>
+              <div className="h-full flex flex-col items-center justify-center text-[#94A3B8] text-xs py-12">
+                <span className="text-4xl mb-2 text-[#CBD5E1]">🛍️</span>
+                <span className="font-bold text-[#5B6472]">لا توجد أصناف في الطلب</span>
+                <span className="text-[10px] text-[#94A3B8] mt-1">اضغط على أي صنف لإضافته مباشرة</span>
               </div>
             ) : (
               cart.map((item) => (
                 <div
                   key={item.menuItemId}
-                  className="bg-[#111726] border border-[#1e263d] rounded-xl p-2.5 flex items-center gap-2.5 transition group hover:border-[#2a3654]"
+                  className="bg-[#F8FAFC] border border-[#D9E0E7] rounded-xl p-2.5 flex items-center gap-2.5 transition group hover:border-[#CBD5E1] shadow-xs"
                 >
                   {/* Dish Thumbnail */}
                   <img
                     src={getMenuItemImage(item.nameAr)}
                     alt={item.nameAr}
-                    className="w-12 h-12 rounded-lg object-cover bg-stone-900 shrink-0 border border-stone-800"
+                    className="w-12 h-12 rounded-lg object-cover bg-stone-100 shrink-0 border border-[#E2E8F0]"
                   />
 
                   {/* Name and Stepper Controls */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-xs text-white truncate leading-tight">
+                    <p className="font-bold text-xs text-[#1F2937] truncate leading-tight">
                       {item.nameAr}
                     </p>
                     {item.notes && (
-                      <p className="text-[10px] text-stone-400 truncate mt-0.5 font-medium">
+                      <p className="text-[10px] text-[#5B6472] truncate mt-0.5 font-medium">
                         {item.notes}
                       </p>
                     )}
@@ -1426,16 +1426,16 @@ export default function PosInterface({
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <button
                         onClick={() => handleUpdateQuantity(item.menuItemId, -1)}
-                        className="w-5 h-5 rounded bg-stone-800 hover:bg-amber-500 hover:text-black text-stone-300 text-xs flex items-center justify-center font-bold transition"
+                        className="w-5 h-5 rounded bg-[#E2E8F0] hover:bg-[#CBD5E1] text-[#1F2937] text-xs flex items-center justify-center font-bold transition"
                       >
                         -
                       </button>
-                      <span className="w-5 text-center font-mono font-bold text-xs text-stone-100">
+                      <span className="w-5 text-center font-mono font-bold text-xs text-[#1F2937]">
                         {item.quantity}
                       </span>
                       <button
                         onClick={() => handleUpdateQuantity(item.menuItemId, 1)}
-                        className="w-5 h-5 rounded bg-stone-800 hover:bg-amber-500 hover:text-black text-stone-300 text-xs flex items-center justify-center font-bold transition"
+                        className="w-5 h-5 rounded bg-[#E2E8F0] hover:bg-[#CBD5E1] text-[#1F2937] text-xs flex items-center justify-center font-bold transition"
                       >
                         +
                       </button>
@@ -1444,12 +1444,12 @@ export default function PosInterface({
 
                   {/* Price & Delete */}
                   <div className="flex flex-col items-end justify-between h-12 shrink-0">
-                    <span className="font-mono font-black text-xs text-amber-400">
+                    <span className="font-mono font-black text-xs text-[#237A57]">
                       {(item.price * item.quantity).toFixed(2)} ج.م
                     </span>
                     <button
                       onClick={() => handleRemoveItem(item.menuItemId)}
-                      className="text-stone-500 hover:text-rose-400 text-xs p-0.5 transition"
+                      className="text-[#94A3B8] hover:text-[#B42318] text-xs p-0.5 transition"
                       title="حذف الصنف"
                     >
                       🗑️
@@ -1461,27 +1461,27 @@ export default function PosInterface({
           </div>
 
           {/* Financial Totals Block */}
-          <div className="pt-2 border-t border-[#1c2438] space-y-1">
-            <div className="flex justify-between items-center text-xs text-stone-400 font-bold">
+          <div className="pt-2 border-t border-[#D9E0E7] space-y-1">
+            <div className="flex justify-between items-center text-xs text-[#5B6472] font-bold">
               <span>إجمالي الأصناف ({cartTotalItemsCount})</span>
-              <span className="font-mono text-stone-300">{subtotal.toFixed(2)} ج.م</span>
+              <span className="font-mono text-[#1F2937]">{subtotal.toFixed(2)} ج.م</span>
             </div>
-            <div className="flex justify-between items-center text-sm font-black text-stone-100">
+            <div className="flex justify-between items-center text-sm font-black text-[#1F2937]">
               <span>إجمالي الطلب</span>
-              <span className="font-mono text-lg text-amber-400">{totalAmount.toFixed(2)} ج.م</span>
+              <span className="font-mono text-xl text-[#237A57] font-black">{totalAmount.toFixed(2)} ج.م</span>
             </div>
           </div>
 
           {/* Payment Method Tabs */}
-          <div className="mt-2.5 pt-2 border-t border-[#1c2438]">
+          <div className="mt-2.5 pt-2 border-t border-[#D9E0E7]">
             <div className="grid grid-cols-3 gap-1.5">
               <button
                 type="button"
                 onClick={() => setPaymentMethod("CASH")}
                 className={`py-2 px-1 rounded-xl text-center font-bold text-xs transition flex flex-col items-center justify-center gap-1 border ${
                   paymentMethod === "CASH"
-                    ? "bg-amber-500/20 border-amber-500 text-amber-300 font-black shadow-md shadow-amber-500/20"
-                    : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-700"
+                    ? "bg-[#EBF7F0] border-2 border-[#237A57] text-[#237A57] font-black shadow-sm"
+                    : "bg-[#F8FAFC] border border-[#D9E0E7] text-[#5B6472] hover:bg-[#F1F5F9]"
                 }`}
               >
                 <span className="text-sm">💵</span>
@@ -1492,8 +1492,8 @@ export default function PosInterface({
                 onClick={() => setPaymentMethod("CARD")}
                 className={`py-2 px-1 rounded-xl text-center font-bold text-xs transition flex flex-col items-center justify-center gap-1 border ${
                   paymentMethod === "CARD"
-                    ? "bg-sky-500/20 border-sky-500 text-sky-300 font-black shadow-md shadow-sky-500/20"
-                    : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-700"
+                    ? "bg-[#F0F7FA] border-2 border-[#3B82A0] text-[#0369A1] font-black shadow-sm"
+                    : "bg-[#F8FAFC] border border-[#D9E0E7] text-[#5B6472] hover:bg-[#F1F5F9]"
                 }`}
               >
                 <span className="text-sm">💳</span>
@@ -1504,8 +1504,8 @@ export default function PosInterface({
                 onClick={() => setPaymentMethod("WALLET")}
                 className={`py-2 px-1 rounded-xl text-center font-bold text-xs transition flex flex-col items-center justify-center gap-1 border ${
                   paymentMethod === "WALLET"
-                    ? "bg-purple-500/20 border-purple-500 text-purple-300 font-black shadow-md shadow-purple-500/20"
-                    : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-700"
+                    ? "bg-[#FAF5FF] border-2 border-[#7E22CE] text-[#7E22CE] font-black shadow-sm"
+                    : "bg-[#F8FAFC] border border-[#D9E0E7] text-[#5B6472] hover:bg-[#F1F5F9]"
                 }`}
               >
                 <span className="text-sm">📱</span>
@@ -1515,9 +1515,9 @@ export default function PosInterface({
 
             {/* Cash Input & Change */}
             {paymentMethod === "CASH" && (
-              <div className="mt-2 bg-[#111624] border border-[#1e2638] rounded-xl p-2 space-y-1.5 text-xs">
+              <div className="mt-2 bg-[#F8FAFC] border border-[#D9E0E7] rounded-xl p-2 space-y-1.5 text-xs">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-stone-400 font-bold shrink-0">
+                  <div className="flex items-center gap-1.5 text-[#5B6472] font-bold shrink-0">
                     <span>🧮</span>
                     <span>المبلغ المدفوع</span>
                   </div>
@@ -1528,7 +1528,7 @@ export default function PosInterface({
                     value={amountPaidInput}
                     onChange={(e) => setAmountPaidInput(e.target.value)}
                     placeholder={totalAmount > 0 ? String(totalAmount) : "0"}
-                    className="w-24 bg-[#182033] border border-amber-500/50 focus:border-amber-400 text-amber-300 text-left font-mono font-black text-sm rounded-lg px-2 py-1 outline-none"
+                    className="w-24 bg-[#FFFFFF] border border-[#CBD5E1] focus:border-[#243B53] text-[#1F2937] text-left font-mono font-black text-sm rounded-lg px-2 py-1 outline-none"
                   />
                 </div>
 
@@ -1537,7 +1537,7 @@ export default function PosInterface({
                   <button
                     type="button"
                     onClick={() => setAmountPaidInput(totalAmount.toString())}
-                    className="bg-[#182033] hover:bg-amber-600/30 text-stone-300 text-[10px] font-bold py-0.5 rounded border border-stone-800 transition"
+                    className="bg-[#FFFFFF] hover:bg-[#F1F5F9] text-[#1F2937] text-[10px] font-bold py-0.5 rounded border border-[#CBD5E1] transition"
                   >
                     بالضبط
                   </button>
@@ -1547,7 +1547,7 @@ export default function PosInterface({
                       const base = Math.ceil(totalAmount / 50) * 50;
                       setAmountPaidInput((base === totalAmount ? base + 50 : base).toString());
                     }}
-                    className="bg-[#182033] hover:bg-amber-600/30 text-stone-300 text-[10px] font-bold py-0.5 rounded border border-stone-800 transition"
+                    className="bg-[#FFFFFF] hover:bg-[#F1F5F9] text-[#1F2937] text-[10px] font-bold py-0.5 rounded border border-[#CBD5E1] transition"
                   >
                     +50
                   </button>
@@ -1557,7 +1557,7 @@ export default function PosInterface({
                       const base = Math.ceil(totalAmount / 100) * 100;
                       setAmountPaidInput((base === totalAmount ? base + 100 : base).toString());
                     }}
-                    className="bg-[#182033] hover:bg-amber-600/30 text-stone-300 text-[10px] font-bold py-0.5 rounded border border-stone-800 transition"
+                    className="bg-[#FFFFFF] hover:bg-[#F1F5F9] text-[#1F2937] text-[10px] font-bold py-0.5 rounded border border-[#CBD5E1] transition"
                   >
                     +100
                   </button>
@@ -1567,15 +1567,15 @@ export default function PosInterface({
                       const base = Math.ceil(totalAmount / 200) * 200;
                       setAmountPaidInput((base === totalAmount ? base + 200 : base).toString());
                     }}
-                    className="bg-[#182033] hover:bg-amber-600/30 text-stone-300 text-[10px] font-bold py-0.5 rounded border border-stone-800 transition"
+                    className="bg-[#FFFFFF] hover:bg-[#F1F5F9] text-[#1F2937] text-[10px] font-bold py-0.5 rounded border border-[#CBD5E1] transition"
                   >
                     +200
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between pt-1 border-t border-stone-800">
-                  <span className="text-stone-300 font-bold">الباقي:</span>
-                  <span className="font-mono font-black text-emerald-400 text-sm">
+                <div className="flex items-center justify-between pt-1 border-t border-[#E2E8F0]">
+                  <span className="text-[#5B6472] font-bold">الباقي:</span>
+                  <span className="font-mono font-black text-[#237A57] text-sm">
                     {changeDue.toFixed(2)} ج.م
                   </span>
                 </div>
@@ -1587,7 +1587,7 @@ export default function PosInterface({
           <div className="grid grid-cols-2 gap-2 mt-2">
             <button
               onClick={handleClearOrder}
-              className="bg-rose-950/50 hover:bg-rose-900/80 border border-rose-600/50 text-rose-300 font-bold py-2 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow"
+              className="bg-[#FEF2F2] hover:bg-[#FEE2E2] border border-[#FCA5A5] text-[#B42318] font-bold py-2 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs"
             >
               <span>🗑️</span>
               <span>إلغاء الطلب</span>
@@ -1595,18 +1595,18 @@ export default function PosInterface({
 
             <button
               onClick={handlePrintCustomerCheck}
-              className="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow shadow-sky-600/20"
+              className="bg-[#F0F4F8] hover:bg-[#E2E8F0] border border-[#CBD5E1] text-[#243B53] font-bold py-2 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs"
             >
               <span>🖨️</span>
               <span>طباعة الفاتورة</span>
             </button>
           </div>
 
-          {/* Big Green Checkout Button */}
+          {/* Big Forest Green Checkout Button */}
           <button
             onClick={handleCollectPayment}
             disabled={isPending}
-            className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition active:scale-[0.99]"
+            className="w-full mt-2 bg-[#237A57] hover:bg-[#1D6447] text-white font-black py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-md transition active:scale-[0.99]"
           >
             <span className="text-base font-black">✓</span>
             <span>إتمام الطلب</span>
@@ -1619,8 +1619,8 @@ export default function PosInterface({
             disabled={!lastCompletedReceipt}
             className={`w-full mt-1.5 py-1 text-[11px] font-bold flex items-center justify-center gap-1 transition rounded-lg border ${
               lastCompletedReceipt
-                ? "text-amber-400/90 hover:text-amber-300 border-amber-500/30 hover:border-amber-500/60 bg-amber-500/5"
-                : "text-stone-600 border-stone-800/40 cursor-not-allowed"
+                ? "text-[#243B53] hover:text-[#1F2937] border-[#D9E0E7] hover:bg-[#F8FAFC]"
+                : "text-[#94A3B8] border-[#E2E8F0] cursor-not-allowed"
             }`}
             title="إعادة طباعة آخر فاتورة تم إتمامها كنسخة طبق الأصل"
           >
@@ -1630,7 +1630,7 @@ export default function PosInterface({
         </section>
 
         {/* RIGHT AREA: MENU CATEGORIES, SEARCH, FOOD GRID, BOTTOM BAR */}
-        <section className="flex-1 flex flex-col overflow-hidden p-3 bg-[#090d16]">
+        <section className="flex-1 flex flex-col overflow-hidden p-3 bg-[#F4F6F8]">
           {orderType === "CUSTOMER_GRILL" ? (
             <CustomerGrillingForm
               rates={grillingRates}
@@ -1647,8 +1647,8 @@ export default function PosInterface({
                   onClick={() => setSelectedCategory("ALL")}
                   className={`min-w-[90px] h-[76px] flex flex-col items-center justify-center p-2 rounded-2xl border transition-all shrink-0 ${
                     selectedCategory === "ALL"
-                      ? "bg-[#182033] border-2 border-amber-500 shadow-lg shadow-amber-500/20 text-white font-black scale-102"
-                      : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-600 hover:text-white"
+                      ? "bg-[#243B53] border-2 border-[#243B53] shadow-md text-white font-black scale-102"
+                      : "bg-[#FFFFFF] border-[#D9E0E7] text-[#5B6472] hover:border-[#CBD5E1] hover:text-[#1F2937]"
                   }`}
                 >
                   <span className="text-2xl mb-1">🍽️</span>
@@ -1664,8 +1664,8 @@ export default function PosInterface({
                       onClick={() => setSelectedCategory(cat.id)}
                       className={`min-w-[105px] h-[76px] flex flex-col items-center justify-center p-1.5 rounded-2xl border transition-all shrink-0 ${
                         isSelected
-                          ? "bg-[#182033] border-2 border-amber-500 shadow-lg shadow-amber-500/20 text-white font-black scale-102"
-                          : "bg-[#111624] border-[#1e2638] text-stone-300 hover:border-stone-600 hover:text-white"
+                          ? "bg-[#243B53] border-2 border-[#243B53] shadow-md text-white font-black scale-102"
+                          : "bg-[#FFFFFF] border-[#D9E0E7] text-[#5B6472] hover:border-[#CBD5E1] hover:text-[#1F2937]"
                       }`}
                     >
                       <span className="text-2xl mb-1">{icon}</span>
@@ -1679,19 +1679,19 @@ export default function PosInterface({
 
               {/* 2. Search & Filter Bar */}
               <div className="flex items-center gap-2.5 my-2 shrink-0">
-                <div className="relative flex-1 bg-[#111624] border border-[#1e2638] focus-within:border-amber-500 rounded-xl px-3 py-2 flex items-center gap-2 transition">
-                  <span className="text-stone-400 text-sm">🔍</span>
+                <div className="relative flex-1 bg-[#FFFFFF] border border-[#D9E0E7] focus-within:border-[#243B53] rounded-xl px-3 py-2 flex items-center gap-2 transition shadow-xs">
+                  <span className="text-[#9AA5B1] text-sm">🔍</span>
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="ابحث عن صنف..."
-                    className="bg-transparent text-xs text-white placeholder-stone-500 outline-none w-full font-medium"
+                    placeholder="ابحث عن صنف بالاسم أو الكود..."
+                    className="bg-transparent text-xs text-[#1F2937] placeholder-[#9AA5B1] outline-none w-full font-medium"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="text-stone-500 hover:text-white text-xs px-1"
+                      className="text-[#9AA5B1] hover:text-[#1F2937] text-xs px-1"
                     >
                       ✕
                     </button>
@@ -1703,11 +1703,11 @@ export default function PosInterface({
                   onClick={() => setActiveFilter(activeFilter === "BEST_SELLER" ? "ALL" : "BEST_SELLER")}
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition ${
                     activeFilter === "BEST_SELLER"
-                      ? "border-amber-500 bg-amber-500/20 text-amber-300 font-black shadow-md shadow-amber-500/20"
-                      : "border-[#1e2638] bg-[#111624] text-stone-300 hover:border-amber-500/50"
+                      ? "border-2 border-[#D97706] bg-[#FFFBEB] text-[#946200] font-black shadow-xs"
+                      : "border-[#D9E0E7] bg-[#FFFFFF] text-[#5B6472] hover:border-[#CBD5E1]"
                   }`}
                 >
-                  <span className="text-amber-400">⭐</span>
+                  <span className="text-[#D97706]">⭐</span>
                   <span>الأكثر مبيعاً</span>
                 </button>
 
@@ -1716,26 +1716,26 @@ export default function PosInterface({
                   onClick={() => setActiveFilter(activeFilter === "OFFERS" ? "ALL" : "OFFERS")}
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition ${
                     activeFilter === "OFFERS"
-                      ? "border-orange-500 bg-orange-500/20 text-orange-300 font-black shadow-md shadow-orange-500/20"
-                      : "border-[#1e2638] bg-[#111624] text-stone-300 hover:border-orange-500/50"
+                      ? "border-2 border-[#B42318] bg-[#FEF2F2] text-[#B42318] font-black shadow-xs"
+                      : "border-[#D9E0E7] bg-[#FFFFFF] text-[#5B6472] hover:border-[#CBD5E1]"
                   }`}
                 >
-                  <span className="text-orange-400">🔥</span>
+                  <span className="text-[#B42318]">🔥</span>
                   <span>عروض خاصة</span>
                 </button>
               </div>
 
-              {/* 3. High Quality 5-Column Food Grid (Exact to Reference Picture) */}
+              {/* 3. High Quality 5-Column Food Grid */}
               <div className="flex-1 overflow-y-auto pr-0.5">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3">
                   {filteredItems.map((item) => (
                     <div
                       key={item.id}
                       onClick={() => handleAddToCart(item)}
-                      className="bg-[#111624] border border-[#1e2638] hover:border-amber-500 rounded-2xl overflow-hidden cursor-pointer group transition-all duration-150 flex flex-col shadow-md relative hover:shadow-amber-500/10"
+                      className="bg-[#FFFFFF] border border-[#D9E0E7] hover:border-[#3B82A0] rounded-2xl overflow-hidden cursor-pointer group transition-all duration-150 flex flex-col shadow-xs hover:shadow-md relative"
                     >
                       {/* Dish Image */}
-                      <div className="h-28 sm:h-32 w-full bg-stone-900 overflow-hidden relative">
+                      <div className="h-28 sm:h-32 w-full bg-slate-100 overflow-hidden relative">
                         <img
                           src={item.image}
                           alt={item.nameAr}
@@ -1743,18 +1743,18 @@ export default function PosInterface({
                         />
                         {/* Weighted Badge */}
                         {item.isWeighted && (
-                          <div className="absolute top-2 right-2 bg-amber-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded shadow">
+                          <div className="absolute top-2 right-2 bg-[#FFFBEB] border border-[#FDE68A] text-[#946200] font-black text-[10px] px-2 py-0.5 rounded shadow-xs">
                             بالوزن
                           </div>
                         )}
                       </div>
 
                       {/* Details: Name & Price */}
-                      <div className="p-2 text-center flex flex-col justify-between flex-1">
-                        <h3 className="font-bold text-xs text-stone-100 truncate group-hover:text-amber-400 transition leading-snug">
+                      <div className="p-2.5 text-center flex flex-col justify-between flex-1">
+                        <h3 className="font-bold text-xs text-[#1F2937] truncate group-hover:text-[#243B53] transition leading-snug">
                           {item.nameAr}
                         </h3>
-                        <p className="font-mono font-black text-xs text-amber-400 mt-1">
+                        <p className="font-mono font-black text-xs text-[#237A57] mt-1.5">
                           {item.isWeighted ? `${item.price} ج.م / كيلو` : `${item.price} ج.م`}
                         </p>
                       </div>
@@ -1764,11 +1764,11 @@ export default function PosInterface({
               </div>
 
               {/* 4. Bottom Action Bar (Recall, Tracking, Refresh, Help) */}
-              <div className="h-11 shrink-0 border-t border-[#1c2438] mt-2 pt-2 flex items-center justify-between text-xs">
+              <div className="h-11 shrink-0 border-t border-[#D9E0E7] mt-2 pt-2 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowTablesModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-stone-600 text-stone-300 font-bold flex items-center gap-1.5 transition"
+                    className="px-3 py-1.5 rounded-xl bg-[#FFFFFF] border border-[#D9E0E7] hover:bg-[#F8FAFC] text-[#1F2937] font-bold flex items-center gap-1.5 transition shadow-xs"
                   >
                     <span>🔔</span>
                     <span>إستدعاء الطلب</span>
@@ -1776,12 +1776,12 @@ export default function PosInterface({
 
                   <button
                     onClick={() => setShowGrillingTracker(true)}
-                    className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-stone-600 text-stone-300 font-bold flex items-center gap-1.5 transition"
+                    className="px-3 py-1.5 rounded-xl bg-[#FFFFFF] border border-[#D9E0E7] hover:bg-[#F8FAFC] text-[#1F2937] font-bold flex items-center gap-1.5 transition shadow-xs"
                   >
                     <span>📋</span>
                     <span>متابعة الطلبات</span>
                     {activeGrillingOrders.length > 0 && (
-                      <span className="bg-amber-500 text-stone-950 px-1.5 py-0.2 rounded-full font-black text-[10px]">
+                      <span className="bg-[#D97706] text-white px-1.5 py-0.2 rounded-full font-black text-[10px]">
                         {activeGrillingOrders.length}
                       </span>
                     )}
@@ -1789,7 +1789,7 @@ export default function PosInterface({
 
                   <button
                     onClick={() => window.location.reload()}
-                    className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-stone-600 text-stone-300 font-bold flex items-center gap-1.5 transition"
+                    className="px-3 py-1.5 rounded-xl bg-[#FFFFFF] border border-[#D9E0E7] hover:bg-[#F8FAFC] text-[#1F2937] font-bold flex items-center gap-1.5 transition shadow-xs"
                   >
                     <span>🔄</span>
                     <span>تحديث المنيو</span>
@@ -1798,7 +1798,7 @@ export default function PosInterface({
                   <Link
                     href="/kitchen"
                     target="_blank"
-                    className="px-3 py-1.5 rounded-xl bg-orange-950/40 border border-orange-500/40 hover:border-orange-500 text-orange-300 font-bold flex items-center gap-1.5 transition"
+                    className="px-3 py-1.5 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] hover:border-[#D97706] text-[#946200] font-bold flex items-center gap-1.5 transition shadow-xs"
                   >
                     <span>🔥</span>
                     <span>شاشة المطبخ (KDS)</span>
@@ -1806,7 +1806,7 @@ export default function PosInterface({
 
                   <button
                     onClick={() => setShowDeliveryModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-teal-950/30 border border-teal-500/40 hover:border-teal-500 text-teal-300 font-bold flex items-center gap-1.5 transition"
+                    className="px-3 py-1.5 rounded-xl bg-[#F0F7FA] border border-[#BAE6FD] hover:border-[#3B82A0] text-[#0369A1] font-bold flex items-center gap-1.5 transition shadow-xs"
                   >
                     <span>🛵</span>
                     <span>إدارة الدليفري</span>
@@ -1814,7 +1814,7 @@ export default function PosInterface({
 
                   <button
                     onClick={() => setShowOrderSearchModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-amber-500 text-amber-300 font-bold flex items-center gap-1.5 transition"
+                    className="px-3 py-1.5 rounded-xl bg-[#F0F4F8] border border-[#CBD5E1] hover:border-[#243B53] text-[#243B53] font-bold flex items-center gap-1.5 transition shadow-xs"
                   >
                     <span>🔍</span>
                     <span>بحث الفواتير</span>
@@ -1822,14 +1822,14 @@ export default function PosInterface({
 
                   <button
                     onClick={() => setShowShiftModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-[#111624] border border-[#1e2638] hover:border-amber-500 text-stone-300 font-bold flex items-center gap-1.5 transition"
+                    className="px-3 py-1.5 rounded-xl bg-[#F0F4F8] border border-[#CBD5E1] hover:border-[#243B53] text-[#243B53] font-bold flex items-center gap-1.5 transition shadow-xs"
                   >
                     <span>💼</span>
                     <span>تقفيل الخزنة والوردية</span>
                   </button>
                 </div>
 
-                <div className="text-[11px] text-stone-500 hidden sm:flex items-center gap-1 font-medium">
+                <div className="text-[11px] text-[#5B6472] hidden sm:flex items-center gap-1 font-medium">
                   <span>ℹ️</span>
                   <span>لأي استفسار أو مساعدة تواصل مع المدير</span>
                 </div>
@@ -1897,22 +1897,22 @@ export default function PosInterface({
 
       {/* MODAL: TABLES VISUAL MAP */}
       {showTablesModal && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111116] border border-amber-500/40 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-            <div className="p-4 border-b border-stone-800 flex items-center justify-between">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-sans">
+          <div className="bg-[#FFFFFF] border border-[#D9E0E7] rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            <div className="p-4 bg-[#243B53] text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🪑</span>
-                <h2 className="text-base font-black text-amber-400">اختيار طاولة الصالة - مشويات بسيوني</h2>
+                <h2 className="text-base font-black text-white">اختيار طاولة الصالة - مشويات بسيوني</h2>
               </div>
               <button
                 onClick={() => setShowTablesModal(false)}
-                className="w-7 h-7 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 flex items-center justify-center text-xs"
+                className="w-8 h-8 rounded-full bg-[#1A2C3F] hover:bg-[#102A43] text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold transition"
               >
                 ✕
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+            <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 bg-[#F4F6F8]">
               {tables.map((t) => {
                 const isOccupied = t.status === TableStatus.OCCUPIED;
                 const isSelected = selectedTable?.id === t.id;
@@ -1923,26 +1923,26 @@ export default function PosInterface({
                       handleSelectTable(t);
                       setShowTablesModal(false);
                     }}
-                    className={`p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between h-24 ${
+                    className={`p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between h-24 shadow-xs ${
                       isSelected
-                        ? "border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/20"
+                        ? "border-2 border-[#243B53] bg-[#FFFFFF] shadow-md"
                         : isOccupied
-                        ? "border-rose-500/50 bg-rose-950/20"
-                        : "border-stone-800 bg-[#16161e] hover:border-stone-600"
+                        ? "border-[#FCA5A5] bg-[#FEF2F2]"
+                        : "border-[#D9E0E7] bg-[#FFFFFF] hover:border-[#3B82A0]"
                     }`}
                   >
                     <div className="flex justify-between items-start">
-                      <span className="font-bold text-xs text-stone-100">{t.name}</span>
-                      <span className={`w-2 h-2 rounded-full ${isOccupied ? "bg-rose-500 animate-pulse" : "bg-emerald-500"}`}></span>
+                      <span className="font-bold text-xs text-[#1F2937]">{t.name}</span>
+                      <span className={`w-2.5 h-2.5 rounded-full ${isOccupied ? "bg-[#B42318] animate-pulse" : "bg-[#237A57]"}`}></span>
                     </div>
 
                     {isOccupied && t.orders && t.orders[0] ? (
-                      <div className="text-center bg-rose-900/40 rounded-lg p-0.5">
-                        <p className="text-[9px] text-stone-300">أوردر #{t.orders[0].orderNumber}</p>
-                        <p className="font-mono font-black text-rose-300 text-xs">{t.orders[0].totalAmount} ج.م</p>
+                      <div className="text-center bg-[#FFFFFF] border border-[#FCA5A5] rounded-lg p-0.5">
+                        <p className="text-[9px] text-[#5B6472]">أوردر #{t.orders[0].orderNumber}</p>
+                        <p className="font-mono font-black text-[#B42318] text-xs">{t.orders[0].totalAmount} ج.م</p>
                       </div>
                     ) : (
-                      <div className="text-center text-stone-500 text-[10px]">
+                      <div className="text-center text-[#94A3B8] text-[10px]">
                         فارغة • متاح
                       </div>
                     )}
@@ -1956,17 +1956,17 @@ export default function PosInterface({
 
       {/* MODAL: QUICK CUSTOMER */}
       {showQuickCustomerModal && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div dir="rtl" className="bg-[#111116] border border-amber-500/50 rounded-3xl w-full max-w-md p-5 shadow-2xl animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1f293d] mb-3">
-              <h3 className="text-base font-black text-amber-400 flex items-center gap-2">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-sans">
+          <div dir="rtl" className="bg-[#FFFFFF] border border-[#D9E0E7] rounded-3xl w-full max-w-md p-5 shadow-2xl animate-in fade-in zoom-in-95 text-[#1F2937]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#D9E0E7] mb-3">
+              <h3 className="text-base font-black text-[#243B53] flex items-center gap-2">
                 <span>🛵</span>
                 <span>بيانات عميل الدليفري والتوصيل</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setShowQuickCustomerModal(false)}
-                className="text-stone-400 hover:text-white p-1 rounded-lg"
+                className="text-[#5B6472] hover:text-[#1F2937] p-1 rounded-lg"
               >
                 ✕
               </button>
@@ -1975,10 +1975,10 @@ export default function PosInterface({
             <div className="space-y-3 text-xs">
               {/* 1. Phone Input with Live Egyptian Lookup */}
               <div>
-                <label className="text-amber-300 block mb-1 font-bold flex items-center justify-between">
+                <label className="text-[#243B53] block mb-1 font-bold flex items-center justify-between">
                   <span>رقم الهاتف (بحث فوري بالرقم المصري) *</span>
                   {isSearchingPhone && (
-                    <span className="text-[10px] text-amber-400 animate-pulse">جاري البحث...</span>
+                    <span className="text-[10px] text-[#D97706] animate-pulse">جاري البحث...</span>
                   )}
                 </label>
                 <div className="relative">
@@ -1987,22 +1987,22 @@ export default function PosInterface({
                     value={quickPhone}
                     onChange={(e) => handlePhoneInputChange(e.target.value)}
                     placeholder="010... / 011... / 012... / 015... / +20..."
-                    className="w-full bg-[#16161e] border-2 border-stone-800 focus:border-amber-500 rounded-xl px-3 py-2 text-stone-100 outline-none font-mono text-sm"
+                    className="w-full bg-[#FFFFFF] border border-[#CBD5E1] focus:border-[#243B53] rounded-xl px-3 py-2 text-[#1F2937] outline-none font-mono text-sm shadow-xs"
                     autoFocus
                   />
-                  <span className="absolute left-3 top-2.5 text-stone-500 text-xs">📞</span>
+                  <span className="absolute left-3 top-2.5 text-[#9AA5B1] text-xs">📞</span>
                 </div>
               </div>
 
               {/* Instant Search Feedback Banner */}
               {customerLookupResult && customerLookupResult !== "NOT_FOUND" && (
-                <div className="bg-emerald-500/15 border border-emerald-500/40 rounded-xl p-2.5 text-[11px] text-emerald-300 space-y-1">
+                <div className="bg-[#EBF7F0] border border-[#A7F3D0] rounded-xl p-2.5 text-[11px] text-[#237A57] space-y-1">
                   <div className="flex items-center gap-1.5 font-bold">
                     <span>✅</span>
                     <span>تم العثور على العميل: {customerLookupResult.name}</span>
                   </div>
                   {customerLookupResult.orders && customerLookupResult.orders.length > 0 && (
-                    <div className="text-[10px] text-emerald-400/80">
+                    <div className="text-[10px] text-[#237A57]/80">
                       عدد الطلبات السابقة: {customerLookupResult.orders.length} طلب
                     </div>
                   )}
@@ -2010,7 +2010,7 @@ export default function PosInterface({
               )}
 
               {customerLookupResult === "NOT_FOUND" && (
-                <div className="bg-sky-500/15 border border-sky-500/40 rounded-xl p-2 text-[11px] text-sky-300 flex items-center gap-1.5">
+                <div className="bg-[#F0F7FA] border border-[#BAE6FD] rounded-xl p-2 text-[11px] text-[#0369A1] flex items-center gap-1.5">
                   <span>✨</span>
                   <span>عميل جديد: سيتم حفظه تلقائيًا في قاعدة البيانات مع الطلب</span>
                 </div>
@@ -2018,41 +2018,41 @@ export default function PosInterface({
 
               {/* 2. Customer Name */}
               <div>
-                <label className="text-stone-300 block mb-1 font-medium">اسم العميل *</label>
+                <label className="text-[#1F2937] block mb-1 font-medium">اسم العميل *</label>
                 <input
                   type="text"
                   value={quickName}
                   onChange={(e) => setQuickName(e.target.value)}
                   placeholder="مثال: أحمد بسيوني"
-                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-amber-500"
+                  className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-xl px-3 py-2 text-[#1F2937] outline-none focus:border-[#243B53] shadow-xs"
                 />
               </div>
 
               {/* 3. Delivery Address */}
               <div>
-                <label className="text-stone-300 block mb-1 font-medium">عنوان التوصيل التفصيلي (يمكن تأكيده أو تعديله)</label>
+                <label className="text-[#1F2937] block mb-1 font-medium">عنوان التوصيل التفصيلي (يمكن تأكيده أو تعديله)</label>
                 <input
                   type="text"
                   value={quickAddress}
                   onChange={(e) => setQuickAddress(e.target.value)}
                   placeholder="الشارع - رقم العمارة - الشقة - علامة مميزة"
-                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-amber-500"
+                  className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-xl px-3 py-2 text-[#1F2937] outline-none focus:border-[#243B53] shadow-xs"
                 />
               </div>
 
               {/* 4. Delivery Fee */}
               <div>
-                <label className="text-stone-400 block mb-1">رسوم التوصيل (ج.م)</label>
+                <label className="text-[#5B6472] block mb-1">رسوم التوصيل (ج.م)</label>
                 <input
                   type="number"
                   value={deliveryFee}
                   onChange={(e) => setDeliveryFee(e.target.value)}
                   placeholder="0"
-                  className="w-full bg-[#16161e] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 outline-none focus:border-amber-500 font-mono"
+                  className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-xl px-3 py-2 text-[#1F2937] outline-none focus:border-[#243B53] font-mono shadow-xs"
                 />
               </div>
 
-              <div className="flex gap-2 pt-2 border-t border-stone-800/80">
+              <div className="flex gap-2 pt-2 border-t border-[#D9E0E7]">
                 <button
                   type="button"
                   onClick={async () => {
@@ -2084,14 +2084,14 @@ export default function PosInterface({
                     }
                     setShowQuickCustomerModal(false);
                   }}
-                  className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-bold py-2.5 rounded-xl shadow-lg shadow-amber-500/30 transition text-xs"
+                  className="flex-1 bg-[#237A57] hover:bg-[#1D6447] text-white font-bold py-2.5 rounded-xl shadow-md transition text-xs"
                 >
                   اعتماد وتثبيت بيانات الدليفري
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowQuickCustomerModal(false)}
-                  className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl transition text-xs"
+                  className="px-4 py-2 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#5B6472] rounded-xl transition text-xs"
                 >
                   إلغاء
                 </button>

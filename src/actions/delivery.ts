@@ -13,6 +13,7 @@ import { authOptions } from "@/lib/auth";
 
 export interface DeliveryOrderFilter {
   query?: string;
+  search?: string;
   orderNumber?: number;
   phone?: string;
   customerName?: string;
@@ -53,6 +54,56 @@ export interface RiderLedgerItem {
   lastRemittanceAmount?: number | null;
 }
 
+export interface DeliveryOrderItemDetail {
+  id: string;
+  nameAr: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  notes?: string | null;
+}
+
+export interface DeliveryOrderListItem {
+  id: string;
+  orderNumber: number;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  deliveryFee: number;
+  subtotal: number;
+  discount: number;
+  totalAmount: number;
+  paymentMethod: string;
+  cashPortion: number;
+  electronicPortion: number;
+  paymentStatus: string;
+  workflowStatus: string;
+  deliveryStatus: string;
+  riderName: string | null;
+  riderCashDue: number;
+  riderCashRemitted: number;
+  pendingRiderDebt: number;
+  remittanceStatus: string;
+  riderRemittedAt: string | null;
+  expectedPickupTime: string | null;
+  notes: string | null;
+  reprintCount: number;
+  statusHistory: any[];
+  createdAt: string;
+  items: DeliveryOrderItemDetail[];
+}
+
+export interface RiderLedgerSummary {
+  success: boolean;
+  totals: {
+    totalPendingDebt: number;
+    totalRemittedToday: number;
+    activeRidersCount: number;
+    unsettledOrdersCount: number;
+  };
+  riders: RiderLedgerItem[];
+}
+
 // ---------------------------------------------------------------------
 // 1. Get Delivery Orders List with Full Filters & Timeline
 // ---------------------------------------------------------------------
@@ -61,6 +112,7 @@ export async function getDeliveryOrders(filter: DeliveryOrderFilter = {}) {
   try {
     const {
       query,
+      search,
       orderNumber,
       phone,
       customerName,
@@ -73,6 +125,7 @@ export async function getDeliveryOrders(filter: DeliveryOrderFilter = {}) {
       limit = 50,
       page = 1,
     } = filter;
+    const effectiveQuery = query || search;
 
     const where: any = {
       orderType: "DELIVERY",
@@ -98,8 +151,8 @@ export async function getDeliveryOrders(filter: DeliveryOrderFilter = {}) {
     }
 
     // Free query search across order number, customer name, phone, address, rider
-    if (query && query.trim()) {
-      const q = query.trim();
+    if (effectiveQuery && effectiveQuery.trim()) {
+      const q = effectiveQuery.trim();
       const num = parseInt(q.replace(/\D/g, ""), 10);
       where.OR = [
         { customerName: { contains: q, mode: "insensitive" } },
@@ -225,6 +278,7 @@ export async function getDeliveryOrders(filter: DeliveryOrderFilter = {}) {
       success: true,
       orders: formattedOrders,
       totalOrders,
+      total: totalOrders,
       page,
       totalPages: Math.ceil(totalOrders / limit) || 1,
     };
@@ -235,6 +289,7 @@ export async function getDeliveryOrders(filter: DeliveryOrderFilter = {}) {
       error: error.message || "فشل جلب طلبات الدليفري",
       orders: [],
       totalOrders: 0,
+      total: 0,
       page: 1,
       totalPages: 1,
     };
@@ -356,16 +411,19 @@ export async function assignRiderToOrder({
 export async function updateDeliveryStatus({
   orderId,
   status,
+  newStatus,
   notes,
   cashierName = "الكاشير",
 }: {
   orderId: string;
-  status: "NEW" | "IN_KITCHEN" | "READY" | "READY_FOR_RIDER" | "WITH_RIDER" | "DELIVERED" | "CANCELLED" | string;
+  status?: "NEW" | "IN_KITCHEN" | "READY" | "READY_FOR_RIDER" | "WITH_RIDER" | "DELIVERED" | "CANCELLED" | string;
+  newStatus?: string;
   notes?: string;
   cashierName?: string;
 }) {
   try {
-    if (!orderId || !status) {
+    const effectiveStatus = status || newStatus;
+    if (!orderId || !effectiveStatus) {
       return { success: false, error: "معرف الطلب والحالة مطلوبان." };
     }
 
@@ -394,8 +452,8 @@ export async function updateDeliveryStatus({
       {
         action: "STATUS_CHANGED",
         previousStatus: order.deliveryStatus || order.workflowStatus,
-        newStatus: status,
-        statusAr: statusTranslations[status] || status,
+        newStatus: effectiveStatus,
+        statusAr: statusTranslations[effectiveStatus] || effectiveStatus,
         cashier: cashierName,
         timestamp: nowIso,
         notes: notes || null,
@@ -404,13 +462,13 @@ export async function updateDeliveryStatus({
 
     // Build update data
     const updateData: any = {
-      deliveryStatus: status,
-      workflowStatus: status,
+      deliveryStatus: effectiveStatus,
+      workflowStatus: effectiveStatus,
       statusHistory: updatedHistory,
     };
 
     // If order is cancelled, void rider liability
-    if (status === "CANCELLED") {
+    if (effectiveStatus === "CANCELLED") {
       updateData.riderCashDue = 0;
       updateData.remittanceStatus = "NOT_APPLICABLE";
     }
@@ -425,10 +483,10 @@ export async function updateDeliveryStatus({
       orderId: order.id,
       userName: cashierName,
       userRole: "CASHIER",
-      reason: `تحديث حالة طلب دليفري #${order.orderNumber} إلى (${statusTranslations[status] || status})`,
+      reason: `تحديث حالة طلب دليفري #${order.orderNumber} إلى (${statusTranslations[effectiveStatus] || effectiveStatus})`,
       details: {
         orderNumber: order.orderNumber,
-        newStatus: status,
+        newStatus: effectiveStatus,
         notes,
         cashier: cashierName,
       },
@@ -440,7 +498,7 @@ export async function updateDeliveryStatus({
 
     return {
       success: true,
-      message: `تم تحديث حالة الطلب #${order.orderNumber} إلى (${statusTranslations[status] || status}) ✓`,
+      message: `تم تحديث حالة الطلب #${order.orderNumber} إلى (${statusTranslations[effectiveStatus] || effectiveStatus}) ✓`,
       order: updatedOrder,
     };
   } catch (error: any) {
@@ -455,7 +513,8 @@ export async function updateDeliveryStatus({
 
 export interface RecordRiderRemittancePayload {
   riderName: string;
-  amountReceived: number;
+  amountReceived?: number;
+  remittedAmount?: number;
   orderIds?: string[];
   paymentMethod?: "CASH" | "CARD" | "WALLET";
   notes?: string;
@@ -469,6 +528,7 @@ export async function recordRiderRemittance(payload: RecordRiderRemittancePayloa
     const {
       riderName,
       amountReceived,
+      remittedAmount,
       orderIds = [],
       paymentMethod = "CASH",
       notes,
@@ -477,11 +537,13 @@ export async function recordRiderRemittance(payload: RecordRiderRemittancePayloa
       clientToken,
     } = payload;
 
+    const actualAmountReceived = amountReceived ?? remittedAmount ?? 0;
+
     if (!riderName || !riderName.trim()) {
       return { success: false, error: "اسم الطيار مطلوب لتسجيل التوريد." };
     }
 
-    if (typeof amountReceived !== "number" || isNaN(amountReceived) || amountReceived <= 0) {
+    if (typeof actualAmountReceived !== "number" || isNaN(actualAmountReceived) || actualAmountReceived <= 0) {
       return { success: false, error: "يرجى إدخال مبلغ توريد صحيح أكبر من الصفر." };
     }
 
@@ -534,13 +596,13 @@ export async function recordRiderRemittance(payload: RecordRiderRemittancePayloa
       return sum + Math.max(0, due - remitted);
     }, 0);
 
-    const variance = amountReceived - totalExpected;
+    const variance = actualAmountReceived - totalExpected;
     const now = new Date();
     const nowIso = now.toISOString();
 
     // 3. Atomically allocate received cash across orders and record remittance
     const result = await prisma.$transaction(async (tx) => {
-      let remainingMoneyToAllocate = amountReceived;
+      let remainingMoneyToAllocate = actualAmountReceived;
       const updatedOrderIds: string[] = [];
 
       for (const order of pendingOrders) {
@@ -595,7 +657,7 @@ export async function recordRiderRemittance(payload: RecordRiderRemittancePayloa
           shiftId: activeShift.id,
           cashierName,
           amountExpected: totalExpected,
-          amountReceived,
+          amountReceived: actualAmountReceived,
           variance,
           varianceReason: variance !== 0 ? (varianceReason || `فرق توريد عهدة ${variance > 0 ? "فائض" : "عجز"}`) : null,
           orderIds: updatedOrderIds as any,
@@ -608,7 +670,7 @@ export async function recordRiderRemittance(payload: RecordRiderRemittancePayloa
       await tx.shift.update({
         where: { id: activeShift.id },
         data: {
-          riderRemittancesTotal: { increment: amountReceived },
+          riderRemittancesTotal: { increment: actualAmountReceived },
         },
       });
 
@@ -621,10 +683,10 @@ export async function recordRiderRemittance(payload: RecordRiderRemittancePayloa
       orderId: result.updatedOrderIds[0] || null,
       userName: cashierName,
       userRole: "CASHIER",
-      reason: `توريد عهدة طيار (${cleanRiderName}) بمبلغ ${amountReceived} ج.م لدرج كاشير وردية #${activeShift.shiftNumber}`,
+      reason: `توريد عهدة طيار (${cleanRiderName}) بمبلغ ${actualAmountReceived} ج.م لدرج كاشير وردية #${activeShift.shiftNumber}`,
       details: {
         riderName: cleanRiderName,
-        amountReceived,
+        amountReceived: actualAmountReceived,
         amountExpected: totalExpected,
         variance,
         varianceReason,
@@ -640,7 +702,7 @@ export async function recordRiderRemittance(payload: RecordRiderRemittancePayloa
 
     return {
       success: true,
-      message: `تم تسجيل توريد ${amountReceived.toFixed(2)} ج.م من الطيار (${cleanRiderName}) بنجاح إلى درج الكاشير ✓`,
+      message: `تم تسجيل توريد ${actualAmountReceived.toFixed(2)} ج.م من الطيار (${cleanRiderName}) بنجاح إلى درج الكاشير ✓`,
       remittance: result.remittance,
       coveredOrdersCount: result.updatedOrderIds.length,
       variance,

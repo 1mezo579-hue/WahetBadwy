@@ -176,10 +176,12 @@ export async function getActiveShift(userId?: string) {
  */
 export async function startShift({
   userId,
+  userName,
   initialCash = 0,
   notes,
 }: {
   userId: string;
+  userName?: string;
   initialCash: number;
   notes?: string;
 }) {
@@ -258,11 +260,13 @@ export interface EndShiftPayload {
   otherBalance?: number;
   expensesTotal?: number;
   expensesDetails?: ClosingItem[];
+  expenses?: ClosingItem[];
   managementChecks?: number;
   staffWasteTotal?: number;
   staffWasteDetails?: ClosingItem[];
   managementWithdrawalsTotal?: number;
   managementWithdrawalsDetails?: ClosingItem[];
+  withdrawals?: ClosingItem[];
   endOfDayBalance?: number;
   receivedBy?: string;
 }
@@ -299,14 +303,19 @@ export async function endShift(payload: EndShiftPayload) {
       visaAmount = 0,
       otherBalance = 0,
       expensesTotal: customExpensesTotal,
-      expensesDetails = [],
+      expensesDetails: rawExpensesDetails,
+      expenses: fallbackExpenses,
       managementChecks = 0,
       staffWasteTotal: customStaffWasteTotal,
       staffWasteDetails = [],
       managementWithdrawalsTotal: customWithdrawalsTotal,
-      managementWithdrawalsDetails = [],
+      managementWithdrawalsDetails: rawWithdrawalsDetails,
+      withdrawals: fallbackWithdrawals,
       receivedBy,
     } = payload;
+
+    const expensesDetails = rawExpensesDetails || fallbackExpenses || [];
+    const managementWithdrawalsDetails = rawWithdrawalsDetails || fallbackWithdrawals || [];
 
     const shift = await prisma.shift.findUnique({
       where: { id: shiftId },

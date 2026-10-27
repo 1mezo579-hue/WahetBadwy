@@ -68,11 +68,9 @@ export default function ShiftModal({
   const initialCash = currentShift?.initialCash || 0;
   const paidSales = currentShift?.paidOrdersTotal || 0;
   
-  // Distinguish cash vs non-cash expenses (Requirement 3: strictly deduct only cash expenses from drawer)
+  // Distinguish cash vs non-cash expenses
   const cashExpenses = expenses.filter((e: any) => !e.paymentMethod || e.paymentMethod === "CASH");
   const cashExpensesTotal = cashExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-  const nonCashExpenses = expenses.filter((e: any) => e.paymentMethod && e.paymentMethod !== "CASH");
-  const nonCashExpensesTotal = nonCashExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
   const totalWithdrawals = withdrawals.reduce((sum, w) => sum + (Number(w.amount) || 0), 0);
@@ -98,13 +96,20 @@ export default function ShiftModal({
     }
     setIsOpening(true);
     setErrorMessage(null);
+
     try {
-      const res = await startShift({ userId, initialCash: float, notes: openNotes });
-      if (res.error) {
-        setErrorMessage(res.error);
-      } else if (res.shift) {
-        onShiftUpdated(res.shift);
+      const res = await startShift({
+        userId,
+        userName,
+        initialCash: float,
+        notes: openNotes,
+      });
+
+      if (!res.success) {
+        setErrorMessage(res.error || "فشل فتح الوردية");
+      } else {
         alert(res.message);
+        onShiftUpdated(res.shift);
         onClose();
       }
     } catch (e: any) {
@@ -114,78 +119,97 @@ export default function ShiftModal({
     }
   };
 
-  // Add Expense item
+  // Add Expense Item
   const handleAddExpense = () => {
-    const amt = Number(expAmount);
-    if (!expName.trim() || isNaN(amt) || amt <= 0) return;
-    setExpenses([...expenses, { item: expName.trim(), amount: amt }]);
+    const amount = Number(expAmount);
+    if (!expName.trim() || isNaN(amount) || amount <= 0) {
+      alert("يرجى كتابة بند المصروف والمبلغ بشكل صحيح");
+      return;
+    }
+    setExpenses([...expenses, { item: expName.trim(), amount }]);
     setExpName("");
     setExpAmount("");
   };
 
-  // Remove Expense item
-  const handleRemoveExpense = (idx: number) => {
-    setExpenses(expenses.filter((_, i) => i !== idx));
+  const handleRemoveExpense = (index: number) => {
+    setExpenses(expenses.filter((_, i) => i !== index));
   };
 
-  // Add Withdrawal item
+  // Add Withdrawal Item
   const handleAddWithdrawal = () => {
-    const amt = Number(wdAmount);
-    if (!wdName.trim() || isNaN(amt) || amt <= 0) return;
-    setWithdrawals([...withdrawals, { item: wdName.trim(), amount: amt }]);
+    const amount = Number(wdAmount);
+    if (!wdName.trim() || isNaN(amount) || amount <= 0) {
+      alert("يرجى كتابة اسم المستلم والمبلغ بشكل صحيح");
+      return;
+    }
+    setWithdrawals([...withdrawals, { item: wdName.trim(), amount }]);
     setWdName("");
     setWdAmount("");
   };
 
-  // Remove Withdrawal item
-  const handleRemoveWithdrawal = (idx: number) => {
-    setWithdrawals(withdrawals.filter((_, i) => i !== idx));
+  const handleRemoveWithdrawal = (index: number) => {
+    setWithdrawals(withdrawals.filter((_, i) => i !== index));
   };
 
-  // Handle Closing Shift
+  // Handle Ending Shift & Print Z-Report
   const handleEndShift = async () => {
-    if (!actualCashInput) {
-      setErrorMessage("يرجى إدخال النقدية الفعلية الموجودة بالدرج (العد الفعلي)");
-      return;
-    }
-    const actCash = Number(actualCashInput);
-    if (isNaN(actCash) || actCash < 0) {
-      setErrorMessage("العد الفعلي للنقدية غير صالح");
+    if (!currentShift) return;
+
+    if (actualCashInput === "") {
+      setErrorMessage("يرجى إدخال المبلغ الفعلي المعدود باليد في الدرج");
       return;
     }
 
-    if (!confirm("هل أنت متأكد من تقفيل الوردية الحالية وطباعة تقرير Z-Report؟ لا يمكن التراجع بعد التقفيل.")) {
-      return;
-    }
+    const payload: EndShiftPayload = {
+      shiftId: currentShift.id,
+      actualCash,
+      visaAmount,
+      otherBalance,
+      managementChecks,
+      receivedBy: receivedBy.trim() || "الإدارة",
+      notes: closeNotes,
+      expenses,
+      withdrawals,
+    };
 
     setIsClosing(true);
     setErrorMessage(null);
 
-    const payload: EndShiftPayload = {
-      shiftId: currentShift.id,
-      actualCash: actCash,
-      notes: closeNotes,
-      visaAmount,
-      otherBalance,
-      expensesTotal: totalExpenses,
-      expensesDetails: expenses,
-      managementChecks,
-      managementWithdrawalsTotal: totalWithdrawals,
-      managementWithdrawalsDetails: withdrawals,
-      receivedBy: receivedBy.trim() || undefined,
-    };
-
     try {
       const res = await endShift(payload);
-      if (res.error) {
-        setErrorMessage(res.error);
-      } else if (res.success && res.stats) {
-        // Print Z-Report
+
+      if (!res.success) {
+        setErrorMessage(res.error || "فشل تقفيل الوردية");
+      } else {
+        // Trigger Thermal Z-Report Print
+        const shiftData = res.shift;
+        const zReportHtml = buildZReportHtml({
+          shiftNumber: shiftData.shiftNumber,
+          startTime: new Date(shiftData.startTime),
+          endTime: new Date(shiftData.endTime || Date.now()),
+          cashierName: (shiftData as any).userName || (shiftData as any).user?.name || userName,
+          initialCash: shiftData.initialCash,
+          totalSales: (shiftData as any).totalSales || shiftData.grossSales || (shiftData as any).paidOrdersTotal || 0,
+          paidOrdersTotal: (shiftData as any).paidOrdersTotal || shiftData.grossSales || 0,
+          paidOrdersCount: (shiftData as any).paidOrdersCount || 0,
+          cashSales: ((shiftData as any).paidOrdersTotal || shiftData.grossSales || 0) - visaAmount - otherBalance,
+          visaSales: visaAmount,
+          otherSales: otherBalance,
+          cashExpensesTotal,
+          expensesList: expenses,
+          withdrawalsTotal: totalWithdrawals,
+          withdrawalsList: withdrawals,
+          expectedCash,
+          actualCash,
+          shortageOverage,
+          receivedBy: payload.receivedBy,
+          notes: payload.notes,
+        });
+
         try {
-          const zReportHtml = buildZReportHtml(res, userName);
           await silentPrintHtml(zReportHtml);
         } catch (printErr) {
-          console.warn("Z-Report printing failed or cancelled:", printErr);
+          console.warn("Silent Z-report printing failed, falling back:", printErr);
         }
 
         alert(res.message);
@@ -200,34 +224,34 @@ export default function ShiftModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[#111624] border border-[#1e263d] rounded-3xl w-full max-w-2xl p-6 shadow-2xl text-stone-100 my-8">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto font-sans" dir="rtl">
+      <div className="bg-[#FFFFFF] border border-[#D9E0E7] rounded-3xl w-full max-w-2xl p-6 shadow-2xl text-[#1F2937] my-8">
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#1c2438]">
+        <div className="flex items-center justify-between pb-4 border-b border-[#D9E0E7]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl">
+            <div className="w-10 h-10 rounded-2xl bg-[#F0F4F8] border border-[#D9E2EC] flex items-center justify-center text-xl text-[#243B53]">
               💼
             </div>
             <div>
-              <h2 className="text-lg font-black text-white">
+              <h2 className="text-lg font-black text-[#1F2937]">
                 {isShiftOpen ? `تقفيل الوردية والخزينة (#${currentShift.shiftNumber})` : "فتح وردية جديدة (تسليم العهدة)"}
               </h2>
-              <p className="text-xs text-stone-400">
+              <p className="text-xs text-[#5B6472]">
                 مشويات بسيوني — نظام الإدارة المالية وإغلاق اليوم
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#182033] hover:bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center text-sm font-bold transition"
+            className="w-8 h-8 rounded-full bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#5B6472] hover:text-[#1F2937] flex items-center justify-center text-sm font-bold transition"
           >
             ✕
           </button>
         </div>
 
         {errorMessage && (
-          <div className="mt-4 p-3 bg-rose-500/15 border border-rose-500/40 rounded-xl text-rose-300 text-xs font-bold flex items-center gap-2">
+          <div className="mt-4 p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl text-[#B42318] text-xs font-bold flex items-center gap-2">
             <span>⚠️</span>
             <span>{errorMessage}</span>
           </div>
@@ -236,15 +260,15 @@ export default function ShiftModal({
         {/* CASE 1: NO OPEN SHIFT -> START SHIFT FORM */}
         {!isShiftOpen ? (
           <div className="space-y-4 py-4">
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-300">
+            <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-2xl p-4 text-xs text-[#946200]">
               <p className="font-bold mb-1">تنبيه بدء العمل:</p>
-              <p className="text-stone-300">
+              <p className="text-[#5B6472]">
                 لا توجد وردية مفتوحة حالياً للكاشير ({userName}). يرجى استلام العهدة النقدية للدرج وتأكيد فتح الوردية للبدء في إصدار الفواتير.
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-300 mb-1.5">
+              <label className="block text-xs font-bold text-[#1F2937] mb-1.5">
                 العهدة الافتتاحية بالدرج (ج.م) *
               </label>
               <input
@@ -254,15 +278,15 @@ export default function ShiftModal({
                 value={openingFloat}
                 onChange={(e) => setOpeningFloat(e.target.value)}
                 placeholder="500"
-                className="w-full bg-[#161c2e] border border-stone-800 rounded-xl px-4 py-2.5 text-stone-100 font-mono text-base font-bold outline-none focus:border-amber-500"
+                className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-[#1F2937] font-mono text-base font-bold outline-none focus:border-[#243B53]"
               />
-              <p className="text-[11px] text-stone-400 mt-1">
+              <p className="text-[11px] text-[#5B6472] mt-1">
                 المبلغ النقدي المسلم كفكة في الدرج في بداية الوردية.
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-300 mb-1.5">
+              <label className="block text-xs font-bold text-[#1F2937] mb-1.5">
                 ملاحظات الاستلام (اختياري)
               </label>
               <textarea
@@ -270,7 +294,7 @@ export default function ShiftModal({
                 onChange={(e) => setOpenNotes(e.target.value)}
                 placeholder="مثال: استلام الدرج سليم مع فكة 500 جنيه..."
                 rows={2}
-                className="w-full bg-[#161c2e] border border-stone-800 rounded-xl p-3 text-stone-100 text-xs outline-none focus:border-amber-500"
+                className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-xl p-3 text-[#1F2937] text-xs outline-none focus:border-[#243B53]"
               />
             </div>
 
@@ -278,13 +302,13 @@ export default function ShiftModal({
               <button
                 onClick={handleStartShift}
                 disabled={isOpening}
-                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black py-3 rounded-xl text-sm transition shadow-lg shadow-amber-500/20 active:scale-[0.99]"
+                className="flex-1 bg-[#237A57] hover:bg-[#1D6447] text-white font-black py-3 rounded-xl text-sm transition shadow-md active:scale-[0.99]"
               >
                 {isOpening ? "جاري فتح الوردية..." : "✓ فتح الوردية وبدء العمل"}
               </button>
               <button
                 onClick={onClose}
-                className="px-5 py-3 bg-[#182033] hover:bg-stone-800 text-stone-300 rounded-xl text-xs font-bold transition"
+                className="px-5 py-3 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#5B6472] rounded-xl text-xs font-bold transition"
               >
                 إلغاء
               </button>
@@ -295,30 +319,30 @@ export default function ShiftModal({
           <div className="space-y-4 py-4 max-h-[75vh] overflow-y-auto pr-1">
             
             {/* Live Shift Stats Card */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#0d121f] border border-[#1a233a] rounded-2xl p-3 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#F4F6F8] border border-[#D9E0E7] rounded-2xl p-3 text-center">
               <div>
-                <p className="text-[10px] text-stone-400">العهدة الافتتاحية</p>
-                <p className="font-mono font-black text-amber-400 text-sm">{initialCash.toFixed(2)} ج.م</p>
+                <p className="text-[10px] text-[#5B6472]">العهدة الافتتاحية</p>
+                <p className="font-mono font-black text-[#946200] text-sm">{initialCash.toFixed(2)} ج.م</p>
               </div>
               <div>
-                <p className="text-[10px] text-stone-400">إجمالي المبيعات</p>
-                <p className="font-mono font-black text-emerald-400 text-sm">{paidSales.toFixed(2)} ج.م</p>
+                <p className="text-[10px] text-[#5B6472]">إجمالي المبيعات</p>
+                <p className="font-mono font-black text-[#237A57] text-sm">{paidSales.toFixed(2)} ج.م</p>
               </div>
               <div>
-                <p className="text-[10px] text-stone-400">الطلبات المكتملة</p>
-                <p className="font-mono font-black text-sky-400 text-sm">{currentShift?.paidOrdersCount || 0} طلب</p>
+                <p className="text-[10px] text-[#5B6472]">الطلبات المكتملة</p>
+                <p className="font-mono font-black text-[#243B53] text-sm">{currentShift?.paidOrdersCount || 0} طلب</p>
               </div>
               <div>
-                <p className="text-[10px] text-stone-400">المتوقع بالدرج</p>
-                <p className="font-mono font-black text-white text-sm">{expectedCash.toFixed(2)} ج.م</p>
+                <p className="text-[10px] text-[#5B6472]">المتوقع بالدرج</p>
+                <p className="font-mono font-black text-[#1F2937] text-sm">{expectedCash.toFixed(2)} ج.م</p>
               </div>
             </div>
 
             {/* Step 1: Counted Actual Cash */}
-            <div className="bg-[#141b2d] border border-[#222d4a] rounded-2xl p-4">
-              <label className="block text-xs font-black text-amber-400 mb-1.5 flex items-center justify-between">
+            <div className="bg-[#FFFFFF] border border-[#D9E0E7] rounded-2xl p-4 shadow-sm">
+              <label className="block text-xs font-black text-[#243B53] mb-1.5 flex items-center justify-between">
                 <span>1. العد الفعلي للنقدية بالدرج (Actual Cash) *</span>
-                <span className="text-[10px] text-stone-400">جرد الكاش الفعلي باليد</span>
+                <span className="text-[10px] text-[#5B6472]">جرد الكاش الفعلي باليد</span>
               </label>
               <input
                 type="number"
@@ -327,7 +351,7 @@ export default function ShiftModal({
                 value={actualCashInput}
                 onChange={(e) => setActualCashInput(e.target.value)}
                 placeholder="أدخل إجمالي الفلوس الموجودة في الدرج..."
-                className="w-full bg-[#0d121f] border border-amber-500/50 rounded-xl px-4 py-2.5 text-white font-mono text-lg font-black outline-none focus:border-amber-400"
+                className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-[#1F2937] font-mono text-lg font-black outline-none focus:border-[#243B53]"
               />
 
               {/* Shortage / Overage Live Indicator */}
@@ -335,10 +359,10 @@ export default function ShiftModal({
                 <div
                   className={`mt-2.5 p-2.5 rounded-xl border flex items-center justify-between text-xs font-bold ${
                     shortageOverage === 0
-                      ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                      ? "bg-[#EBF7F0] border-[#A7F3D0] text-[#237A57]"
                       : shortageOverage < 0
-                      ? "bg-rose-500/15 border-rose-500/40 text-rose-300"
-                      : "bg-sky-500/15 border-sky-500/40 text-sky-300"
+                      ? "bg-[#FEF2F2] border-[#FCA5A5] text-[#B42318]"
+                      : "bg-[#F0F7FA] border-[#BAE6FD] text-[#0369A1]"
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -361,9 +385,9 @@ export default function ShiftModal({
             </div>
 
             {/* Step 2: Non-Cash Payments (Visa, Wallets, Management Checks) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#141b2d] border border-[#222d4a] rounded-2xl p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#FFFFFF] border border-[#D9E0E7] rounded-2xl p-4 shadow-sm">
               <div>
-                <label className="block text-[11px] font-bold text-stone-300 mb-1">
+                <label className="block text-[11px] font-bold text-[#1F2937] mb-1">
                   💳 مبيعات شبكة / فيزا (ج.م)
                 </label>
                 <input
@@ -372,12 +396,12 @@ export default function ShiftModal({
                   value={visaAmountInput}
                   onChange={(e) => setVisaAmountInput(e.target.value)}
                   placeholder="0"
-                  className="w-full bg-[#0d121f] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 font-mono text-xs outline-none focus:border-amber-500"
+                  className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-[#1F2937] font-mono text-xs outline-none focus:border-[#243B53]"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-300 mb-1">
+                <label className="block text-[11px] font-bold text-[#1F2937] mb-1">
                   📑 شيكات أو رصيد آجل (ج.م)
                 </label>
                 <input
@@ -386,15 +410,15 @@ export default function ShiftModal({
                   value={managementChecksInput}
                   onChange={(e) => setManagementChecksInput(e.target.value)}
                   placeholder="0"
-                  className="w-full bg-[#0d121f] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 font-mono text-xs outline-none focus:border-amber-500"
+                  className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-[#1F2937] font-mono text-xs outline-none focus:border-[#243B53]"
                 />
               </div>
             </div>
 
             {/* Step 3: Expenses and Emergency Purchases */}
-            <div className="bg-[#141b2d] border border-[#222d4a] rounded-2xl p-4">
+            <div className="bg-[#FFFFFF] border border-[#D9E0E7] rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-rose-400">
+                <span className="text-xs font-bold text-[#B42318]">
                   🛒 المصروفات والنثريات من الدرج (إجمالي: {totalExpenses.toFixed(2)} ج.م)
                 </span>
               </div>
@@ -405,19 +429,19 @@ export default function ShiftModal({
                   value={expName}
                   onChange={(e) => setExpName(e.target.value)}
                   placeholder="بند المصروف (مثال: بصل، خضار، نظافة...)"
-                  className="flex-1 bg-[#0d121f] border border-stone-800 rounded-xl px-3 py-1.5 text-xs text-stone-200 outline-none focus:border-amber-500"
+                  className="flex-1 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-1.5 text-xs text-[#1F2937] outline-none focus:border-[#243B53]"
                 />
                 <input
                   type="number"
                   value={expAmount}
                   onChange={(e) => setExpAmount(e.target.value)}
                   placeholder="المبلغ ج.م"
-                  className="w-24 bg-[#0d121f] border border-stone-800 rounded-xl px-3 py-1.5 text-xs text-stone-200 font-mono outline-none focus:border-amber-500"
+                  className="w-24 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-1.5 text-xs text-[#1F2937] font-mono outline-none focus:border-[#243B53]"
                 />
                 <button
                   type="button"
                   onClick={handleAddExpense}
-                  className="px-3 py-1.5 bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/40 text-rose-300 text-xs font-bold rounded-xl transition"
+                  className="px-3 py-1.5 bg-[#FEF2F2] hover:bg-[#FEE2E2] border border-[#FCA5A5] text-[#B42318] text-xs font-bold rounded-xl transition"
                 >
                   + إضافة
                 </button>
@@ -428,15 +452,15 @@ export default function ShiftModal({
                   {expenses.map((exp, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between bg-[#0d121f] px-3 py-1.5 rounded-lg text-xs border border-stone-800"
+                      className="flex items-center justify-between bg-[#F8FAFC] px-3 py-1.5 rounded-lg text-xs border border-[#E2E8F0]"
                     >
-                      <span className="text-stone-300">{exp.item}</span>
+                      <span className="text-[#1F2937]">{exp.item}</span>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-rose-400 font-bold">-{exp.amount.toFixed(2)} ج.م</span>
+                        <span className="font-mono text-[#B42318] font-bold">-{exp.amount.toFixed(2)} ج.م</span>
                         <button
                           type="button"
                           onClick={() => handleRemoveExpense(i)}
-                          className="text-stone-500 hover:text-rose-400 text-xs"
+                          className="text-[#94A3B8] hover:text-[#B42318] text-xs"
                         >
                           ✕
                         </button>
@@ -448,9 +472,9 @@ export default function ShiftModal({
             </div>
 
             {/* Step 4: Management Withdrawals */}
-            <div className="bg-[#141b2d] border border-[#222d4a] rounded-2xl p-4">
+            <div className="bg-[#FFFFFF] border border-[#D9E0E7] rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-amber-400">
+                <span className="text-xs font-bold text-[#946200]">
                   🏛️ مسحوبات الإدارة من الدرج (إجمالي: {totalWithdrawals.toFixed(2)} ج.م)
                 </span>
               </div>
@@ -461,19 +485,19 @@ export default function ShiftModal({
                   value={wdName}
                   onChange={(e) => setWdName(e.target.value)}
                   placeholder="اسم المستلم بالإدارة أو سبب السحب..."
-                  className="flex-1 bg-[#0d121f] border border-stone-800 rounded-xl px-3 py-1.5 text-xs text-stone-200 outline-none focus:border-amber-500"
+                  className="flex-1 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-1.5 text-xs text-[#1F2937] outline-none focus:border-[#243B53]"
                 />
                 <input
                   type="number"
                   value={wdAmount}
                   onChange={(e) => setWdAmount(e.target.value)}
                   placeholder="المبلغ ج.م"
-                  className="w-24 bg-[#0d121f] border border-stone-800 rounded-xl px-3 py-1.5 text-xs text-stone-200 font-mono outline-none focus:border-amber-500"
+                  className="w-24 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-1.5 text-xs text-[#1F2937] font-mono outline-none focus:border-[#243B53]"
                 />
                 <button
                   type="button"
                   onClick={handleAddWithdrawal}
-                  className="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-xl transition"
+                  className="px-3 py-1.5 bg-[#FFFBEB] hover:bg-[#FEF3C7] border border-[#FDE68A] text-[#946200] text-xs font-bold rounded-xl transition"
                 >
                   + إضافة
                 </button>
@@ -484,15 +508,15 @@ export default function ShiftModal({
                   {withdrawals.map((wd, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between bg-[#0d121f] px-3 py-1.5 rounded-lg text-xs border border-stone-800"
+                      className="flex items-center justify-between bg-[#F8FAFC] px-3 py-1.5 rounded-lg text-xs border border-[#E2E8F0]"
                     >
-                      <span className="text-stone-300">{wd.item}</span>
+                      <span className="text-[#1F2937]">{wd.item}</span>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-amber-400 font-bold">-{wd.amount.toFixed(2)} ج.م</span>
+                        <span className="font-mono text-[#946200] font-bold">-{wd.amount.toFixed(2)} ج.م</span>
                         <button
                           type="button"
                           onClick={() => handleRemoveWithdrawal(i)}
-                          className="text-stone-500 hover:text-amber-400 text-xs"
+                          className="text-[#94A3B8] hover:text-[#946200] text-xs"
                         >
                           ✕
                         </button>
@@ -504,25 +528,25 @@ export default function ShiftModal({
             </div>
 
             {/* Step 5: عهدة الدليفري والطيارين (Delivery & Rider Ledger Reconciliation) */}
-            <div className="bg-[#141b2d] border border-[#222d4a] rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-stone-800 pb-2">
+            <div className="bg-[#FFFFFF] border border-[#D9E0E7] rounded-2xl p-4 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between border-b border-[#D9E0E7] pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-base text-teal-400">🛵</span>
-                  <h4 className="text-xs font-black text-teal-300">عهدة الدليفري والطيارين بالوردية</h4>
+                  <span className="text-base text-[#3B82A0]">🛵</span>
+                  <h4 className="text-xs font-black text-[#243B53]">عهدة الدليفري والطيارين بالوردية</h4>
                 </div>
-                <span className="text-[10px] text-stone-400">تسويات النقدية خارج الدرج</span>
+                <span className="text-[10px] text-[#5B6472]">تسويات النقدية خارج الدرج</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                <div className="bg-[#0d121f] p-2.5 rounded-xl border border-emerald-500/30">
-                  <p className="text-[10px] text-stone-400">نقدية وردها الطيارون للدرج</p>
-                  <p className="font-mono font-black text-emerald-400 text-sm mt-0.5">
+                <div className="bg-[#EBF7F0] p-2.5 rounded-xl border border-[#A7F3D0]">
+                  <p className="text-[10px] text-[#237A57]">نقدية وردها الطيارون للدرج</p>
+                  <p className="font-mono font-black text-[#237A57] text-sm mt-0.5">
                     +{(currentShift?.riderRemittancesTotal || 0).toFixed(2)} ج.م
                   </p>
                 </div>
-                <div className="bg-[#0d121f] p-2.5 rounded-xl border border-amber-500/30">
-                  <p className="text-[10px] text-stone-400">مبالغ لا تزال معلقة مع الطيارين</p>
-                  <p className="font-mono font-black text-amber-400 text-sm mt-0.5">
+                <div className="bg-[#FFFBEB] p-2.5 rounded-xl border border-[#FDE68A]">
+                  <p className="text-[10px] text-[#946200]">مبالغ لا تزال معلقة مع الطيارين</p>
+                  <p className="font-mono font-black text-[#946200] text-sm mt-0.5">
                     {(currentShift?.riderPendingDebtTotal || 0).toFixed(2)} ج.م
                   </p>
                 </div>
@@ -530,25 +554,25 @@ export default function ShiftModal({
 
               {/* Rider breakdown if any debts */}
               {currentShift?.riderDebtsBreakdown && currentShift.riderDebtsBreakdown.length > 0 && (
-                <div className="bg-[#0d121f] p-2.5 rounded-xl border border-amber-500/20 space-y-1">
-                  <p className="text-[10px] font-bold text-amber-300 mb-1">تفاصيل العهد المعلقة على كل طيار:</p>
+                <div className="bg-[#F8FAFC] p-2.5 rounded-xl border border-[#D9E0E7] space-y-1">
+                  <p className="text-[10px] font-bold text-[#946200] mb-1">تفاصيل العهد المعلقة على كل طيار:</p>
                   {currentShift.riderDebtsBreakdown.map((r: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between text-[11px] py-0.5 border-b border-stone-800 last:border-0">
-                      <span className="text-stone-300">{r.riderName}</span>
-                      <span className="font-mono font-bold text-amber-400">{r.pendingDebt.toFixed(2)} ج.م معلق</span>
+                    <div key={idx} className="flex items-center justify-between text-[11px] py-0.5 border-b border-[#E2E8F0] last:border-0">
+                      <span className="text-[#1F2937]">{r.riderName}</span>
+                      <span className="font-mono font-bold text-[#946200]">{r.pendingDebt.toFixed(2)} ج.م معلق</span>
                     </div>
                   ))}
-                  <p className="text-[9px] text-stone-400 pt-1">
+                  <p className="text-[9px] text-[#5B6472] pt-1">
                     ⚠️ تنبيه: المبالغ المعلقة أعلاه لم تدخل درج الكاشير بعد، وتظل مسجلة كعهدة تشغيلية على الطيار حتى يتم توريدها.
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Step 5: Receiver name & Notes */}
+            {/* Step 6: Receiver name & Notes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-stone-300 mb-1">
+                <label className="block text-xs font-bold text-[#1F2937] mb-1">
                   اسم مستلم الخزينة (المشرف / الإدارة)
                 </label>
                 <input
@@ -556,12 +580,12 @@ export default function ShiftModal({
                   value={receivedBy}
                   onChange={(e) => setReceivedBy(e.target.value)}
                   placeholder="مثال: أ / بسيوني أو مشرف الوردية"
-                  className="w-full bg-[#141b2d] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 text-xs outline-none focus:border-amber-500"
+                  className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-xl px-3 py-2 text-[#1F2937] text-xs outline-none focus:border-[#243B53]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-300 mb-1">
+                <label className="block text-xs font-bold text-[#1F2937] mb-1">
                   ملاحظات تقفيل الوردية
                 </label>
                 <input
@@ -569,25 +593,25 @@ export default function ShiftModal({
                   value={closeNotes}
                   onChange={(e) => setCloseNotes(e.target.value)}
                   placeholder="أي ملاحظات خاصة بالتقفيل..."
-                  className="w-full bg-[#141b2d] border border-stone-800 rounded-xl px-3 py-2 text-stone-100 text-xs outline-none focus:border-amber-500"
+                  className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-xl px-3 py-2 text-[#1F2937] text-xs outline-none focus:border-[#243B53]"
                 />
               </div>
             </div>
 
             {/* Actions: End Shift & Print Z-Report */}
             {!canCloseShift && (
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-center text-xs text-amber-300 font-bold">
+              <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-2.5 text-center text-xs text-[#946200] font-bold">
                 ⚠️ تقفيل واعتماد الوردية نهائياً متاح فقط لمدير المطعم أو الأدمن. كاشير الوردية يمكنه مراجعة الأرقام فقط ولا يملك صلاحية الإغلاق.
               </div>
             )}
-            <div className="flex gap-3 pt-3 border-t border-[#1c2438]">
+            <div className="flex gap-3 pt-3 border-t border-[#D9E0E7]">
               <button
                 onClick={handleEndShift}
                 disabled={isClosing || !canCloseShift}
-                className={`flex-1 font-black py-3 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2 ${
+                className={`flex-1 font-black py-3 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 ${
                   canCloseShift
-                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30 active:scale-[0.99]"
-                    : "bg-stone-800 text-stone-500 cursor-not-allowed border border-stone-700"
+                    ? "bg-[#237A57] hover:bg-[#1D6447] text-white active:scale-[0.99]"
+                    : "bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed border border-[#CBD5E1]"
                 }`}
               >
                 <span>🖨️</span>
@@ -595,7 +619,7 @@ export default function ShiftModal({
               </button>
               <button
                 onClick={onClose}
-                className="px-5 py-3 bg-[#182033] hover:bg-stone-800 text-stone-300 rounded-xl text-xs font-bold transition"
+                className="px-5 py-3 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#5B6472] rounded-xl text-xs font-bold transition"
               >
                 إغلاق
               </button>

@@ -14,7 +14,7 @@ export interface ThermalReceiptItem {
 
 export interface ThermalReceiptOptions {
   title?: string;
-  receiptType?: "CHECK" | "RECEIPT" | "PREP" | "Z_REPORT" | "GRILL_KITCHEN" | "GRILL_HANDOVER";
+  receiptType?: "CHECK" | "RECEIPT" | "PREP" | "Z_REPORT" | "GRILL_KITCHEN" | "GRILL_HANDOVER" | "REPRINT";
   tableName: string;
   orderNumber?: number | string;
   orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | "CUSTOMER_GRILL" | string;
@@ -729,8 +729,9 @@ export function buildGrillingHandoverTicketHtml(options: ThermalReceiptOptions):
 /**
  * Builds clean 80mm Z-Report (Daily Closing / End of Shift) Thermal Print HTML
  */
-export function buildZReportHtml(reportData: any, cashierName: string): string {
-  const stats = reportData?.stats || {};
+export function buildZReportHtml(reportData: any, cashierName?: string): string {
+  const stats = reportData?.stats || reportData || {};
+  const effectiveCashierName = cashierName || reportData?.cashierName || stats?.cashierName || "الكاشير";
   const dateStr = new Date().toLocaleDateString("ar-EG");
   const timeStr = new Date().toLocaleTimeString("ar-EG");
 
@@ -767,7 +768,7 @@ export function buildZReportHtml(reportData: any, cashierName: string): string {
   <div class="divider"></div>
   <div class="row"><span>التاريخ:</span><span class="font-mono">${dateStr}</span></div>
   <div class="row"><span>الوقت:</span><span class="font-mono">${timeStr}</span></div>
-  <div class="row"><span>الكاشير:</span><span>${cashierName || "admin"}</span></div>
+  <div class="row"><span>الكاشير:</span><span>${effectiveCashierName}</span></div>
   <div class="divider"></div>
 
   <div class="row"><span>رصيد أول المدة (الافتتاحي):</span><span class="font-mono">${(stats.initialCash || 0).toFixed(2)} ج.م</span></div>

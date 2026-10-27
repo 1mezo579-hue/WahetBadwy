@@ -27,7 +27,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row" dir="rtl">
+    <div className="min-h-screen bg-[#F4F6F8] text-[#1F2937] flex flex-col lg:flex-row font-sans" dir="rtl">
       {/* Sidebar (Desktop + Mobile) */}
       <AdminSidebar
         user={{

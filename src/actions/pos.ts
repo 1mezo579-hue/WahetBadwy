@@ -170,8 +170,12 @@ async function ensureMenuItemsExist(items: CartItemInput[]) {
 }
 
 // Deduct raw materials based on recipes when an order is placed
-async function deductInventoryForItems(items: CartItemInput[]) {
+async function deductInventoryForItems(items: CartItemInput[], isCustomerGrillOrder: boolean = false) {
   try {
+    // If the entire order is customer meat grilling (شوي لحوم العميل), no restaurant stock is deducted
+    if (isCustomerGrillOrder) {
+      return;
+    }
     const itemIds = items.map((i) => i.menuItemId).filter(Boolean);
     const menuItemsWithRecipes = await prisma.menuItem.findMany({
       where: { id: { in: itemIds } },
@@ -341,6 +345,8 @@ export async function sendOrderToPrep(payload: OrderPayload) {
 
     const isGrillOrder =
       payload.orderKind === "CUSTOMER_GRILL" ||
+      payload.orderType === "CUSTOMER_GRILL" ||
+      orderType === "CUSTOMER_GRILL" ||
       (payload.grillingFee !== undefined && Number(payload.grillingFee) > 0);
 
     if (!isGrillOrder && (!items || items.length === 0)) {
@@ -513,7 +519,7 @@ export async function sendOrderToPrep(payload: OrderPayload) {
       });
 
       if (verifiedItems && verifiedItems.length > 0) {
-        await deductInventoryForItems(verifiedItems);
+        await deductInventoryForItems(verifiedItems, isGrillOrder);
       }
     }
 
@@ -660,6 +666,8 @@ export async function collectOrderPayment(payload: OrderPayload) {
 
     const isGrillOrder =
       payload.orderKind === "CUSTOMER_GRILL" ||
+      payload.orderType === "CUSTOMER_GRILL" ||
+      orderType === "CUSTOMER_GRILL" ||
       (payload.grillingFee !== undefined && Number(payload.grillingFee) > 0);
 
     // 4. Server-Side Verification of Items, Prices, and Amounts
@@ -760,7 +768,7 @@ export async function collectOrderPayment(payload: OrderPayload) {
       targetOrder = created;
 
       if (verifiedItems && verifiedItems.length > 0) {
-        await deductInventoryForItems(verifiedItems);
+        await deductInventoryForItems(verifiedItems, isGrillOrder);
       }
     } else if (targetOrderId) {
       // Mark existing OPEN order as PAID

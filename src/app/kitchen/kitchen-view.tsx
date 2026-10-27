@@ -292,35 +292,35 @@ export default function KitchenView({
   }, [orders]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#070a12] text-stone-100 font-sans select-none" dir="rtl">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0F172A] text-stone-100 font-sans select-none" dir="rtl">
       
       {/* 1. TOP HEADER */}
-      <header className="h-16 shrink-0 bg-[#0d1322] border-b border-[#1c263d] px-4 flex items-center justify-between z-30 shadow-2xl">
+      <header className="h-16 shrink-0 bg-[#243B53] border-b border-[#1A2B3C] px-4 flex items-center justify-between z-30 shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center text-2xl shadow-lg shadow-orange-500/20">
+          <div className="w-10 h-10 rounded-xl bg-[#D97706] text-white flex items-center justify-center text-xl shadow-md">
             👨‍🍳
           </div>
           <div>
-            <h1 className="text-lg font-black text-amber-400 tracking-tight leading-tight flex items-center gap-2">
+            <h1 className="text-lg font-black text-white tracking-tight leading-tight flex items-center gap-2">
               <span>شاشة المطبخ والشواية المباشرة (KDS)</span>
-              <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-mono">
+              <span className="text-xs bg-[#1A2B3C] text-[#FDE68A] border border-[#D97706]/40 px-2.5 py-0.5 rounded-full font-mono font-bold">
                 {counts.total} أوردر نشط
               </span>
             </h1>
-            <p className="text-[10px] text-stone-400 font-bold">
+            <p className="text-[11px] text-slate-300 font-semibold">
               مشويات بسيوني — متابعة وتحضير وتوجيه الطلبات للشواية
             </p>
           </div>
         </div>
 
         {/* Status Counts Tabs */}
-        <div className="hidden lg:flex items-center gap-1.5 bg-[#12192b] border border-[#1e2842] p-1 rounded-2xl text-xs">
+        <div className="hidden lg:flex items-center gap-1.5 bg-[#1A2B3C] border border-[#334E68] p-1 rounded-xl text-xs">
           <button
             onClick={() => setFilterStatus("ACTIVE")}
-            className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
               filterStatus === "ACTIVE"
-                ? "bg-amber-500 text-stone-950 font-black shadow"
-                : "text-stone-300 hover:text-white"
+                ? "bg-[#D97706] text-white font-black shadow"
+                : "text-slate-300 hover:text-white"
             }`}
           >
             <span>الكل النشط</span>
@@ -328,36 +328,36 @@ export default function KitchenView({
           </button>
           <button
             onClick={() => setFilterStatus("NEW")}
-            className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
               filterStatus === "NEW"
-                ? "bg-amber-500 text-stone-950 font-black shadow"
-                : "text-stone-300 hover:text-white"
+                ? "bg-[#D97706] text-white font-black shadow"
+                : "text-slate-300 hover:text-white"
             }`}
           >
             <span>جديد</span>
-            <span className="font-mono bg-amber-950/40 text-amber-400 px-1.5 rounded-full text-[10px]">{counts.new}</span>
+            <span className="font-mono bg-black/20 text-[#FDE68A] px-1.5 rounded-full text-[10px]">{counts.new}</span>
           </button>
           <button
             onClick={() => setFilterStatus("PREPARING")}
-            className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
               filterStatus === "PREPARING"
-                ? "bg-sky-500 text-white font-black shadow"
-                : "text-stone-300 hover:text-white"
+                ? "bg-[#3B82A0] text-white font-black shadow"
+                : "text-slate-300 hover:text-white"
             }`}
           >
             <span>على النار / قيد الطهي</span>
-            <span className="font-mono bg-sky-950/40 text-sky-400 px-1.5 rounded-full text-[10px]">{counts.preparing}</span>
+            <span className="font-mono bg-black/20 text-white px-1.5 rounded-full text-[10px]">{counts.preparing}</span>
           </button>
           <button
             onClick={() => setFilterStatus("READY")}
-            className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
               filterStatus === "READY"
-                ? "bg-emerald-500 text-stone-950 font-black shadow"
-                : "text-stone-300 hover:text-white"
+                ? "bg-[#237A57] text-white font-black shadow"
+                : "text-slate-300 hover:text-white"
             }`}
           >
             <span>جاهز للتسليم</span>
-            <span className="font-mono bg-emerald-950/40 text-emerald-400 px-1.5 rounded-full text-[10px]">{counts.ready}</span>
+            <span className="font-mono bg-black/20 text-emerald-200 px-1.5 rounded-full text-[10px]">{counts.ready}</span>
           </button>
         </div>
 
@@ -367,8 +367,8 @@ export default function KitchenView({
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`p-2 rounded-xl border transition ${
               soundEnabled
-                ? "bg-[#141b2f] border-emerald-500/50 text-emerald-400"
-                : "bg-[#141b2f] border-stone-800 text-stone-500"
+                ? "bg-[#1A2B3C] border-emerald-400 text-emerald-300"
+                : "bg-[#1A2B3C] border-slate-700 text-slate-400"
             }`}
             title={soundEnabled ? "صوت التنبيه مفعل" : "صوت التنبيه صامت"}
           >
@@ -377,7 +377,7 @@ export default function KitchenView({
 
           <button
             onClick={fetchOrders}
-            className="px-3 py-2 rounded-xl bg-[#141b2f] border border-[#1e2842] hover:border-amber-500/60 text-stone-300 font-bold flex items-center gap-1.5 transition"
+            className="px-3 py-2 rounded-xl bg-[#1A2B3C] border border-[#334E68] hover:border-[#D97706] text-slate-200 font-bold flex items-center gap-1.5 transition"
             title="تحديث لحظي"
           >
             <span>🔄</span>
@@ -386,7 +386,7 @@ export default function KitchenView({
 
           <Link
             href="/pos"
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black flex items-center gap-1.5 transition shadow-md shadow-orange-500/20"
+            className="px-3.5 py-2 rounded-xl bg-[#D97706] hover:bg-[#B45309] text-white font-black flex items-center gap-1.5 transition shadow-sm"
           >
             <span>🛒</span>
             <span>الكاشير</span>
@@ -395,25 +395,25 @@ export default function KitchenView({
       </header>
 
       {/* 2. SUB-BAR: CHANNELS FILTER */}
-      <div className="h-11 shrink-0 bg-[#0a0f1b] border-b border-[#182136] px-4 flex items-center justify-between text-xs overflow-x-auto">
+      <div className="h-11 shrink-0 bg-[#16202E] border-b border-[#243B53] px-4 flex items-center justify-between text-xs overflow-x-auto">
         <div className="flex items-center gap-2">
-          <span className="text-stone-400 font-bold ml-1">تصفية القنوات:</span>
+          <span className="text-slate-300 font-bold ml-1">تصفية القنوات:</span>
           <button
             onClick={() => setFilterChannel("ALL")}
-            className={`px-3 py-1 rounded-xl font-bold transition border ${
+            className={`px-3 py-1 rounded-lg font-bold transition border ${
               filterChannel === "ALL"
-                ? "bg-amber-500/20 text-amber-300 border-amber-500"
-                : "bg-[#12192b] border-[#1e2842] text-stone-400 hover:text-white"
+                ? "bg-[#243B53] text-[#FDE68A] border-[#D97706]"
+                : "bg-[#1E293B] border-slate-700 text-slate-300 hover:text-white"
             }`}
           >
             الكل
           </button>
           <button
             onClick={() => setFilterChannel("CUSTOMER_GRILL")}
-            className={`px-3 py-1 rounded-xl font-bold transition border flex items-center gap-1 ${
+            className={`px-3 py-1 rounded-lg font-bold transition border flex items-center gap-1 ${
               filterChannel === "CUSTOMER_GRILL"
-                ? "bg-orange-500 text-stone-950 border-orange-400 font-black shadow"
-                : "bg-[#12192b] border-[#1e2842] text-orange-400 hover:text-white"
+                ? "bg-[#D97706] text-white border-[#B45309] font-black shadow"
+                : "bg-[#1E293B] border-slate-700 text-amber-400 hover:text-white"
             }`}
           >
             <span>🔥</span>
@@ -421,43 +421,43 @@ export default function KitchenView({
           </button>
           <button
             onClick={() => setFilterChannel("TAKEAWAY")}
-            className={`px-3 py-1 rounded-xl font-bold transition border ${
+            className={`px-3 py-1 rounded-lg font-bold transition border ${
               filterChannel === "TAKEAWAY"
-                ? "bg-amber-500/20 text-amber-300 border-amber-500"
-                : "bg-[#12192b] border-[#1e2842] text-stone-400 hover:text-white"
+                ? "bg-[#243B53] text-[#FDE68A] border-[#D97706]"
+                : "bg-[#1E293B] border-slate-700 text-slate-300 hover:text-white"
             }`}
           >
             🛍️ تيك أواي
           </button>
           <button
             onClick={() => setFilterChannel("DELIVERY")}
-            className={`px-3 py-1 rounded-xl font-bold transition border ${
+            className={`px-3 py-1 rounded-lg font-bold transition border ${
               filterChannel === "DELIVERY"
-                ? "bg-teal-500/20 text-teal-300 border-teal-500"
-                : "bg-[#12192b] border-[#1e2842] text-stone-400 hover:text-white"
+                ? "bg-[#3B82A0] text-white border-[#243B53]"
+                : "bg-[#1E293B] border-slate-700 text-slate-300 hover:text-white"
             }`}
           >
             🛵 دليفري
           </button>
           <button
             onClick={() => setFilterChannel("DINE_IN")}
-            className={`px-3 py-1 rounded-xl font-bold transition border ${
+            className={`px-3 py-1 rounded-lg font-bold transition border ${
               filterChannel === "DINE_IN"
-                ? "bg-sky-500/20 text-sky-300 border-sky-500"
-                : "bg-[#12192b] border-[#1e2842] text-stone-400 hover:text-white"
+                ? "bg-[#243B53] text-white border-sky-400"
+                : "bg-[#1E293B] border-slate-700 text-slate-300 hover:text-white"
             }`}
           >
             🪑 صالة
           </button>
         </div>
 
-        <div className="text-[11px] text-stone-400 font-mono hidden md:block">
+        <div className="text-[11px] text-slate-400 font-mono hidden md:block">
           تحديث تلقائي كل 5 ثوانٍ • ترتيب بالأقدمية (FIFO)
         </div>
       </div>
 
       {/* 3. KITCHEN ORDERS GRID */}
-      <main className="flex-1 overflow-y-auto p-3 sm:p-4 bg-[#070a12]">
+      <main className="flex-1 overflow-y-auto p-3 sm:p-4 bg-[#0F172A]">
         {filteredOrders.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8 text-stone-500">
             <span className="text-6xl mb-3 text-stone-600">👨‍🍳</span>
